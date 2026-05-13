@@ -1,0 +1,5 @@
+9dde0b0 design: align homepage, garden, seeds — transparent tod backgrounds, garden header, stats tiles, filter scroll
+0d732d6 feat: seeds tab — demand count at top-right, card demand tiers, fix fulfilled lookup bug
+ef80329 fix: board background z-index, garden dept label visibility, help panel defaults to feedback tab
+82804ae copy: update messaging across login, dashboard, garden, and seeds views
+ade28b2 feat: time-of-day background on homepage and garden — 6 unified windows, lighter airier garden sky

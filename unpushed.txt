@@ -1,0 +1,3 @@
+ad40134 test: add Vitest unit test suite for pure utility functions
+a8a27aa fix: apply all QA audit findings (12 fixes)
+0a6c323 feat: complete all 6 grove improvements

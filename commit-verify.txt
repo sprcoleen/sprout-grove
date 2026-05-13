@@ -1,0 +1,1 @@
+ae3d9c2 chore: add .worktrees/ to .gitignore

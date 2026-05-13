@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grove &mdash; Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --k50:#f0faf0;--k100:#d6f0d6;--k200:#aadcaa;--k300:#77c277;--k400:#4aaa4a;--k500:#2d8c2d;--k600:#1f6e1f;--k700:#165216;
+  --m50:#fafaf8;--m100:#f2f1ed;--m200:#e4e2da;--m300:#ccc9bc;--m400:#b0ac9c;--m500:#928e7c;--m600:#736f5e;--m700:#565244;--m800:#3a372e;
+  --mg100:#fefcbf;--mg500:#d69e2e;--mg600:#b7791f;
+  --u100:#faf5ff;--u400:#9f7aea;--u500:#805ad5;
+  --bl100:#ebf8ff;--bl400:#63b3ed;--bl500:#3182ce;
+  --wm100:#e6fffa;--wm400:#38b2ac;--wm500:#2c7a7b;
+  --cr100:#feebc8;--cr500:#dd6b20;
+  --t100:#fed7d7;--t500:#e53e3e;
+  --bg-page:#edeae2;--bg-white:#fff;--bg-surf:#fafaf8;
+  --border:#e4e2da;--border-lt:#f2f1ed;
+  --tx9:#201e18;--tx7:#565244;--tx5:#928e7c;--tx4:#b0ac9c;
+  --font:'Rubik',system-ui,sans-serif;
+  --r-sm:6px;--r-md:10px;--r-lg:16px;--r-full:9999px;
+  --sh-sm:0 1px 3px rgba(17,16,9,.08),0 2px 6px rgba(17,16,9,.05);
+  --sh-md:0 3px 10px rgba(17,16,9,.10),0 1px 4px rgba(17,16,9,.06);
+  --sh-lg:0 6px 20px rgba(17,16,9,.12),0 2px 8px rgba(17,16,9,.07);
+}
+html { font-family:var(--font); background:var(--bg-page); color:var(--tx9); font-size:14px; }
+body { min-height:100vh; }
+
+/* NAV */
+.nav { position:sticky;top:0;z-index:50;background:var(--bg-white);border-bottom:1px solid var(--border);height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;box-shadow:var(--sh-sm); }
+.logo-wrap { display:flex;align-items:center;gap:10px; }
+.logo-mark { width:28px;height:28px;background:var(--k500);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(45,140,45,.30); }
+.logo-mark svg { width:15px;height:15px; }
+.logo-name { font-size:15px;font-weight:700;color:var(--tx9);letter-spacing:-0.3px;line-height:1.1; }
+.logo-by { font-size:10px;color:var(--tx5);line-height:1; }
+.nav-tabs { display:flex;gap:2px;background:var(--m100);border-radius:10px;padding:3px; }
+.nav-tab { padding:5px 18px;border-radius:8px;font-size:13px;font-weight:500;color:var(--tx7);cursor:pointer;transition:all .13s;user-select:none; }
+.nav-tab.active { background:var(--bg-white);color:var(--tx9);box-shadow:var(--sh-sm); }
+.nav-right { display:flex;align-items:center;gap:12px; }
+.btn-contribute { background:var(--k500);color:#fff;font-family:var(--font);font-size:13px;font-weight:600;padding:7px 18px;border-radius:var(--r-full);border:none;cursor:pointer;transition:background .13s;box-shadow:0 1px 4px rgba(45,140,45,.25); }
+.btn-contribute:hover { background:var(--k600); }
+.user-av { width:32px;height:32px;background:var(--u500);border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:pointer; }
+
+/* LAYOUT */
+.page { display:grid;grid-template-columns:1fr 276px;gap:16px;padding:18px 24px 48px;max-width:1400px;margin:0 auto; }
+.main { display:flex;flex-direction:column;gap:12px;min-width:0; }
+.side { display:flex;flex-direction:column;gap:12px;min-width:0; }
+
+/* GREETING */
+.greeting h1 { font-size:19px;font-weight:700;letter-spacing:-0.4px; }
+.greeting p { font-size:13px;color:var(--tx5);margin-top:3px; }
+
+/* STAGE TILES */
+.stage-tiles { display:grid;grid-template-columns:repeat(6,1fr);gap:8px; }
+.stage-tile { background:var(--bg-white);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 12px 10px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:var(--sh-sm);position:relative;overflow:hidden;display:flex;flex-direction:column; }
+.page-watermark { position:fixed;bottom:-20px;right:-20px;z-index:0;pointer-events:none;opacity:0.045;width:280px;height:280px; }
+.stage-tile::before { content:'';position:absolute;top:0;left:0;right:0;height:3px; }
+.stage-tile:hover { transform:translateY(-2px);box-shadow:var(--sh-lg); }
+.t-seed::before    { background:var(--mg500); }
+.t-seedling::before{ background:var(--wm400); }
+.t-nursery::before { background:var(--mg500); } .t-nursery { background:#fffef5; }
+.t-sprout::before  { background:var(--k400); }
+.t-bloom::before   { background:var(--bl500); }
+.t-thriving::before{ background:var(--u500); } .t-thriving { background:#fdf9ff; }
+.stage-num   { font-size:26px;font-weight:800;line-height:1;letter-spacing:-1.5px;margin-top:4px; }
+.stage-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:6px;display:flex;align-items:center;gap:4px; }
+.sdot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+.stage-sub { font-size:11px;color:var(--tx5);margin-top:2px;line-height:1.3; }
+
+/* SPOTLIGHT */
+.spotlight { background:var(--bg-white);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-md);cursor:pointer;transition:box-shadow .13s;display:flex; }
+.spotlight:hover { box-shadow:var(--sh-lg); }
+.spotlight-accent { width:5px;flex-shrink:0;background:linear-gradient(180deg,var(--k400),var(--k600)); }
+.spotlight-body { padding:16px 20px;flex:1; }
+.spotlight-eye { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--k600);margin-bottom:7px;display:flex;align-items:center;gap:5px; }
+.spotlight-name { font-size:16px;font-weight:700;color:var(--tx9);letter-spacing:-0.3px; }
+.spotlight-desc { font-size:12px;color:var(--tx7);margin-top:6px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.spotlight-footer { display:flex;align-items:center;gap:8px;margin-top:12px; }
+.stage-badge { font-size:10px;font-weight:700;padding:2px 10px;border-radius:var(--r-full);text-transform:uppercase;letter-spacing:.4px; }
+.badge-bloom    { background:var(--bl100);color:var(--bl500);border:1px solid #bee3f8; }
+.badge-seedling { background:var(--wm100);color:var(--wm500);border:1px solid #9de6e0; }
+.spotlight-meta { font-size:11px;color:var(--tx5); }
+
+/* CARD */
+.card { background:var(--bg-white);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-sm); }
+.card-hd { padding:14px 18px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }
+.card-bd { padding:14px 18px 16px; }
+.sec-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx5); }
+.sec-desc  { font-size:11px;color:var(--tx5);margin-top:3px; }
+.sec-link  { font-size:12px;font-weight:500;color:var(--k600);text-decoration:none; }
+.sec-link:hover { text-decoration:underline; }
+
+/* TABS */
+.tab-toggle { display:flex;gap:2px;background:var(--m100);border-radius:8px;padding:3px;flex-shrink:0; }
+.tab-btn { padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;color:var(--tx7);cursor:pointer;transition:all .12s;font-family:var(--font);border:none;background:transparent;user-select:none;white-space:nowrap; }
+.tab-btn.active { background:var(--bg-white);color:var(--tx9);box-shadow:var(--sh-sm); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* INSIGHT */
+.insight { background:transparent;border:none;border-left:2.5px solid #bee3f8;border-radius:0;padding:6px 12px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start; }
+.insight-icon { font-size:12px;flex-shrink:0;margin-top:1px;display:none; }
+.insight-text { font-size:12px;color:var(--tx5);line-height:1.5; }
+.insight-text strong { font-weight:600;color:var(--tx7); }
+
+/* TWO-COL GRID */
+.two-col { display:grid;grid-template-columns:1fr 1fr;gap:0; }
+.col-l { padding-right:20px;border-right:1px solid var(--border-lt); }
+.col-r { padding-left:20px; }
+.col-title { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx5);margin-bottom:10px; }
+
+/* BAR ROW */
+.bar-row { display:flex;align-items:center;gap:10px;margin-bottom:8px; }
+.bar-row:last-child { margin-bottom:0; }
+.bar-label { font-size:12px;font-weight:500;color:var(--tx9);min-width:96px; }
+.bar-track { flex:1;height:6px;background:var(--m100);border-radius:var(--r-full);overflow:hidden; }
+.bar-fill  { height:100%;border-radius:var(--r-full); }
+.bar-n { font-size:12px;font-weight:600;color:var(--tx7);min-width:20px;text-align:right; }
+
+/* TREND BADGE — for tech stack right col */
+.trend-row { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-lt); }
+.trend-row:last-child { border-bottom:none; }
+.trend-name { font-size:12px;font-weight:500;color:var(--tx9);flex:1; }
+.trend-pill { font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--r-full); }
+.trend-up   { background:#f0faf0;color:var(--k600);border:1px solid var(--k200); }
+.trend-new  { background:var(--u100);color:var(--u500);border:1px solid #d6bcfa; }
+.trend-flat { background:var(--m100);color:var(--tx5);border:1px solid var(--border); }
+.trend-down { background:var(--t100);color:var(--t500);border:1px solid #feb2b2; }
+.trend-delta { font-size:11px;font-weight:600;color:var(--tx5); }
+
+/* COMPLEXITY METER */
+.complexity-row { display:flex;align-items:center;gap:10px;margin-bottom:9px; }
+.complexity-row:last-child { margin-bottom:0; }
+.complexity-label { font-size:12px;font-weight:500;color:var(--tx9);min-width:88px; }
+.complexity-dots { display:flex;gap:3px; }
+.cdot { width:10px;height:10px;border-radius:2px; }
+.cdot-filled { background:var(--u400); }
+.cdot-empty  { background:var(--m200); }
+.complexity-n { font-size:11px;color:var(--tx5);min-width:60px; }
+
+/* SHARED TAG CLOUD */
+.tag-cloud { display:flex;flex-wrap:wrap;gap:5px; }
+.tag { font-size:11px;font-weight:500;border-radius:var(--r-full);padding:3px 10px;border:1px solid; }
+.tag-shared  { background:var(--wm100);color:var(--wm500);border-color:#9de6e0; }
+.tag-unique  { background:var(--m100);color:var(--tx7);border-color:var(--border); }
+
+/* DIVISION / DEPT ROWS */
+.div-row { padding:8px 0;border-bottom:1px solid var(--border-lt); }
+.div-row:last-child { border-bottom:none; }
+.div-top { display:flex;align-items:center;gap:8px; }
+.div-color { width:3px;height:28px;border-radius:2px;flex-shrink:0; }
+.div-info { flex:1;min-width:0; }
+.div-name { font-size:13px;font-weight:700;color:var(--tx9); }
+.div-meta { font-size:11px;color:var(--tx5);margin-top:1px; }
+.div-count { font-size:14px;font-weight:800;color:var(--tx9);min-width:20px;text-align:right;letter-spacing:-0.5px; }
+.stage-strip { display:flex;gap:3px;margin-top:6px;margin-left:11px; }
+.strip-seg { height:5px;border-radius:var(--r-full); }
+
+/* DEPT GROUP */
+.dept-group { margin-bottom:14px; }
+.dept-group:last-child { margin-bottom:0; }
+.dept-group-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx4);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border-lt); }
+.dept-row { display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-lt); }
+.dept-row:last-child { border-bottom:none; }
+.dept-bar { width:3px;height:22px;border-radius:2px;flex-shrink:0; }
+.dept-info { flex:1;min-width:0; }
+.dept-name { font-size:12px;font-weight:600;color:var(--tx9); }
+.dept-meta { font-size:11px;color:var(--tx5); }
+.mini-track { height:5px;background:var(--m100);border-radius:var(--r-full);overflow:hidden;width:50px;flex-shrink:0; }
+.mini-fill  { height:100%;border-radius:var(--r-full); }
+.dept-n { font-size:12px;font-weight:700;color:var(--tx9);min-width:16px;text-align:right; }
+.dept-zero { opacity:.45; }
+
+/* COMPLETENESS BAR */
+.completeness { background:var(--m100);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px; }
+.comp-top { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px; }
+.comp-label { font-size:12px;font-weight:600;color:var(--tx9); }
+.comp-fraction { font-size:11px;color:var(--tx5); }
+.comp-track { height:8px;background:var(--m200);border-radius:var(--r-full);overflow:hidden; }
+.comp-fill  { height:100%;border-radius:var(--r-full);background:var(--k400); }
+
+/* NUDGE CHIPS */
+.nudge-chips { display:flex;flex-wrap:wrap;gap:5px;margin-top:8px; }
+.nudge-chip { font-size:11px;font-weight:500;border-radius:var(--r-full);padding:3px 10px;border:1px dashed var(--m300);color:var(--tx5);background:var(--bg-surf); }
+
+/* BUILDER ROWS */
+.builder-row { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-lt); }
+.builder-row:last-child { border-bottom:none; }
+.b-pos  { font-size:10px;color:var(--tx5);font-weight:600;min-width:22px; }
+.b-av   { width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0; }
+.b-info { flex:1;min-width:0; }
+.b-name { font-size:12px;font-weight:600;color:var(--tx9); }
+.b-meta { font-size:10px;color:var(--tx5);margin-top:1px; }
+.b-mini { width:44px;flex-shrink:0; }
+.b-track { height:4px;background:var(--m100);border-radius:var(--r-full);overflow:hidden; }
+.b-fill  { height:100%;border-radius:var(--r-full);background:var(--k400); }
+.b-n    { font-size:11px;font-weight:700;color:var(--tx9);min-width:14px;text-align:right; }
+.div-tag { font-size:9px;font-weight:700;padding:1px 6px;border-radius:var(--r-full);margin-left:4px; }
+
+/* BENEFITING */
+.benefit-row { display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-lt); }
+.benefit-row:last-child { border-bottom:none; }
+.benefit-name { font-size:12px;font-weight:500;color:var(--tx9);flex:1; }
+.benefit-n { font-size:11px;font-weight:700;color:var(--tx7); }
+.benefit-bar { width:60px;flex-shrink:0; }
+
+/* SIDEBAR */
+.seeds-card { background:var(--bg-white);border:1.5px solid var(--k200);border-radius:var(--r-lg);overflow:hidden;box-shadow:0 2px 10px rgba(45,140,45,.10); }
+.seeds-hd { background:linear-gradient(135deg,var(--k50),#e8f5e8);border-bottom:1px solid var(--k100);padding:12px 16px;display:flex;align-items:center;justify-content:space-between; }
+.seeds-eye { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--k600);display:flex;align-items:center;gap:6px; }
+.seeds-bd { padding:4px 16px 12px; }
+.seed-item { padding:9px 0;border-bottom:1px solid var(--border-lt); }
+.seed-item:last-of-type { border-bottom:none; }
+.seed-top { display:flex;align-items:flex-start;justify-content:space-between;gap:6px; }
+.seed-name { font-size:12px;font-weight:600;color:var(--tx9);line-height:1.35;flex:1; }
+.seed-votes { font-size:10px;font-weight:700;color:var(--mg600);background:var(--mg100);border:1px solid #f6d98a;border-radius:var(--r-full);padding:1px 7px;white-space:nowrap;flex-shrink:0; }
+.seed-dept { font-size:11px;color:var(--tx5);margin-top:3px; }
+.btn-browse { display:block;width:100%;margin-top:10px;background:var(--k500);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;padding:9px;border-radius:var(--r-full);border:none;cursor:pointer;text-align:center;transition:background .13s; }
+.btn-browse:hover { background:var(--k600); }
+
+.feed-item { display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--border-lt); }
+.feed-item:last-child { border-bottom:none; }
+.fdot-wrap { padding-top:5px;flex-shrink:0; }
+.fdot { width:6px;height:6px;border-radius:50%; }
+.feed-text { font-size:12px;color:var(--tx7);line-height:1.4; }
+.feed-text strong { color:var(--tx9);font-weight:600; }
+.feed-time { font-size:10px;color:var(--tx4);margin-top:2px; }
+
+.c-stat { display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border-lt);font-size:12px; }
+.c-stat:last-of-type { border-bottom:none; }
+.c-lbl { color:var(--tx5); }
+.c-val { font-weight:700;color:var(--tx9); }
+.c-val.green { color:var(--k500); }
+.view-link { display:block;font-size:12px;font-weight:600;color:var(--k600);text-decoration:none;margin-top:10px; }
+.view-link:hover { text-decoration:underline; }
+.proj-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border-lt); }
+.proj-row:last-child { border-bottom:none; }
+.proj-name { font-size:12px;font-weight:500;color:var(--tx9); }
+.dv { height:1px;background:var(--border-lt);margin:12px 0; }
+.sub-lbl { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx5);margin-bottom:7px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="logo-wrap">
+    <div class="logo-mark">
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- stem -->
+        <path d="M10 17V9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- left leaf -->
+        <path d="M10 12 C10 12 6 11 5 8 C5 8 8.5 7 10 10" fill="#fff" opacity="0.85"/>
+        <!-- right leaf -->
+        <path d="M10 9 C10 9 14 8 15 5 C15 5 11.5 4 10 7" fill="#fff"/>
+        <!-- soil mound -->
+        <path d="M6.5 17 Q10 15.5 13.5 17" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+      </svg>
+    </div>
+    <div><div class="logo-name">Grove</div><div class="logo-by">by Sprout</div></div>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active">Overview</div>
+    <div class="nav-tab">Garden</div>
+    <div class="nav-tab">Seeds</div>
+  </div>
+  <div class="nav-right">
+    <button class="btn-contribute">+ Contribute</button>
+    <div class="user-av">VK</div>
+  </div>
+</nav>
+
+<div class="page">
+<div class="main">
+
+  <div class="greeting">
+    <h1>Good evening, VK!</h1>
+    <p>20 AI projects across PH &amp; TH &middot; 19 plants, 1 seed</p>
+  </div>
+
+  <!-- STAGE TILES -->
+  <div class="stage-tiles">
+
+    <div class="stage-tile t-seed">
+      <div class="stage-num" style="color:var(--mg600)">1</div>
+      <div class="stage-label" style="color:var(--mg500)"><span class="sdot" style="background:var(--mg500)"></span>Seed</div>
+      <div class="stage-sub">Unclaimed ideas</div>
+      <svg style="position:absolute;bottom:8px;right:8px;opacity:0.18;" width="30" height="26" viewBox="0 0 32 28" fill="none">
+        <ellipse cx="16" cy="22" rx="8" ry="3" fill="var(--mg600)"/>
+        <ellipse cx="16" cy="16" rx="6" ry="6.5" fill="var(--mg500)"/>
+        <path d="M16 10 Q18 13 16 15.5 Q14 13 16 10Z" fill="var(--mg600)" opacity="0.7"/>
+      </svg>
+    </div>
+
+    <div class="stage-tile t-seedling">
+      <div class="stage-num" style="color:var(--wm500)">5</div>
+      <div class="stage-label" style="color:var(--wm500)"><span class="sdot" style="background:var(--wm400)"></span>Seedling</div>
+      <div class="stage-sub">In prototype</div>
+      <svg style="position:absolute;bottom:6px;right:8px;opacity:0.18;" width="30" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M16 28 V14" stroke="var(--wm500)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 20 C16 20 9 18 8 13 C8 13 13 12 16 17" fill="var(--wm500)"/>
+        <path d="M16 16 C16 16 23 14 24 9 C24 9 19 8 16 13" fill="var(--wm400)"/>
+        <path d="M10 28 Q16 26 22 28" stroke="var(--wm500)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <div class="stage-tile t-nursery">
+      <div class="stage-num" style="color:var(--mg600)">0</div>
+      <div class="stage-label" style="color:var(--mg500)"><span class="sdot" style="background:var(--mg500)"></span>Nursery</div>
+      <div class="stage-sub">Awaiting review</div>
+      <svg style="position:absolute;bottom:6px;right:8px;opacity:0.18;" width="30" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M16 20 V11" stroke="var(--mg500)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 16 C16 16 10 14 9 10 C9 10 14 9 16 14" fill="var(--mg500)"/>
+        <path d="M16 13 C16 13 22 11 23 7 C23 7 18 6 16 11" fill="var(--mg600)"/>
+        <rect x="10" y="21" width="12" height="6" rx="2" fill="var(--mg500)"/>
+        <path d="M9 21 H23" stroke="var(--mg600)" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="stage-tile t-sprout">
+      <div class="stage-num" style="color:var(--k600)">4</div>
+      <div class="stage-label" style="color:var(--k500)"><span class="sdot" style="background:var(--k400)"></span>Sprout</div>
+      <div class="stage-sub">Building w/ support</div>
+      <svg style="position:absolute;bottom:4px;right:8px;opacity:0.18;" width="30" height="36" viewBox="0 0 32 36" fill="none">
+        <path d="M16 34 V8" stroke="var(--k500)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 24 C16 24 8 21 6 14 C6 14 13 12 16 20" fill="var(--k500)"/>
+        <path d="M16 18 C16 18 24 15 26 8 C26 8 19 6 16 14" fill="var(--k400)"/>
+        <path d="M16 11 C16 11 12 8 12 4 C12 4 16.5 5 16 10" fill="var(--k500)" opacity="0.8"/>
+        <path d="M10 34 Q16 32 22 34" stroke="var(--k500)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+    </div>
+
+    <div class="stage-tile t-bloom">
+      <div class="stage-num" style="color:var(--bl500)">9</div>
+      <div class="stage-label" style="color:var(--bl500)"><span class="sdot" style="background:var(--bl400)"></span>Bloom</div>
+      <div class="stage-sub">Live with users</div>
+      <svg style="position:absolute;bottom:4px;right:6px;opacity:0.18;" width="34" height="38" viewBox="0 0 36 38" fill="none">
+        <path d="M18 36 V14" stroke="var(--bl500)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M18 26 C18 26 10 23 8 16 C8 16 15 14 18 22" fill="var(--bl500)"/>
+        <path d="M18 20 C18 20 26 17 28 10 C28 10 21 8 18 16" fill="var(--bl400)"/>
+        <ellipse cx="18" cy="9" rx="3.5" ry="4.5" fill="var(--bl300)"/>
+        <ellipse cx="13" cy="11" rx="4.5" ry="3" fill="var(--bl300)"/>
+        <ellipse cx="23" cy="11" rx="4.5" ry="3" fill="var(--bl300)"/>
+        <ellipse cx="15" cy="6" rx="3.5" ry="3" fill="var(--bl300)"/>
+        <ellipse cx="21" cy="6" rx="3.5" ry="3" fill="var(--bl300)"/>
+        <circle cx="18" cy="9" r="3" fill="var(--bl500)"/>
+        <path d="M11 36 Q18 34 25 36" stroke="var(--bl500)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+    </div>
+
+    <div class="stage-tile t-thriving">
+      <div class="stage-num" style="color:var(--u500)">1</div>
+      <div class="stage-label" style="color:var(--u500)"><span class="sdot" style="background:var(--u400)"></span>Thriving</div>
+      <div class="stage-sub">Delivering value</div>
+      <svg style="position:absolute;bottom:4px;right:6px;opacity:0.18;" width="34" height="40" viewBox="0 0 38 40" fill="none">
+        <path d="M19 38 V7" stroke="var(--u500)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M19 28 C19 28 9 24 7 15 C7 15 15 12 19 22" fill="var(--u500)"/>
+        <path d="M19 21 C19 21 29 17 31 8 C31 8 23 5 19 15" fill="var(--u400)"/>
+        <path d="M19 14 C19 14 13 10 12 5 C12 5 17.5 5 19 11" fill="var(--u500)" opacity="0.8"/>
+        <path d="M19 10 C19 10 25 6 26 2 C26 2 21 1.5 19 7" fill="var(--u400)" opacity="0.8"/>
+        <circle cx="9" cy="14" r="2" fill="var(--u400)" opacity="0.7"/>
+        <circle cx="29" cy="9" r="2" fill="var(--u400)" opacity="0.7"/>
+        <path d="M11 38 Q19 36 27 38" stroke="var(--u500)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+    </div>
+
+  </div>
+
+
+  
+<!-- SPOTLIGHT -->
+  <style>
+    @keyframes sun-pulse    { 0%,100%{opacity:.22} 50%{opacity:.40} }
+    @keyframes glow-breathe { 0%,100%{opacity:.14} 50%{opacity:.26} }
+    @keyframes twinkle-a    { 0%,100%{opacity:.70} 50%{opacity:.20} }
+    @keyframes twinkle-b    { 0%,100%{opacity:.50} 50%{opacity:.92} }
+    @keyframes twinkle-c    { 0%,40%,100%{opacity:.60} 70%{opacity:.10} }
+    @keyframes moon-glow    { 0%,100%{opacity:.16} 50%{opacity:.30} }
+    @keyframes cloud-drift  { 0%{transform:translateX(0)} 100%{transform:translateX(-14px)} }
+    @media(prefers-reduced-motion:no-preference){
+      .sp-sr1 { animation:sun-pulse    4s  ease-in-out infinite; }
+      .sp-sr2 { animation:sun-pulse    4s  ease-in-out infinite 1.4s; }
+      .sp-sg  { animation:glow-breathe 5s  ease-in-out infinite; }
+      .sp-cd  { animation:cloud-drift  32s linear     infinite alternate; }
+      .sp-ta  { animation:twinkle-a    2.8s ease-in-out infinite; }
+      .sp-tb  { animation:twinkle-b    3.6s ease-in-out infinite .7s; }
+      .sp-tc  { animation:twinkle-c    4.2s ease-in-out infinite 1.4s; }
+      .sp-td  { animation:twinkle-a    3.1s ease-in-out infinite 2s; }
+      .sp-te  { animation:twinkle-b    2.5s ease-in-out infinite .4s; }
+      .sp-tf  { animation:twinkle-c    3.9s ease-in-out infinite 1s; }
+      .sp-mg  { animation:moon-glow    4s  ease-in-out infinite; }
+    }
+  </style>
+
+  <div id="sp-card" style="position:relative;border:1px solid #e4e2da;border-radius:16px;overflow:hidden;box-shadow:0 3px 10px rgba(17,16,9,.10);cursor:pointer;min-height:190px;">
+
+    <svg style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 900 190" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- sky -->
+      <rect id="sp-sky-bg"  width="900" height="190" fill="#f8fffe"/>
+      <rect id="sp-sky-top" width="900" height="90"  fill="#e6fffa" opacity=".4"/>
+
+      <!-- sun elements — morning -->
+      <ellipse id="sp-sun-glow" class="sp-sg" cx="760" cy="158" rx="180" ry="55" fill="#fde68a" opacity="0"/>
+      <circle  id="sp-sun-orb"  cx="760" cy="158" r="40" fill="#fcd34d" opacity="0"/>
+      <circle  id="sp-sun-r1"   class="sp-sr1" cx="760" cy="158" r="58" fill="none" stroke="#fde68a" stroke-width="6"  opacity="0"/>
+      <circle  id="sp-sun-r2"   class="sp-sr2" cx="760" cy="158" r="74" fill="none" stroke="#fde68a" stroke-width="3"  opacity="0"/>
+
+      <!-- moon elements — evening -->
+      <circle id="sp-moon-glow" class="sp-mg" cx="820" cy="36" r="30" fill="#fefcbf" opacity="0"/>
+      <circle id="sp-moon"      cx="820" cy="36" r="18" fill="#fefcbf" opacity="0"/>
+      <circle id="sp-moon-cut"  cx="829" cy="30" r="15" fill="#1a1730" opacity="0"/>
+
+      <!-- stars — evening -->
+      <g id="sp-stars" opacity="0">
+        <circle class="sp-ta" cx="130" cy="22" r="1.5" fill="#fff"/>
+        <circle class="sp-tb" cx="260" cy="12" r="1.1" fill="#c4b5fd"/>
+        <circle class="sp-tc" cx="380" cy="28" r="1.5" fill="#fff"/>
+        <circle class="sp-td" cx="500" cy="16" r="1.1" fill="#c4b5fd"/>
+        <circle class="sp-te" cx="600" cy="36" r="1.3" fill="#fff"/>
+        <circle class="sp-tf" cx="700" cy="20" r="1.1" fill="#c4b5fd"/>
+        <circle class="sp-ta" cx="756" cy="48" r="1.2" fill="#fff"/>
+        <circle class="sp-tb" cx="870" cy="14" r="1"   fill="#c4b5fd"/>
+      </g>
+
+      <!-- clouds -->
+      <g id="sp-clouds" class="sp-cd">
+        <ellipse cx="220" cy="26" rx="52" ry="18" fill="#fff" opacity=".72"/>
+        <ellipse cx="195" cy="29" rx="30" ry="13" fill="#fff" opacity=".62"/>
+        <ellipse cx="246" cy="29" rx="26" ry="12" fill="#fff" opacity=".62"/>
+        <ellipse cx="480" cy="18" rx="42" ry="16" fill="#fff" opacity=".68"/>
+        <ellipse cx="458" cy="21" rx="25" ry="11" fill="#fff" opacity=".58"/>
+        <ellipse cx="503" cy="21" rx="22" ry="10" fill="#fff" opacity=".58"/>
+        <ellipse cx="760" cy="30" rx="36" ry="13" fill="#fff" opacity=".62"/>
+        <ellipse cx="742" cy="33" rx="22" ry="10" fill="#fff" opacity=".52"/>
+      </g>
+
+      <!-- floating seeds -->
+      <g id="sp-seeds">
+        <circle cx="530" cy="55" r="2.5" fill="#aadcaa" opacity=".6"/>
+        <path d="M530 55 L527 47" stroke="#aadcaa" stroke-width=".9" stroke-linecap="round" opacity=".5"/>
+        <circle cx="615" cy="38" r="2"   fill="#aadcaa" opacity=".55"/>
+        <path d="M615 38 L618 31" stroke="#aadcaa" stroke-width=".8" stroke-linecap="round" opacity=".45"/>
+        <circle cx="695" cy="60" r="2.5" fill="#aadcaa" opacity=".5"/>
+        <path d="M695 60 L692 52" stroke="#aadcaa" stroke-width=".9" stroke-linecap="round" opacity=".45"/>
+      </g>
+
+      <!-- grass layers -->
+      <path id="sp-g1" d="M0 142 Q112 126 225 142 Q337 158 450 142 Q562 126 675 142 Q787 158 900 142 L900 190 L0 190Z" fill="#e8f5e8" opacity=".75"/>
+      <path id="sp-g2" d="M0 154 Q112 142 225 154 Q337 166 450 154 Q562 142 675 154 Q787 166 900 154 L900 190 L0 190Z" fill="#d6f0d6" opacity=".70"/>
+      <path id="sp-g3" d="M0 166 Q112 156 225 166 Q337 176 450 166 Q562 156 675 166 Q787 176 900 166 L900 190 L0 190Z" fill="#aadcaa" opacity=".60"/>
+      <path id="sp-g4" d="M0 178 Q112 172 225 178 Q337 184 450 178 Q562 172 675 178 Q787 184 900 178 L900 190 L0 190Z" fill="#77c277" opacity=".55"/>
+
+      <!-- ═══════════════════════════════════════════
+           COHESIVE PLANT SCENE — all grouped together
+           x: 490-900, sharing the same ground line at y=142
+           Left-to-right: cogon tuft → gumamela → bamboo grove → sampaguita bush → narra bg
+      ════════════════════════════════════════════ -->
+
+      <!-- NARRA TREE — background, far right, spreading silhouette -->
+      <path d="M858 142 L857 88" stroke="#2d8c2d" stroke-width="4" stroke-linecap="round" opacity=".20"/>
+      <ellipse cx="857" cy="74" rx="32" ry="20" fill="#4aaa4a" opacity=".18"/>
+      <ellipse cx="840" cy="80" rx="20" ry="14" fill="#2d8c2d" opacity=".16"/>
+      <ellipse cx="874" cy="80" rx="18" ry="13" fill="#4aaa4a" opacity=".16"/>
+      <ellipse cx="857" cy="62" rx="18" ry="13" fill="#4aaa4a" opacity=".18"/>
+
+      <!-- BAMBOO GROVE — tight cluster, 4 culms at slightly different heights -->
+      <line x1="800" y1="142" x2="798" y2="58" stroke="#4aaa4a" stroke-width="5"   stroke-linecap="round" opacity=".28"/>
+      <line x1="813" y1="142" x2="812" y2="64" stroke="#4aaa4a" stroke-width="4.5" stroke-linecap="round" opacity=".25"/>
+      <line x1="825" y1="142" x2="823" y2="70" stroke="#4aaa4a" stroke-width="4"   stroke-linecap="round" opacity=".22"/>
+      <line x1="836" y1="142" x2="834" y2="76" stroke="#2d8c2d" stroke-width="3.5" stroke-linecap="round" opacity=".20"/>
+      <!-- bamboo nodes — horizontal joints -->
+      <line x1="797" y1="110" x2="800" y2="110" stroke="#2d8c2d" stroke-width="3" stroke-linecap="round" opacity=".22"/>
+      <line x1="797" y1="88"  x2="800" y2="88"  stroke="#2d8c2d" stroke-width="3" stroke-linecap="round" opacity=".22"/>
+      <line x1="797" y1="70"  x2="800" y2="70"  stroke="#2d8c2d" stroke-width="3" stroke-linecap="round" opacity=".20"/>
+      <line x1="811" y1="114" x2="814" y2="114" stroke="#2d8c2d" stroke-width="2.5" stroke-linecap="round" opacity=".20"/>
+      <line x1="811" y1="94"  x2="814" y2="94"  stroke="#2d8c2d" stroke-width="2.5" stroke-linecap="round" opacity=".20"/>
+      <!-- bamboo leaves — angled off culms -->
+      <path d="M799 92 C793 86 786 82 780 78" fill="none" stroke="#4aaa4a" stroke-width="1.8" stroke-linecap="round" opacity=".28"/>
+      <path d="M799 92 C801 84 799 76 795 70" fill="none" stroke="#4aaa4a" stroke-width="1.8" stroke-linecap="round" opacity=".25"/>
+      <path d="M812 98 C818 92 824 88 830 84" fill="none" stroke="#4aaa4a" stroke-width="1.8" stroke-linecap="round" opacity=".25"/>
+      <path d="M812 80 C806 74 800 70 794 66" fill="none" stroke="#2d8c2d" stroke-width="1.5" stroke-linecap="round" opacity=".22"/>
+      <path d="M823 86 C829 80 835 76 840 72" fill="none" stroke="#4aaa4a" stroke-width="1.5" stroke-linecap="round" opacity=".22"/>
+
+      <!-- GUMAMELA (HIBISCUS) — in front of bamboo, slightly left -->
+      <path d="M762 142 L760 90" stroke="#2d8c2d" stroke-width="2.2" stroke-linecap="round" opacity=".32"/>
+      <!-- leaves -->
+      <path d="M760 118 C752 114 747 107 745 100 C748 98 756 100 760 110" fill="#4aaa4a" opacity=".28"/>
+      <path d="M760 108 C768 104 773 97 771 90 C768 88 762 90 760 100" fill="#2d8c2d" opacity=".28"/>
+      <!-- hibiscus trumpet — 5 petals -->
+      <path d="M760 84 C756 76 752 70 758 64 C760 62 762 62 764 64 C770 70 766 76 760 84Z" fill="#e53e3e" opacity=".35"/>
+      <path d="M760 84 C752 82 746 78 746 72 C746 68 748 66 752 66 C758 66 760 74 760 84Z" fill="#e53e3e" opacity=".30"/>
+      <path d="M760 84 C768 82 774 78 774 72 C774 68 772 66 768 66 C762 66 760 74 760 84Z" fill="#e53e3e" opacity=".30"/>
+      <path d="M760 84 C754 76 750 68 754 62 C756 58 760 58 762 60 C766 64 762 76 760 84Z" fill="#fc8181" opacity=".32"/>
+      <path d="M760 84 C766 76 770 68 766 62 C764 58 760 58 758 60 C754 64 758 76 760 84Z" fill="#fc8181" opacity=".32"/>
+      <circle cx="760" cy="84" r="4.5" fill="#fef3c7" opacity=".55"/>
+      <circle cx="760" cy="84" r="2.2" fill="#d69e2e" opacity=".50"/>
+      <!-- long stamen -->
+      <line x1="760" y1="84" x2="760" y2="76" stroke="#d69e2e" stroke-width="1" stroke-linecap="round" opacity=".45"/>
+      <circle cx="760" cy="75" r="1.5" fill="#d69e2e" opacity=".45"/>
+
+      <!-- COGON / TALAHIB GRASS TUFT — clustered group left of gumamela -->
+      <path d="M716 142 C716 142 712 120 714 108 C714 100 718 94 717 86 C717 80 715 75 715 75" fill="none" stroke="#4aaa4a" stroke-width="1.8" stroke-linecap="round" opacity=".32"/>
+      <path d="M715 75 C713 69 709 64 706 57"  fill="none" stroke="#77c277" stroke-width="1.2" stroke-linecap="round" opacity=".28"/>
+      <path d="M715 75 C717 69 721 63 724 58"  fill="none" stroke="#77c277" stroke-width="1.2" stroke-linecap="round" opacity=".28"/>
+      <path d="M728 142 C728 142 724 116 726 104 C726 96 730 91 729 83" fill="none" stroke="#4aaa4a" stroke-width="1.6" stroke-linecap="round" opacity=".28"/>
+      <path d="M729 83 C727 77 724 71 721 65"  fill="none" stroke="#77c277" stroke-width="1"   stroke-linecap="round" opacity=".25"/>
+      <path d="M729 83 C731 77 734 71 737 67"  fill="none" stroke="#77c277" stroke-width="1"   stroke-linecap="round" opacity=".25"/>
+      <path d="M740 142 C740 142 737 122 739 112 C739 105 742 100 741 93" fill="none" stroke="#2d8c2d" stroke-width="1.5" stroke-linecap="round" opacity=".25"/>
+      <path d="M741 93 C739 88 737 83 734 78"  fill="none" stroke="#77c277" stroke-width=".9"  stroke-linecap="round" opacity=".22"/>
+      <path d="M741 93 C743 88 746 83 749 78"  fill="none" stroke="#77c277" stroke-width=".9"  stroke-linecap="round" opacity=".22"/>
+
+      <!-- SAMPAGUITA BUSH — low shrub nestled at base of bamboo/gumamela -->
+      <path d="M776 142 L775 118" stroke="#2d8c2d" stroke-width="1.6" stroke-linecap="round" opacity=".28"/>
+      <path d="M775 130 C769 127 766 122 767 117 C770 115 775 117 775 124" fill="#4aaa4a" opacity=".24"/>
+      <path d="M775 124 C781 121 784 116 783 111 C780 109 775 111 775 118" fill="#2d8c2d" opacity=".24"/>
+      <!-- star blooms -->
+      <g id="sp-sampaguita-1" opacity=".50">
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff"/>
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff" transform="rotate(60,774,111)"/>
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff" transform="rotate(120,774,111)"/>
+        <circle cx="774" cy="111" r="2" fill="#fef9c3"/>
+      </g>
+      <g id="sp-sampaguita-2" opacity=".42" transform="translate(7,-5)">
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff"/>
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff" transform="rotate(60,774,111)"/>
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff" transform="rotate(120,774,111)"/>
+        <circle cx="774" cy="111" r="2" fill="#fef9c3"/>
+      </g>
+      <g id="sp-sampaguita-3" opacity=".38" transform="translate(-5,-3)">
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff"/>
+        <path d="M772 113 L774 109 L776 113 L772 111 L776 111Z" fill="#fff" transform="rotate(60,774,111)"/>
+        <circle cx="774" cy="111" r="2" fill="#fef9c3"/>
+      </g>
+
+    </svg>
+
+    <!-- Text — colours adapt via JS -->
+    <div id="sp-text" style="position:relative;z-index:2;padding:22px 26px;max-width:430px;">
+      <div id="sp-eyebrow" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1f6e1f;margin-bottom:7px;display:flex;align-items:center;gap:5px;">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path id="sp-star-icon" d="M5 0L6.12 3.38H9.51L6.82 5.47L7.94 8.85L5 6.76L2.06 8.85L3.18 5.47L0.49 3.38H3.88L5 0Z" fill="#2d8c2d"/></svg>
+        Today&rsquo;s Spotlight
+      </div>
+      <div id="sp-name" style="font-size:18px;font-weight:700;color:#111009;letter-spacing:-0.4px;line-height:1.2;">Sprout RISE</div>
+      <div id="sp-desc" style="font-size:12px;color:#3a372e;margin-top:7px;line-height:1.55;max-width:380px;">An internal fitness app encouraging employees to stay active through friendly competitions and team challenges. Tracks workouts, goals, and milestones &mdash; helping build a healthier, more connected Sprout.</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+        <span style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:9999px;background:#ebf8ff;color:#3182ce;border:1px solid #bee3f8;text-transform:uppercase;letter-spacing:.4px;">Bloom</span>
+        <span id="sp-meta" style="font-size:11px;color:#565244;">by Noel Vicente &middot; All Teams</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════
+       GROUP 1: TECH STACK PULSE
+  ═════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-hd">
+      <div>
+        <div class="sec-title">Tech Stack Pulse</div>
+        <div class="sec-desc">What tools &amp; methods are powering Sprout&rsquo;s AI projects</div>
+      </div>
+      <div class="tab-toggle">
+        <button class="tab-btn active" onclick="switchTab('ai',this,'stack')">AI Assistant</button>
+        <button class="tab-btn" onclick="switchTab('builder',this,'stack')">Builder Tools</button>
+        <button class="tab-btn" onclick="switchTab('framework',this,'stack')">Frameworks</button>
+        <button class="tab-btn" onclick="switchTab('data',this,'stack')">Data Sources</button>
+      </div>
+    </div>
+    <div class="card-bd">
+
+      <!-- AI ASSISTANT -->
+      <div class="tab-panel stack active" id="tab-ai">
+        <div class="insight"><div class="insight-icon">&#128161;</div><div class="insight-text"><strong>Claude leads by a wide margin.</strong> Used in 14 of 20 projects. 5 teams still on ChatGPT or Gemini &mdash; an opportunity to consolidate on a single assistant and reduce context-switching.</div></div>
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Usage across all projects</div>
+            <div class="bar-row"><div class="bar-label">Claude</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--u400)"></div></div><div class="bar-n">14</div></div>
+            <div class="bar-row"><div class="bar-label">ChatGPT</div><div class="bar-track"><div class="bar-fill" style="width:36%;background:var(--wm400)"></div></div><div class="bar-n">5</div></div>
+            <div class="bar-row"><div class="bar-label">Gemini</div><div class="bar-track"><div class="bar-fill" style="width:21%;background:var(--bl400)"></div></div><div class="bar-n">3</div></div>
+            <div class="bar-row"><div class="bar-label">Copilot</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:var(--m400)"></div></div><div class="bar-n">2</div></div>
+            <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:7%;background:var(--m300)"></div></div><div class="bar-n">1</div></div>
+          </div>
+          <div class="col-r">
+            <div class="col-title">Adoption trend &mdash; this quarter vs last</div>
+            <div class="trend-row"><div class="trend-name">Claude</div><span class="trend-pill trend-up">&#8593; Growing</span><span class="trend-delta">+6 projects</span></div>
+            <div class="trend-row"><div class="trend-name">ChatGPT</div><span class="trend-pill trend-down">&#8595; Declining</span><span class="trend-delta">&minus;2 projects</span></div>
+            <div class="trend-row"><div class="trend-name">Gemini</div><span class="trend-pill trend-new">&#10022; New</span><span class="trend-delta">First seen Q1</span></div>
+            <div class="trend-row"><div class="trend-name">Copilot</div><span class="trend-pill trend-flat">&#8212; Stable</span><span class="trend-delta">No change</span></div>
+            <div class="trend-row"><div class="trend-name">Other</div><span class="trend-pill trend-flat">&#8212; Stable</span><span class="trend-delta">No change</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUILDER TOOLS -->
+      <div class="tab-panel stack" id="tab-builder">
+        <div class="insight"><div class="insight-icon">&#128161;</div><div class="insight-text"><strong>Claude Code dominates with 17 uses.</strong> Strong no-code signal from Cowork and Bolt suggests non-engineers are building. n8n adoption is growing &mdash; worth standardising as a team automation layer.</div></div>
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Usage across all projects</div>
+            <div class="bar-row"><div class="bar-label">Claude Code</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--u400)"></div></div><div class="bar-n">17</div></div>
+            <div class="bar-row"><div class="bar-label">Cursor</div><div class="bar-track"><div class="bar-fill" style="width:47%;background:var(--bl400)"></div></div><div class="bar-n">8</div></div>
+            <div class="bar-row"><div class="bar-label">Cowork</div><div class="bar-track"><div class="bar-fill" style="width:35%;background:var(--wm400)"></div></div><div class="bar-n">6</div></div>
+            <div class="bar-row"><div class="bar-label">n8n</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:var(--k400)"></div></div><div class="bar-n">5</div></div>
+            <div class="bar-row"><div class="bar-label">Bolt</div><div class="bar-track"><div class="bar-fill" style="width:24%;background:var(--mg500)"></div></div><div class="bar-n">4</div></div>
+            <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--m400)"></div></div><div class="bar-n">3</div></div>
+          </div>
+          <div class="col-r">
+            <div class="col-title">Adoption trend &mdash; this quarter vs last</div>
+            <div class="trend-row"><div class="trend-name">Claude Code</div><span class="trend-pill trend-up">&#8593; Growing</span><span class="trend-delta">+8 projects</span></div>
+            <div class="trend-row"><div class="trend-name">Cursor</div><span class="trend-pill trend-up">&#8593; Growing</span><span class="trend-delta">+3 projects</span></div>
+            <div class="trend-row"><div class="trend-name">Cowork</div><span class="trend-pill trend-new">&#10022; New</span><span class="trend-delta">First seen Q1</span></div>
+            <div class="trend-row"><div class="trend-name">n8n</div><span class="trend-pill trend-up">&#8593; Growing</span><span class="trend-delta">+2 projects</span></div>
+            <div class="trend-row"><div class="trend-name">Bolt</div><span class="trend-pill trend-new">&#10022; New</span><span class="trend-delta">First seen Q1</span></div>
+            <div class="trend-row"><div class="trend-name">Other</div><span class="trend-pill trend-flat">&#8212; Stable</span><span class="trend-delta">No change</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRAMEWORKS -->
+      <div class="tab-panel stack" id="tab-framework">
+        <div class="insight"><div class="insight-icon">&#128161;</div><div class="insight-text"><strong>Most teams build without a shared framework.</strong> 11 of 20 projects use no agentic framework. Only 3 teams are using advanced setups (4+ tools) &mdash; consider standardising BMAD or Aulendil to raise the floor.</div></div>
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Framework usage across all projects</div>
+            <div class="bar-row"><div class="bar-label">None / Custom</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--m400)"></div></div><div class="bar-n">11</div></div>
+            <div class="bar-row"><div class="bar-label">Aulendil</div><div class="bar-track"><div class="bar-fill" style="width:36%;background:var(--u400)"></div></div><div class="bar-n">4</div></div>
+            <div class="bar-row"><div class="bar-label">BlackMagic</div><div class="bar-track"><div class="bar-fill" style="width:27%;background:var(--bl400)"></div></div><div class="bar-n">3</div></div>
+            <div class="bar-row"><div class="bar-label">BMAD</div><div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--wm400)"></div></div><div class="bar-n">2</div></div>
+            <div class="bar-row"><div class="bar-label">Superpowers</div><div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--cr500)"></div></div><div class="bar-n">2</div></div>
+            <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:9%;background:var(--m300)"></div></div><div class="bar-n">1</div></div>
+          </div>
+          <div class="col-r">
+            <div class="col-title">Build complexity &mdash; tools per project</div>
+            <div class="complexity-row">
+              <div class="complexity-label">Simple (1 tool)</div>
+              <div class="complexity-dots">
+                <div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div>
+                <div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div>
+              </div>
+              <div class="complexity-n">12 projects</div>
+            </div>
+            <div class="complexity-row">
+              <div class="complexity-label">Moderate (2&ndash;3)</div>
+              <div class="complexity-dots">
+                <div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div><div class="cdot cdot-filled"></div>
+                <div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div>
+              </div>
+              <div class="complexity-n">5 projects</div>
+            </div>
+            <div class="complexity-row">
+              <div class="complexity-label">Advanced (4+)</div>
+              <div class="complexity-dots">
+                <div class="cdot cdot-filled"></div>
+                <div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div><div class="cdot cdot-empty"></div>
+              </div>
+              <div class="complexity-n">3 projects</div>
+            </div>
+            <div style="height:1px;background:var(--border-lt);margin:10px 0;"></div>
+            <div class="col-title" style="margin-bottom:8px;">Most common tool combo</div>
+            <div style="font-size:12px;color:var(--tx7);line-height:1.6;">
+              <div style="margin-bottom:4px;"><span style="font-weight:600;color:var(--tx9);">Claude + Claude Code</span> &mdash; 9 projects</div>
+              <div style="margin-bottom:4px;"><span style="font-weight:600;color:var(--tx9);">Claude Code + Cursor</span> &mdash; 4 projects</div>
+              <div><span style="font-weight:600;color:var(--tx9);">Claude + n8n</span> &mdash; 3 projects</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA SOURCES -->
+      <div class="tab-panel stack" id="tab-data">
+        <div class="insight"><div class="insight-icon">&#128161;</div><div class="insight-text"><strong>Sprout&rsquo;s own data is the top source.</strong> HubSpot, Sprout HR, and Sprout Payroll dominate &mdash; teams are building on real operational data, not experiments. 6 sources are shared across 3+ teams, signalling high-value integration candidates.</div></div>
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Data sources used across projects</div>
+            <div class="bar-row"><div class="bar-label">HubSpot</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--k400)"></div></div><div class="bar-n">12</div></div>
+            <div class="bar-row"><div class="bar-label">Google Drive</div><div class="bar-track"><div class="bar-fill" style="width:67%;background:var(--bl400)"></div></div><div class="bar-n">8</div></div>
+            <div class="bar-row"><div class="bar-label">Sprout HR</div><div class="bar-track"><div class="bar-fill" style="width:58%;background:var(--wm400)"></div></div><div class="bar-n">7</div></div>
+            <div class="bar-row"><div class="bar-label">Sprout Payroll</div><div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--wm400)"></div></div><div class="bar-n">6</div></div>
+            <div class="bar-row"><div class="bar-label">Zendesk</div><div class="bar-track"><div class="bar-fill" style="width:33%;background:var(--mg500)"></div></div><div class="bar-n">4</div></div>
+            <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:25%;background:var(--m400)"></div></div><div class="bar-n">3</div></div>
+          </div>
+          <div class="col-r">
+            <div class="col-title">Shared vs unique &mdash; integration signal</div>
+            <div style="font-size:11px;color:var(--tx5);margin-bottom:8px;">Shared = used by 3+ teams &middot; consider these as platform integrations</div>
+            <div class="tag-cloud">
+              <span class="tag tag-shared">HubSpot</span>
+              <span class="tag tag-shared">Google Drive</span>
+              <span class="tag tag-shared">Sprout HR</span>
+              <span class="tag tag-shared">Sprout Payroll</span>
+              <span class="tag tag-shared">Zendesk</span>
+              <span class="tag tag-shared">NetSuite</span>
+              <span class="tag tag-unique">Slack</span>
+              <span class="tag tag-unique">Notion</span>
+              <span class="tag tag-unique">Salesforce</span>
+              <span class="tag tag-unique">Custom DB</span>
+              <span class="tag tag-unique">Jira</span>
+            </div>
+            <div style="height:1px;background:var(--border-lt);margin:10px 0;"></div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;background:var(--wm100);border:1px solid #9de6e0;border-radius:var(--r-md);padding:10px;text-align:center;">
+                <div style="font-size:20px;font-weight:800;color:var(--wm500);letter-spacing:-1px">6</div>
+                <div style="font-size:10px;font-weight:600;color:var(--wm500);margin-top:2px">Shared sources</div>
+              </div>
+              <div style="flex:1;background:var(--m100);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;text-align:center;">
+                <div style="font-size:20px;font-weight:800;color:var(--tx7);letter-spacing:-1px">5</div>
+                <div style="font-size:10px;font-weight:600;color:var(--tx5);margin-top:2px">Unique sources</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       GROUP 2: BUILDING MOMENTUM
+  ═════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-hd">
+      <div>
+        <div class="sec-title">Building Momentum</div>
+        <div class="sec-desc">Who and where is driving AI adoption across Sprout</div>
+      </div>
+      <div class="tab-toggle">
+        <button class="tab-btn active" onclick="switchTab('divisions',this,'momentum')">Divisions</button>
+        <button class="tab-btn" onclick="switchTab('departments',this,'momentum')">Departments</button>
+        <button class="tab-btn" onclick="switchTab('builders',this,'momentum')">Builders</button>
+      </div>
+    </div>
+    <div class="card-bd">
+
+      <!-- DIVISIONS TAB -->
+      <div class="tab-panel momentum active" id="tab-divisions">
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Projects per division &mdash; with stage distribution</div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx5);"><span style="width:10px;height:5px;border-radius:3px;background:var(--mg500);display:inline-block;"></span>Seed</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx5);"><span style="width:10px;height:5px;border-radius:3px;background:var(--wm400);display:inline-block;"></span>Seedling</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx5);"><span style="width:10px;height:5px;border-radius:3px;background:var(--k400);display:inline-block;"></span>Sprout</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx5);"><span style="width:10px;height:5px;border-radius:3px;background:var(--bl400);display:inline-block;"></span>Bloom</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx5);"><span style="width:10px;height:5px;border-radius:3px;background:var(--u400);display:inline-block;"></span>Thriving</span>
+            </div>
+
+            <!-- Aurora -->
+            <div class="div-row">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--bl400)"></div>
+                <div class="div-info"><div class="div-name">Aurora</div><div class="div-meta">Prd-Aurora &middot; Eng-Aurora &middot; DevOps</div></div>
+                <div class="div-count">7</div>
+              </div>
+              <div class="stage-strip" style="margin-top:6px;margin-left:11px;">
+                <div class="strip-seg" style="width:28px;background:var(--wm400);" title="2 Seedling"></div>
+                <div class="strip-seg" style="width:14px;background:var(--k400);" title="1 Sprout"></div>
+                <div class="strip-seg" style="width:42px;background:var(--bl400);" title="3 Bloom"></div>
+                <div class="strip-seg" style="width:14px;background:var(--u400);" title="1 Thriving"></div>
+              </div>
+            </div>
+
+            <!-- Customer Success -->
+            <div class="div-row">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--k400)"></div>
+                <div class="div-info"><div class="div-name">Customer Success</div><div class="div-meta">Implementation &middot; MPS &middot; CA &middot; CSM &middot; Alliance</div></div>
+                <div class="div-count">6</div>
+              </div>
+              <div class="stage-strip" style="margin-top:6px;margin-left:11px;">
+                <div class="strip-seg" style="width:14px;background:var(--wm400);" title="1 Seedling"></div>
+                <div class="strip-seg" style="width:28px;background:var(--k400);" title="2 Sprout"></div>
+                <div class="strip-seg" style="width:42px;background:var(--bl400);" title="3 Bloom"></div>
+              </div>
+            </div>
+
+            <!-- Prometheus -->
+            <div class="div-row">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--u400)"></div>
+                <div class="div-info"><div class="div-name">Prometheus</div><div class="div-meta">Prd-Prometheus &middot; Eng-Prometheus &middot; Data</div></div>
+                <div class="div-count">4</div>
+              </div>
+              <div class="stage-strip" style="margin-top:6px;margin-left:11px;">
+                <div class="strip-seg" style="width:14px;background:var(--wm400);" title="1 Seedling"></div>
+                <div class="strip-seg" style="width:14px;background:var(--k400);" title="1 Sprout"></div>
+                <div class="strip-seg" style="width:28px;background:var(--bl400);" title="2 Bloom"></div>
+              </div>
+            </div>
+
+            <!-- Growth -->
+            <div class="div-row">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--mg500)"></div>
+                <div class="div-info"><div class="div-name">Growth</div><div class="div-meta">Marketing &middot; RevOps &middot; Sales &middot; LDU &middot; +3 more</div></div>
+                <div class="div-count">3</div>
+              </div>
+              <div class="stage-strip" style="margin-top:6px;margin-left:11px;">
+                <div class="strip-seg" style="width:14px;background:var(--mg500);" title="1 Seed"></div>
+                <div class="strip-seg" style="width:14px;background:var(--wm400);" title="1 Seedling"></div>
+                <div class="strip-seg" style="width:28px;background:var(--bl400);" title="2 Bloom"></div>
+              </div>
+            </div>
+
+            <!-- ExCom -->
+            <div class="div-row">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--cr500)"></div>
+                <div class="div-info"><div class="div-name">ExCom</div><div class="div-meta">Executive Committee</div></div>
+                <div class="div-count">1</div>
+              </div>
+              <div class="stage-strip" style="margin-top:6px;margin-left:11px;">
+                <div class="strip-seg" style="width:14px;background:var(--bl400);" title="1 Bloom"></div>
+              </div>
+            </div>
+
+            <!-- Operations — zero -->
+            <div class="div-row dept-zero">
+              <div class="div-top">
+                <div class="div-color" style="background:var(--m300)"></div>
+                <div class="div-info"><div class="div-name">Operations</div><div class="div-meta">Legal &middot; PeopleOps &middot; Finance</div></div>
+                <div class="div-count" style="color:var(--tx5)">0</div>
+              </div>
+              <div style="margin-top:6px;margin-left:11px;font-size:11px;color:var(--tx4);font-style:italic;">No AI projects yet &mdash; nudge this division</div>
+            </div>
+
+          </div>
+          <div class="col-r">
+            <div class="col-title">Which divisions are benefiting</div>
+            <div style="font-size:11px;color:var(--tx5);margin-bottom:10px;">Built-for data &mdash; projects may serve divisions other than their builder&rsquo;s</div>
+            <div class="benefit-row">
+              <div class="benefit-name">Customer Success</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:100%;background:var(--k400)"></div></div></div>
+              <div class="benefit-n">9 projects</div>
+            </div>
+            <div class="benefit-row">
+              <div class="benefit-name">Aurora</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:78%;background:var(--bl400)"></div></div></div>
+              <div class="benefit-n">7 projects</div>
+            </div>
+            <div class="benefit-row">
+              <div class="benefit-name">Growth</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:56%;background:var(--mg500)"></div></div></div>
+              <div class="benefit-n">5 projects</div>
+            </div>
+            <div class="benefit-row">
+              <div class="benefit-name">Prometheus</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:44%;background:var(--u400)"></div></div></div>
+              <div class="benefit-n">4 projects</div>
+            </div>
+            <div class="benefit-row">
+              <div class="benefit-name">All Teams</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:33%;background:var(--wm400)"></div></div></div>
+              <div class="benefit-n">3 projects</div>
+            </div>
+            <div class="benefit-row dept-zero">
+              <div class="benefit-name">Operations</div>
+              <div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:5%;background:var(--m300)"></div></div></div>
+              <div class="benefit-n" style="color:var(--tx4)">0 projects</div>
+            </div>
+            <div style="height:1px;background:var(--border-lt);margin:12px 0;"></div>
+            <div class="col-title" style="margin-bottom:6px;">Division completeness</div>
+            <div class="completeness">
+              <div class="comp-top">
+                <span class="comp-label">5 of 6 divisions active</span>
+                <span class="comp-fraction">Operations has 0 projects</span>
+              </div>
+              <div class="comp-track"><div class="comp-fill" style="width:83%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPARTMENTS TAB -->
+      <div class="tab-panel momentum" id="tab-departments">
+        <div class="two-col">
+          <div class="col-l" style="overflow-y:auto;max-height:380px;padding-right:16px;">
+            <div class="col-title">Departments grouped by division</div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--bl500)">Aurora</div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--bl400)"></div><div class="dept-info"><div class="dept-name">Eng-Aurora</div><div class="dept-meta">3 launched &middot; 4 total</div></div><div class="mini-track"><div class="mini-fill" style="width:100%;background:var(--bl400)"></div></div><div class="dept-n">4</div></div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--bl300)"></div><div class="dept-info"><div class="dept-name">Prd-Aurora</div><div class="dept-meta">1 launched &middot; 2 total</div></div><div class="mini-track"><div class="mini-fill" style="width:50%;background:var(--bl300)"></div></div><div class="dept-n">2</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">DevOps</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+            </div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--k500)">Customer Success</div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--k400)"></div><div class="dept-info"><div class="dept-name">CSM</div><div class="dept-meta">2 launched &middot; 3 total</div></div><div class="mini-track"><div class="mini-fill" style="width:75%;background:var(--k400)"></div></div><div class="dept-n">3</div></div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--k300)"></div><div class="dept-info"><div class="dept-name">MPS</div><div class="dept-meta">1 launched &middot; 2 total</div></div><div class="mini-track"><div class="mini-fill" style="width:50%;background:var(--k300)"></div></div><div class="dept-n">2</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Implementation</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">CA</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Alliance</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+            </div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--u500)">Prometheus</div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--u400)"></div><div class="dept-info"><div class="dept-name">Data</div><div class="dept-meta">2 launched &middot; 3 total</div></div><div class="mini-track"><div class="mini-fill" style="width:75%;background:var(--u400)"></div></div><div class="dept-n">3</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Eng-Prometheus</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Prd-Prometheus</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+            </div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--mg600)">Growth</div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--mg500)"></div><div class="dept-info"><div class="dept-name">RevOps</div><div class="dept-meta">1 launched &middot; 2 total</div></div><div class="mini-track"><div class="mini-fill" style="width:50%;background:var(--mg500)"></div></div><div class="dept-n">2</div></div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--mg500)"></div><div class="dept-info"><div class="dept-name">LDU</div><div class="dept-meta">1 launched &middot; 1 total</div></div><div class="mini-track"><div class="mini-fill" style="width:25%;background:var(--mg500)"></div></div><div class="dept-n">1</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Sales</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Marketing</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">SolCon</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Upsell</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+            </div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--cr500)">Operations</div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Legal</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">PeopleOps</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+              <div class="dept-row dept-zero"><div class="dept-bar" style="background:var(--m300)"></div><div class="dept-info"><div class="dept-name">Finance</div><div class="dept-meta">No projects yet</div></div><div class="mini-track"><div class="mini-fill" style="width:0%"></div></div><div class="dept-n" style="color:var(--tx4)">0</div></div>
+            </div>
+
+            <div class="dept-group">
+              <div class="dept-group-label" style="color:var(--tx5)">ExCom</div>
+              <div class="dept-row"><div class="dept-bar" style="background:var(--m400)"></div><div class="dept-info"><div class="dept-name">ExCom</div><div class="dept-meta">1 launched &middot; 1 total</div></div><div class="mini-track"><div class="mini-fill" style="width:25%;background:var(--m400)"></div></div><div class="dept-n">1</div></div>
+            </div>
+
+          </div>
+          <div class="col-r">
+            <div class="col-title">Department completeness</div>
+            <div class="completeness">
+              <div class="comp-top">
+                <span class="comp-label">9 of 21 departments active</span>
+                <span class="comp-fraction">43% coverage</span>
+              </div>
+              <div class="comp-track"><div class="comp-fill" style="width:43%"></div></div>
+            </div>
+            <div class="col-title" style="margin-bottom:6px;">Departments with no AI projects yet</div>
+            <div class="nudge-chips">
+              <span class="nudge-chip">DevOps</span>
+              <span class="nudge-chip">Implementation</span>
+              <span class="nudge-chip">CA</span>
+              <span class="nudge-chip">Alliance</span>
+              <span class="nudge-chip">Eng-Prometheus</span>
+              <span class="nudge-chip">Prd-Prometheus</span>
+              <span class="nudge-chip">Sales</span>
+              <span class="nudge-chip">Marketing</span>
+              <span class="nudge-chip">Prd-Marketing</span>
+              <span class="nudge-chip">SolCon</span>
+              <span class="nudge-chip">Upsell</span>
+              <span class="nudge-chip">Legal</span>
+              <span class="nudge-chip">PeopleOps</span>
+              <span class="nudge-chip">Finance</span>
+            </div>
+            <div style="height:1px;background:var(--border-lt);margin:12px 0;"></div>
+            <div class="col-title" style="margin-bottom:8px;">Benefiting departments (built-for)</div>
+            <div class="benefit-row"><div class="benefit-name">CSM</div><div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:100%;background:var(--k400)"></div></div></div><div class="benefit-n">6</div></div>
+            <div class="benefit-row"><div class="benefit-name">All Teams</div><div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:67%;background:var(--bl400)"></div></div></div><div class="benefit-n">4</div></div>
+            <div class="benefit-row"><div class="benefit-name">RevOps</div><div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:50%;background:var(--mg500)"></div></div></div><div class="benefit-n">3</div></div>
+            <div class="benefit-row"><div class="benefit-name">MPS</div><div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:33%;background:var(--wm400)"></div></div></div><div class="benefit-n">2</div></div>
+            <div class="benefit-row"><div class="benefit-name">LDU</div><div class="benefit-bar"><div class="mini-track" style="width:100%"><div class="mini-fill" style="width:33%;background:var(--cr500)"></div></div></div><div class="benefit-n">2</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUILDERS TAB -->
+      <div class="tab-panel momentum" id="tab-builders">
+        <div class="two-col">
+          <div class="col-l">
+            <div class="col-title">Top builders by project count</div>
+            <div class="builder-row"><div class="b-pos">1st</div><div class="b-av" style="background:var(--bl100);color:var(--bl500)">JS</div><div class="b-info"><div class="b-name">Jsayseng<span class="div-tag" style="background:var(--bl100);color:var(--bl500)">Aurora</span></div><div class="b-meta">Data &middot; Prometheus</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:100%"></div></div></div><div class="b-n">5</div></div>
+            <div class="builder-row"><div class="b-pos">2nd</div><div class="b-av" style="background:var(--k100);color:var(--k700)">NV</div><div class="b-info"><div class="b-name">Noel Vicente<span class="div-tag" style="background:var(--u100);color:var(--u500)">Prometheus</span></div><div class="b-meta">Eng-Prometheus</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:80%"></div></div></div><div class="b-n">4</div></div>
+            <div class="builder-row"><div class="b-pos">3rd</div><div class="b-av" style="background:var(--u100);color:var(--u500)">SH</div><div class="b-info"><div class="b-name">Shairaa<span class="div-tag" style="background:var(--mg100);color:var(--mg600)">Growth</span></div><div class="b-meta">RevOps</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:60%"></div></div></div><div class="b-n">3</div></div>
+            <div class="builder-row"><div class="b-pos">4th</div><div class="b-av" style="background:var(--mg100);color:var(--mg600)">DD</div><div class="b-info"><div class="b-name">Dianara Dionisio<span class="div-tag" style="background:var(--bl100);color:var(--bl500)">Aurora</span></div><div class="b-meta">Eng-Aurora</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:60%"></div></div></div><div class="b-n">3</div></div>
+            <div class="builder-row"><div class="b-pos">5th</div><div class="b-av" style="background:var(--cr100);color:var(--cr500)">BL</div><div class="b-info"><div class="b-name">Barbara Lauren<span class="div-tag" style="background:var(--k100);color:var(--k600)">CusSuc</span></div><div class="b-meta">CSM</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:60%"></div></div></div><div class="b-n">3</div></div>
+            <div class="builder-row"><div class="b-pos">6th</div><div class="b-av" style="background:var(--wm100);color:var(--wm500)">JM</div><div class="b-info"><div class="b-name">Julie Martinez<span class="div-tag" style="background:var(--k100);color:var(--k600)">CusSuc</span></div><div class="b-meta">MPS</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:40%"></div></div></div><div class="b-n">2</div></div>
+            <div class="builder-row"><div class="b-pos">7th</div><div class="b-av" style="background:var(--m100);color:var(--m700)">GR</div><div class="b-info"><div class="b-name">Gian Rama<span class="div-tag" style="background:var(--bl100);color:var(--bl500)">Aurora</span></div><div class="b-meta">Eng-Aurora</div></div><div class="b-mini"><div class="b-track"><div class="b-fill" style="width:40%"></div></div></div><div class="b-n">2</div></div>
+          </div>
+          <div class="col-r">
+            <div class="col-title">Builders by division</div>
+            <div class="bar-row"><div class="bar-label">Aurora</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--bl400)"></div></div><div class="bar-n">5</div></div>
+            <div class="bar-row"><div class="bar-label">Customer Success</div><div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--k400)"></div></div><div class="bar-n">4</div></div>
+            <div class="bar-row"><div class="bar-label">Prometheus</div><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--u400)"></div></div><div class="bar-n">3</div></div>
+            <div class="bar-row"><div class="bar-label">Growth</div><div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--mg500)"></div></div><div class="bar-n">2</div></div>
+            <div class="bar-row"><div class="bar-label">ExCom</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--m400)"></div></div><div class="bar-n">1</div></div>
+            <div class="bar-row dept-zero"><div class="bar-label">Operations</div><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><div class="bar-n" style="color:var(--tx4)">0</div></div>
+            <div style="height:1px;background:var(--border-lt);margin:12px 0;"></div>
+            <div class="col-title" style="margin-bottom:6px;">Builder completeness</div>
+            <div class="completeness">
+              <div class="comp-top">
+                <span class="comp-label">17 active builders</span>
+                <span class="comp-fraction">5 of 6 divisions represented</span>
+              </div>
+              <div class="comp-track"><div class="comp-fill" style="width:83%"></div></div>
+            </div>
+            <div class="col-title" style="margin-bottom:6px;">Divisions with no builders yet</div>
+            <div class="nudge-chips">
+              <span class="nudge-chip">Operations</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- SIDEBAR -->
+<div class="side">
+
+  <!-- 1. MY CORNER -->
+  <div class="card">
+    <div class="card-hd"><div class="sec-title">My Corner</div></div>
+    <div class="card-bd" style="padding-top:10px;">
+      <div class="sub-lbl">Garden Health</div>
+      <div class="c-stat"><span class="c-lbl">Total plants</span><span class="c-val">19</span></div>
+      <div class="c-stat"><span class="c-lbl">Pipeline health</span><span class="c-val green">83%</span></div>
+      <div class="c-stat"><span class="c-lbl">Nursery queue</span><span class="c-val">0</span></div>
+      <a class="view-link" href="#">View Board &rarr;</a>
+      <div class="dv"></div>
+      <div class="sub-lbl">My Projects</div>
+      <div class="proj-row"><span class="proj-name">Grove (AI Project Board)</span><span class="stage-badge badge-bloom">Bloom</span></div>
+      <div class="proj-row"><span class="proj-name">Orca</span><span class="stage-badge badge-seedling">Seedling</span></div>
+      <div class="proj-row"><span class="proj-name">Test</span><span class="stage-badge badge-bloom">Bloom</span></div>
+    </div>
+  </div>
+
+  <!-- 2. RECENT ACTIVITY -->
+  <div class="card">
+    <div class="card-hd"><div class="sec-title">Recent Activity</div></div>
+    <div class="card-bd" style="padding-top:10px;">
+      <div class="feed-item"><div class="fdot-wrap"><div class="fdot" style="background:var(--k400)"></div></div><div><div class="feed-text"><strong>Sprout CompIQ</strong> added to Garden</div><div class="feed-time">3mo ago</div></div></div>
+      <div class="feed-item"><div class="fdot-wrap"><div class="fdot" style="background:var(--u400)"></div></div><div><div class="feed-text"><strong>Support Agent</strong> is unreviewed</div><div class="feed-time">Unreviewed</div></div></div>
+      <div class="feed-item"><div class="fdot-wrap"><div class="fdot" style="background:var(--k400)"></div></div><div><div class="feed-text"><strong>Sprout Learn</strong> added to Garden</div><div class="feed-time">33mo ago</div></div></div>
+      <div class="feed-item"><div class="fdot-wrap"><div class="fdot" style="background:var(--bl400)"></div></div><div><div class="feed-text"><strong>CSM Dashboard</strong> moved to Thriving</div><div class="feed-time">33mo ago</div></div></div>
+      <div class="feed-item"><div class="fdot-wrap"><div class="fdot" style="background:var(--mg500)"></div></div><div><div class="feed-text"><strong>ATS</strong> added to Garden</div><div class="feed-time">33mo ago</div></div></div>
+    </div>
+  </div>
+
+  <!-- 3. SEEDS TO CLAIM -->
+  <div class="seeds-card">
+    <div class="seeds-hd">
+      <div class="seeds-eye">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><ellipse cx="6.5" cy="8.5" rx="4.5" ry="3" stroke="var(--k600)" stroke-width="1.3" fill="none"/><path d="M6.5 5.5V2" stroke="var(--k600)" stroke-width="1.3" stroke-linecap="round"/><path d="M6.5 2C6.5 2 4 4 6.5 5.5C9 4 6.5 2 6.5 2Z" stroke="var(--k600)" stroke-width="1.1" fill="none"/></svg>
+        Seeds to Claim
+      </div>
+      <span style="font-size:10px;font-weight:600;color:var(--k600);background:var(--k100);border-radius:var(--r-full);padding:2px 8px;">3 open</span>
+    </div>
+    <div class="seeds-bd">
+      <div class="seed-item">
+        <div class="seed-top"><div class="seed-name">Support Investigation Agent</div><div class="seed-votes">&#8593; 6</div></div>
+        <div class="seed-dept">CSM &middot; Alexandria Gentry</div>
+      </div>
+      <div class="seed-item">
+        <div class="seed-top"><div class="seed-name">A way to fix Riffs so it&rsquo;s fulfilled</div><div class="seed-votes">&#8593; 4</div></div>
+        <div class="seed-dept">Eng-Aurora</div>
+      </div>
+      <div class="seed-item">
+        <div class="seed-top"><div class="seed-name">A way to see the Future so we don&rsquo;t worry</div><div class="seed-votes">&#8593; 3</div></div>
+        <div class="seed-dept">ExCom</div>
+      </div>
+      <button class="btn-browse">Browse all Seeds &rarr;</button>
+    </div>
+  </div>
+
+</div><!-- /side -->
+</div><!-- /page -->
+
+<script>
+function switchTab(name, btn, group) {
+  btn.closest('.tab-toggle').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel.' + group).forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+<!-- Fixed page watermark — large botanical, bottom-right, behind everything -->
+<svg class="page-watermark" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- main tall plant centre -->
+  <path d="M140 270 C140 270 138 210 136 170 C134 130 138 90 140 50" stroke="#1f6e1f" stroke-width="5" stroke-linecap="round"/>
+  <!-- large left leaf low -->
+  <path d="M138 200 C138 200 90 188 70 155 C70 155 105 142 138 172" fill="#2d8c2d"/>
+  <!-- large right leaf mid -->
+  <path d="M138 165 C138 165 188 150 200 115 C200 115 165 102 138 138" fill="#4aaa4a"/>
+  <!-- left leaf upper -->
+  <path d="M138 135 C138 135 100 120 92 88 C92 88 122 80 138 112" fill="#2d8c2d"/>
+  <!-- right leaf upper -->
+  <path d="M140 108 C140 108 178 93 182 62 C182 62 150 55 140 85" fill="#4aaa4a"/>
+  <!-- small left tip -->
+  <path d="M139 76 C139 76 122 60 122 42 C122 42 138 44 139 66" fill="#2d8c2d" opacity="0.9"/>
+  <!-- bloom flower top -->
+  <ellipse cx="141" cy="40" rx="11" ry="13" fill="#63b3ed" opacity="0.8"/>
+  <ellipse cx="125" cy="46" rx="13" ry="9" fill="#63b3ed" opacity="0.7"/>
+  <ellipse cx="157" cy="46" rx="13" ry="9" fill="#63b3ed" opacity="0.7"/>
+  <ellipse cx="130" cy="30" rx="11" ry="9" fill="#bee3f8" opacity="0.7"/>
+  <ellipse cx="152" cy="30" rx="11" ry="9" fill="#bee3f8" opacity="0.7"/>
+  <circle cx="141" cy="40" r="9" fill="#3182ce"/>
+  <!-- leaf veins -->
+  <path d="M138 200 C110 185 88 170 70 155" stroke="#165216" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M138 165 C162 150 182 136 200 115" stroke="#165216" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <!-- berry dots -->
+  <circle cx="76" cy="162" r="5" fill="#77c277" opacity="0.6"/>
+  <circle cx="196" cy="120" r="5" fill="#77c277" opacity="0.6"/>
+  <circle cx="96" cy="95" r="4" fill="#77c277" opacity="0.5"/>
+  <circle cx="178" cy="68" r="4" fill="#77c277" opacity="0.5"/>
+  <!-- second smaller plant left -->
+  <path d="M55 270 V170" stroke="#1f6e1f" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M55 230 C55 230 28 220 20 198 C20 198 42 192 55 212" fill="#2d8c2d"/>
+  <path d="M55 208 C55 208 80 198 86 176 C86 176 64 170 55 190" fill="#4aaa4a"/>
+  <circle cx="55" cy="166" r="6" fill="#4aaa4a" opacity="0.7"/>
+  <path d="M38 270 Q55 266 72 270" stroke="#1f6e1f" stroke-width="3" stroke-linecap="round"/>
+  <!-- third small plant right -->
+  <path d="M220 270 V195" stroke="#2d8c2d" stroke-width="3" stroke-linecap="round"/>
+  <path d="M220 235 C220 235 200 228 194 212 C194 212 212 207 220 222" fill="#2d8c2d"/>
+  <path d="M220 218 C220 218 240 211 244 196 C244 196 226 192 220 208" fill="#4aaa4a"/>
+  <path d="M207 270 Q220 266 233 270" stroke="#2d8c2d" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- ground line -->
+  <path d="M20 272 Q140 262 260 272" stroke="#1f6e1f" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+</svg>
+
+  <script>
+  (function() {
+    var h = new Date().getHours();
+
+    var skyBg     = document.getElementById('sp-sky-bg');
+    var skyTop    = document.getElementById('sp-sky-top');
+    var sunGlow   = document.getElementById('sp-sun-glow');
+    var sunOrb    = document.getElementById('sp-sun-orb');
+    var sunR1     = document.getElementById('sp-sun-r1');
+    var sunR2     = document.getElementById('sp-sun-r2');
+    var moonGlow  = document.getElementById('sp-moon-glow');
+    var moon      = document.getElementById('sp-moon');
+    var moonCut   = document.getElementById('sp-moon-cut');
+    var stars     = document.getElementById('sp-stars');
+    var clouds    = document.getElementById('sp-clouds');
+    var seeds     = document.getElementById('sp-seeds');
+    var g1        = document.getElementById('sp-g1');
+    var g2        = document.getElementById('sp-g2');
+    var g3        = document.getElementById('sp-g3');
+    var g4        = document.getElementById('sp-g4');
+
+    // text elements
+    var eyebrow   = document.getElementById('sp-eyebrow');
+    var name      = document.getElementById('sp-name');
+    var desc      = document.getElementById('sp-desc');
+    var meta      = document.getElementById('sp-meta');
+    var starIcon  = eyebrow ? eyebrow.querySelector('path') : null;
+
+    function s(el, attr, val) { if (el) el.setAttribute(attr, val); }
+
+    if (h >= 5 && h < 12) {
+      /* ── MORNING ── warm peach, rising sun with pulsing rays */
+      s(skyBg,  'fill', '#fffbf0');
+      s(skyTop, 'fill', '#fde8d0'); s(skyTop, 'opacity', '.42');
+      s(sunGlow,'opacity','.14'); s(sunOrb,'opacity','.36');
+      s(sunR1,  'opacity','.20'); s(sunR2, 'opacity','.11');
+      s(clouds, 'opacity','.85'); s(stars, 'opacity','0');
+      s(moon,   'opacity','0');   s(moonGlow,'opacity','0'); s(moonCut,'opacity','0');
+      /* grass stays as-is */
+      /* text — dark on pale sky */
+      if (eyebrow) eyebrow.style.color = '#1f6e1f';
+      if (starIcon) starIcon.setAttribute('fill','#2d8c2d');
+      if (name)    name.style.color  = '#111009';
+      if (desc)    desc.style.color  = '#3a372e';
+      if (meta)    meta.style.color  = '#565244';
+
+    } else if (h >= 12 && h < 18) {
+      /* ── AFTERNOON ── clear teal, drifting clouds */
+      s(skyBg,  'fill', '#f0fffd');
+      s(skyTop, 'fill', '#ccfbf1'); s(skyTop, 'opacity', '.32');
+      s(sunGlow,'opacity','0'); s(sunOrb,'opacity','0');
+      s(sunR1,  'opacity','0'); s(sunR2, 'opacity','0');
+      s(clouds, 'opacity','1');  s(stars, 'opacity','0');
+      s(moon,   'opacity','0');  s(moonGlow,'opacity','0'); s(moonCut,'opacity','0');
+      /* text — dark on pale sky */
+      if (eyebrow) eyebrow.style.color = '#1f6e1f';
+      if (starIcon) starIcon.setAttribute('fill','#2d8c2d');
+      if (name)    name.style.color  = '#111009';
+      if (desc)    desc.style.color  = '#3a372e';
+      if (meta)    meta.style.color  = '#565244';
+
+    } else {
+      /* ── EVENING ── deep indigo, moon, twinkling stars */
+      s(skyBg,  'fill', '#1a1730');
+      s(skyTop, 'fill', '#2d2a4a'); s(skyTop, 'opacity', '.85');
+      s(sunGlow,'opacity','0'); s(sunOrb,'opacity','0');
+      s(sunR1,  'opacity','0'); s(sunR2, 'opacity','0');
+      s(clouds, 'opacity','.08'); s(stars,'opacity','1');
+      s(moon,   'opacity','.88'); s(moonGlow,'opacity','.18'); s(moonCut,'opacity','.7');
+      /* darken grass to silhouette */
+      s(g1,'fill','#0a2a0a'); s(g2,'fill','#0e380e');
+      s(g3,'fill','#165216'); s(g4,'fill','#1f6e1f');
+      /* seeds glow lavender */
+      if (seeds) {
+        seeds.querySelectorAll('circle').forEach(function(c){ c.setAttribute('fill','#e9d5ff'); });
+        seeds.querySelectorAll('path').forEach(function(p){ p.setAttribute('stroke','#c4b5fd'); });
+      }
+      /* darken plants to silhouette */
+      var spSvg = skyBg ? skyBg.closest('svg') : null;
+      if (spSvg) {
+        spSvg.querySelectorAll('path[stroke="#4aaa4a"],path[stroke="#77c277"],line[stroke="#4aaa4a"],line[stroke="#2d8c2d"],path[stroke="#1f6e1f"],path[stroke="#2d8c2d"]').forEach(function(el){
+          var cur = el.getAttribute('stroke');
+          if (cur === '#4aaa4a' || cur === '#77c277') el.setAttribute('stroke','#165216');
+          if (cur === '#2d8c2d') el.setAttribute('stroke','#0e380e');
+          if (cur === '#1f6e1f') el.setAttribute('stroke','#0a2a0a');
+        });
+        spSvg.querySelectorAll('path[fill="#2d8c2d"],path[fill="#4aaa4a"],ellipse[fill="#2d8c2d"],ellipse[fill="#4aaa4a"]').forEach(function(el){ el.setAttribute('fill','#0e380e'); });
+        spSvg.querySelectorAll('path[fill="#e53e3e"],path[fill="#fc8181"]').forEach(function(el){ el.setAttribute('fill','#0e380e'); });
+        /* sampaguita glows brighter at night */
+        var s1 = document.getElementById('sp-sampaguita-1');
+        var s2 = document.getElementById('sp-sampaguita-2');
+        if (s1) s1.setAttribute('opacity','.90');
+        if (s2) s2.setAttribute('opacity','.75');
+      }
+      /* ── TEXT: bright legible on dark background ── */
+      if (eyebrow) eyebrow.style.color = '#86efac';
+      if (starIcon) starIcon.setAttribute('fill','#4ade80');
+      if (name)    name.style.color  = '#f9fafb';
+      if (desc)    desc.style.color  = '#d1fae5';
+      if (meta)    meta.style.color  = '#a7f3d0';
+    }
+  })();
+  </script>
+</body>
+</html  <style>
+    @keyframes sun-pulse   { 0%,100%{opacity:.22} 50%{opacity:.38} }
+    @keyframes glow-breathe{ 0%,100%{opacity:.15} 50%{opacity:.26} }
+    @keyframes twinkle-a   { 0%,100%{opacity:.70} 50%{opacity:.22} }
+    @keyframes twinkle-b   { 0%,100%{opacity:.50} 50%{opacity:.90} }
+    @keyframes twinkle-c   { 0%,40%,100%{opacity:.60} 70%{opacity:.12} }
+    @keyframes moon-glow   { 0%,100%{opacity:.18} 50%{opacity:.32} }
+    @keyframes cloud-drift { 0%{transform:translateX(0)} 100%{transform:translateX(-14px)} }
+    @media(prefers-reduced-motion:no-preference){
+      #sp-sr1 { animation:sun-pulse    4s ease-in-out infinite; }
+      #sp-sr2 { animation:sun-pulse    4s ease-in-out infinite 1.4s; }
+      #sp-sg  { animation:glow-breathe 5s ease-in-out infinite; }
+      #sp-clouds { animation:cloud-drift 32s linear infinite alternate; }
+      #sp-sta { animation:twinkle-a 2.8s ease-in-out infinite; }
+      #sp-stb { animation:twinkle-b 3.6s ease-in-out infinite .7s; }
+      #sp-stc { animation:twinkle-c 4.2s ease-in-out infinite 1.4s; }
+      #sp-std { animation:twinkle-a 3.1s ease-in-out infinite 2s; }
+      #sp-ste { animation:twinkle-b 2.5s ease-in-out infinite .4s; }
+      #sp-stf { animation:twinkle-c 3.9s ease-in-out infinite 1s; }
+      #sp-mg  { animation:moon-glow  4s ease-in-out infinite; }
+    }
+  </style>
+
+  <!-- SPOTLIGHT -->
+  <div style="position:relative;border:1px solid #e4e2da;border-radius:16px;overflow:hidden;box-shadow:0 3px 10px rgba(17,16,9,.10);cursor:pointer;">
+
+    <svg id="sp-svg" style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 900 190" preserveAspectRatio="xMidYMid slice" fill="none">
+      <!-- sky -->
+      <rect id="sp-sky"  width="900" height="190" fill="#f5fffe"/>
+      <rect id="sp-sky2" width="900" height="90"  fill="#e6fffa" opacity=".4"/>
+      <!-- sun orb + rings + glow -->
+      <ellipse id="sp-sg"  cx="760" cy="155" rx="180" ry="55" fill="#fde68a" opacity="0"/>
+      <circle  id="sp-orb" cx="760" cy="155" r="40" fill="#fcd34d" opacity="0"/>
+      <circle  id="sp-sr1" cx="760" cy="155" r="58" fill="none" stroke="#fde68a" stroke-width="6" opacity="0"/>
+      <circle  id="sp-sr2" cx="760" cy="155" r="74" fill="none" stroke="#fde68a" stroke-width="3" opacity="0"/>
+      <!-- moon + glow -->
+      <circle id="sp-mg"  cx="820" cy="36" r="30" fill="#fefcbf" opacity="0"/>
+      <circle id="sp-moon" cx="820" cy="36" r="18" fill="#fefcbf" opacity="0"/>
+      <circle id="sp-moon-mask" cx="829" cy="30" r="15" fill="#1a1730" opacity="0"/>
+      <!-- stars -->
+      <g id="sp-stars" opacity="0">
+        <circle id="sp-sta" cx="130" cy="22" r="1.5" fill="#fff"/>
+        <circle id="sp-stb" cx="260" cy="12" r="1.1" fill="#c4b5fd"/>
+        <circle id="sp-stc" cx="380" cy="28" r="1.5" fill="#fff"/>
+        <circle id="sp-std" cx="500" cy="16" r="1.1" fill="#c4b5fd"/>
+        <circle id="sp-ste" cx="600" cy="36" r="1.3" fill="#fff"/>
+        <circle id="sp-stf" cx="700" cy="20" r="1.1" fill="#c4b5fd"/>
+        <circle cx="760" cy="48" r="1.2" fill="#fff" opacity=".6"/>
+        <circle cx="870" cy="14" r="1"   fill="#c4b5fd" opacity=".55"/>
+      </g>
+      <!-- clouds -->
+      <g id="sp-clouds">
+        <ellipse cx="200" cy="24" rx="54" ry="19" fill="#fff" opacity=".78"/>
+        <ellipse cx="175" cy="27" rx="32" ry="14" fill="#fff" opacity=".68"/>
+        <ellipse cx="226" cy="27" rx="28" ry="13" fill="#fff" opacity=".68"/>
+        <ellipse cx="490" cy="17" rx="42" ry="16" fill="#fff" opacity=".72"/>
+        <ellipse cx="469" cy="20" rx="25" ry="12" fill="#fff" opacity=".62"/>
+        <ellipse cx="513" cy="20" rx="22" ry="11" fill="#fff" opacity=".62"/>
+        <ellipse cx="760" cy="29" rx="36" ry="13" fill="#fff" opacity=".65"/>
+        <ellipse cx="742" cy="32" rx="21" ry="10" fill="#fff" opacity=".55"/>
+        <ellipse cx="778" cy="32" rx="19" ry="9"  fill="#fff" opacity=".55"/>
+      </g>
+      <!-- floating seeds -->
+      <circle id="sp-sd1" cx="530" cy="54" r="2.5" fill="#aadcaa" opacity=".6"/>
+      <path   id="sp-ss1" d="M530 54 L527 46" stroke="#aadcaa" stroke-width=".9" stroke-linecap="round" opacity=".5"/>
+      <circle id="sp-sd2" cx="620" cy="37" r="2"   fill="#aadcaa" opacity=".55"/>
+      <path   id="sp-ss2" d="M620 37 L623 30" stroke="#aadcaa" stroke-width=".8" stroke-linecap="round" opacity=".45"/>
+      <circle id="sp-sd3" cx="720" cy="60" r="2.5" fill="#aadcaa" opacity=".5"/>
+      <path   id="sp-ss3" d="M720 60 L717 52" stroke="#aadcaa" stroke-width=".9" stroke-linecap="round" opacity=".44"/>
+      <!-- grass layers -->
+      <path id="sp-g1" d="M0 138 Q112 122 225 138 Q337 154 450 138 Q562 122 675 138 Q787 154 900 138 L900 190 L0 190Z" fill="#e8f5e8" opacity=".75"/>
+      <path id="sp-g2" d="M0 152 Q112 140 225 152 Q337 164 450 152 Q562 140 675 152 Q787 164 900 152 L900 190 L0 190Z" fill="#d6f0d6" opacity=".7"/>
+      <path id="sp-g3" d="M0 166 Q112 156 225 166 Q337 176 450 166 Q562 156 675 166 Q787 176 900 166 L900 190 L0 190Z" fill="#aadcaa" opacity=".6"/>
+      <path id="sp-g4" d="M0 178 Q112 172 225 178 Q337 184 450 178 Q562 172 675 178 Q787 184 900 178 L900 190 L0 190Z" fill="#77c277" opacity=".55"/>
+      <!-- cogon/talahib blades -->
+      <g id="sp-cogon" opacity=".32">
+        <path d="M490 138 C490 138 486 118 488 108 C488 100 492 95 492 88 C492 82 490 78 490 78" fill="none" stroke="#4aaa4a" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M490 78 C488 72 484 68 481 62" fill="none" stroke="#77c277" stroke-width="1" stroke-linecap="round"/>
+        <path d="M490 78 C492 72 496 66 499 60" fill="none" stroke="#77c277" stroke-width="1" stroke-linecap="round"/>
+        <path d="M510 138 C510 138 507 114 509 102 C509 94 512 90 511 82" fill="none" stroke="#4aaa4a" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M511 82 C509 76 506 70 504 64" fill="none" stroke="#77c277" stroke-width=".9" stroke-linecap="round"/>
+        <path d="M511 82 C513 76 516 70 518 65" fill="none" stroke="#77c277" stroke-width=".9" stroke-linecap="round"/>
+      </g>
+      <!-- bamboo culms -->
+      <g id="sp-bamboo" opacity=".26">
+        <line x1="660" y1="138" x2="658" y2="68" stroke="#4aaa4a" stroke-width="4" stroke-linecap="round"/>
+        <line x1="672" y1="138" x2="671" y2="74" stroke="#4aaa4a" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="684" y1="138" x2="682" y2="80" stroke="#4aaa4a" stroke-width="3" stroke-linecap="round"/>
+        <line x1="657" y1="108" x2="659" y2="108" stroke="#2d8c2d" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="657" y1="88"  x2="659" y2="88"  stroke="#2d8c2d" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="670" y1="112" x2="672" y2="112" stroke="#2d8c2d" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M658 96 C654 90 648 86 642 82" fill="none" stroke="#4aaa4a" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M658 96 C660 88 658 82 654 76" fill="none" stroke="#4aaa4a" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M671 100 C676 94 682 90 688 86" fill="none" stroke="#4aaa4a" stroke-width="1.5" stroke-linecap="round"/>
+      </g>
+      <!-- gumamela (hibiscus) -->
+      <g id="sp-gumamela" opacity=".3">
+        <path d="M578 138 L578 96" stroke="#2d8c2d" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M578 116 C578 116 569 112 567 105 C567 105 577 102 578 110" fill="#2d8c2d"/>
+        <path d="M578 108 C578 108 587 104 589 97 C589 97 580 94 578 102" fill="#4aaa4a"/>
+        <path d="M578 90 C574 82 570 76 576 70 C578 68 580 68 582 70 C588 76 584 82 578 90Z" fill="#e53e3e"/>
+        <path d="M578 90 C570 88 564 84 564 78 C564 74 566 72 570 72 C576 72 578 80 578 90Z" fill="#e53e3e"/>
+        <path d="M578 90 C586 88 592 84 592 78 C592 74 590 72 586 72 C580 72 578 80 578 90Z" fill="#e53e3e"/>
+        <path d="M578 90 C572 82 568 74 572 68 C574 64 578 64 580 66 C584 70 580 82 578 90Z" fill="#fc8181"/>
+        <circle cx="578" cy="90" r="4" fill="#fef3c7"/>
+        <circle cx="578" cy="90" r="2" fill="#d69e2e"/>
+      </g>
+      <!-- sampaguita -->
+      <g id="sp-sampaguita" opacity=".42">
+        <path d="M830 138 L829 112" stroke="#2d8c2d" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M829 122 C829 122 823 119 822 114 C822 114 828 112 829 117" fill="#2d8c2d"/>
+        <path d="M829 118 C829 118 835 115 836 110 C836 110 830 108 829 113" fill="#4aaa4a"/>
+        <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff"/>
+        <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff" transform="rotate(60,828,106)"/>
+        <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff" transform="rotate(120,828,106)"/>
+        <circle cx="828" cy="106" r="1.8" fill="#fef9c3"/>
+        <g transform="translate(8,-4)">
+          <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff" opacity=".85"/>
+          <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff" opacity=".85" transform="rotate(60,828,106)"/>
+          <path d="M826 108 L828 104 L830 108 L826 106 L830 106Z" fill="#fff" opacity=".85" transform="rotate(120,828,106)"/>
+          <circle cx="828" cy="106" r="1.8" fill="#fef9c3" opacity=".85"/>
+        </g>
+      </g>
+      <!-- narra tree silhouette -->
+      <g id="sp-narra" opacity=".22">
+        <path d="M856 138 L855 96" stroke="#1f6e1f" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="855" cy="82" rx="28" ry="18" fill="#2d8c2d"/>
+        <ellipse cx="840" cy="88" rx="18" ry="12" fill="#2d8c2d"/>
+        <ellipse cx="870" cy="88" rx="16" ry="11" fill="#4aaa4a"/>
+        <ellipse cx="855" cy="72" rx="16" ry="12" fill="#4aaa4a"/>
+      </g>
+    </svg>
+
+    <!-- Text overlay — colour-adapts for evening via JS -->
+    <div id="sp-text" style="position:relative;z-index:2;padding:22px 26px;max-width:430px;">
+      <div id="sp-eyebrow" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1f6e1f;margin-bottom:7px;display:flex;align-items:center;gap:5px;">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 0L6.12 3.38H9.51L6.82 5.47L7.94 8.85L5 6.76L2.06 8.85L3.18 5.47L0.49 3.38H3.88L5 0Z" fill="#2d8c2d"/></svg>
+        Today&rsquo;s Spotlight
+      </div>
+      <div id="sp-name" style="font-size:18px;font-weight:700;color:#111009;letter-spacing:-0.4px;line-height:1.2;">Sprout RISE</div>
+      <div id="sp-desc" style="font-size:12px;color:#3a372e;margin-top:7px;line-height:1.55;max-width:380px;">An internal fitness app encouraging employees to stay active through friendly competitions and team challenges. Tracks workouts, goals, and milestones &mdash; helping build a healthier, more connected Sprout.</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+        <span id="sp-badge" style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:9999px;background:#ebf8ff;color:#3182ce;border:1px solid #bee3f8;text-transform:uppercase;letter-spacing:.4px;">Bloom</span>
+        <span id="sp-meta" style="font-size:11px;color:#565244;">by Noel Vicente &middot; All Teams</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+  (function() {
+    var h = new Date().getHours();
+
+    var skyBg    = document.getElementById('sp-sky-bg');
+    var skyTop   = document.getElementById('sp-sky-top');
+    var sunGlow  = document.getElementById('sp-sun-glow');
+    var sunOrb   = document.getElementById('sp-sun-orb');
+    var sunR1    = document.getElementById('sp-sun-r1');
+    var sunR2    = document.getElementById('sp-sun-r2');
+    var moonGlow = document.getElementById('sp-moon-glow');
+    var moon     = document.getElementById('sp-moon');
+    var moonCut  = document.getElementById('sp-moon-cut');
+    var stars    = document.getElementById('sp-stars');
+    var clouds   = document.getElementById('sp-clouds');
+    var seeds    = document.getElementById('sp-seeds');
+    var g1=document.getElementById('sp-g1'), g2=document.getElementById('sp-g2');
+    var g3=document.getElementById('sp-g3'), g4=document.getElementById('sp-g4');
+    var eyebrow  = document.getElementById('sp-eyebrow');
+    var nameEl   = document.getElementById('sp-name');
+    var descEl   = document.getElementById('sp-desc');
+    var metaEl   = document.getElementById('sp-meta');
+    var starIcon = document.getElementById('sp-star-icon');
+
+    function s(el, attr, val) { if (el) el.setAttribute(attr, val); }
+
+    if (h >= 5 && h < 12) {
+      /* MORNING */
+      s(skyBg,'fill','#fffbf0');
+      s(skyTop,'fill','#fde8d0'); s(skyTop,'opacity','.42');
+      s(sunGlow,'opacity','.14'); s(sunOrb,'opacity','.36');
+      s(sunR1,'opacity','.20');   s(sunR2,'opacity','.11');
+      s(clouds,'opacity','.85');  s(stars,'opacity','0');
+      s(moon,'opacity','0');      s(moonGlow,'opacity','0'); s(moonCut,'opacity','0');
+      if (eyebrow) eyebrow.style.color = '#1f6e1f';
+      if (starIcon) s(starIcon,'fill','#2d8c2d');
+      if (nameEl)  nameEl.style.color  = '#111009';
+      if (descEl)  descEl.style.color  = '#3a372e';
+      if (metaEl)  metaEl.style.color  = '#565244';
+
+    } else if (h >= 12 && h < 18) {
+      /* AFTERNOON — ends at 6pm */
+      s(skyBg,'fill','#f0fffd');
+      s(skyTop,'fill','#ccfbf1'); s(skyTop,'opacity','.32');
+      s(sunGlow,'opacity','0'); s(sunOrb,'opacity','0');
+      s(sunR1,'opacity','0');   s(sunR2,'opacity','0');
+      s(clouds,'opacity','1');  s(stars,'opacity','0');
+      s(moon,'opacity','0');    s(moonGlow,'opacity','0'); s(moonCut,'opacity','0');
+      if (eyebrow) eyebrow.style.color = '#1f6e1f';
+      if (starIcon) s(starIcon,'fill','#2d8c2d');
+      if (nameEl)  nameEl.style.color  = '#111009';
+      if (descEl)  descEl.style.color  = '#3a372e';
+      if (metaEl)  metaEl.style.color  = '#565244';
+
+    } else {
+      /* EVENING — from 5pm onwards */
+      s(skyBg,'fill','#1a1730');
+      s(skyTop,'fill','#2d2a4a'); s(skyTop,'opacity','.85');
+      s(sunGlow,'opacity','0'); s(sunOrb,'opacity','0');
+      s(sunR1,'opacity','0');   s(sunR2,'opacity','0');
+      s(clouds,'opacity','.08'); s(stars,'opacity','1');
+      s(moon,'opacity','.88');   s(moonGlow,'opacity','.18'); s(moonCut,'opacity','.70');
+      /* dark grass silhouette */
+      s(g1,'fill','#0a2a0a'); s(g2,'fill','#0e380e');
+      s(g3,'fill','#165216'); s(g4,'fill','#1f6e1f');
+      /* seeds glow lavender */
+      if (seeds) {
+        seeds.querySelectorAll('circle').forEach(function(c){ c.setAttribute('fill','#e9d5ff'); });
+        seeds.querySelectorAll('path').forEach(function(p){ p.setAttribute('stroke','#c4b5fd'); });
+      }
+      /* silhouette all plants */
+      var spSvg = skyBg ? skyBg.closest('svg') : null;
+      if (spSvg) {
+        spSvg.querySelectorAll('line[stroke="#4aaa4a"],line[stroke="#2d8c2d"],line[stroke="#1f6e1f"]').forEach(function(el){
+          el.setAttribute('stroke','#0e380e');
+        });
+        spSvg.querySelectorAll('path[stroke="#4aaa4a"],path[stroke="#77c277"],path[stroke="#2d8c2d"]').forEach(function(el){
+          el.setAttribute('stroke','#0e380e');
+        });
+        spSvg.querySelectorAll('path[fill="#4aaa4a"],path[fill="#2d8c2d"],path[fill="#e53e3e"],path[fill="#fc8181"],ellipse[fill="#4aaa4a"],ellipse[fill="#2d8c2d"]').forEach(function(el){
+          el.setAttribute('fill','#0a2a0a');
+        });
+        /* sampaguita glows brighter at night */
+        ['sp-sampaguita-1','sp-sampaguita-2','sp-sampaguita-3'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.setAttribute('opacity', id==='sp-sampaguita-1' ? '.92' : '.75');
+        });
+      }
+      /* text bright on dark bg */
+      if (eyebrow) eyebrow.style.color = '#86efac';
+      if (starIcon) s(starIcon,'fill','#4ade80');
+      if (nameEl)  nameEl.style.color  = '#f9fafb';
+      if (descEl)  descEl.style.color  = '#d1fae5';
+      if (metaEl)  metaEl.style.color  = '#a7f3d0';
+    }
+  })();
+  </script>
+</body>
+</html>

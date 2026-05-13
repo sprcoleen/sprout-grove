@@ -1,0 +1,5 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'claude.md', LF will be replaced by CRLF the next time Git touches it
+src/App.jsx
+supabase/functions/send-notification/index.ts
+EXIT:0

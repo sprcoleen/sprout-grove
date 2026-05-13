@@ -1,0 +1,22 @@
+On branch master
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+	new file:   .gitignore
+	new file:   SproutAIGarden_PRD.docx
+	new file:   SproutAIGarden_v9.jsx
+	new file:   claude.md
+	new file:   index.html
+	new file:   package-lock.json
+	new file:   package.json
+	new file:   src/App.jsx
+	new file:   src/main.jsx
+	new file:   vite.config.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.claude/
+	git-add2.txt
+

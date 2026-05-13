@@ -1,0 +1,3 @@
+65e2b18 Feat: first-time welcome modal for new Grove users
+037fa50 Mark Phase 3 complete in AGENTS.md
+699d994 Fix: patch AddProjectModal crashes and missing builder_email on insert

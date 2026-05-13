@@ -1,0 +1,13 @@
+
+> sprout-garden@0.0.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90mC:/Users/KVirata/Desktop/sprout-garden[39m
+
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m60 passed[39m[22m[90m (60)[39m
+[2m   Start at [22m 03:16:45
+[2m   Duration [22m 1.40s[2m (transform 158ms, setup 242ms, import 161ms, tests 21ms, environment 1.93s)[22m
+

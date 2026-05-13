@@ -1,0 +1,4 @@
+[main 3dff21e] feat: align board card style with directory — white bg, no left border, matching sizes
+ 1 file changed, 13 insertions(+), 15 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   1ed4524..3dff21e  main -> main

@@ -1,0 +1,5 @@
+2d0967cf4bd4b04d72a0b2fee3761074eb5a6818
+KVirata
+kvirata@sprout.ph
+Wed Mar 18 07:06:57 2026 +0800
+fix: apply 7 UI polish tasks — Help rename, tab order, view order, remove AI Type filter, remove Preview section, remove project image in details, update loading messages

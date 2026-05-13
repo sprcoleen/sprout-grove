@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pipeline Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Rubik",system-ui,sans-serif;background:#f2f1ed;padding:32px;color:#201e18}
+
+/* tokens */
+:root{
+  --k50:#f0faf0;--k100:#d6f0d6;--k200:#aadcaa;--k400:#4aaa4a;--k500:#2d8c2d;--k600:#1f6e1f;--k700:#165216;
+  --m50:#fafaf8;--m100:#f2f1ed;--m200:#e4e2da;--m300:#ccc9bc;--m400:#b0ac9c;--m500:#928e7c;--m600:#736f5e;--m700:#565244;--m800:#3a372e;--m900:#201e18;
+  --ma50:#fffff0;--ma100:#fefcbf;--ma300:#f6e05e;--ma500:#d69e2e;--ma600:#b7791f;--ma700:#975a16;
+  --wm100:#e6fffa;--wm400:#38b2ac;--wm500:#2c7a7b;
+  --bl100:#ebf8ff;--bl400:#63b3ed;--bl500:#3182ce;
+  --ub100:#faf5ff;--ub400:#9f7aea;--ub500:#805ad5;
+  --white:#fff;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+}
+
+.page-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m500);margin-bottom:20px}
+.option-wrap{margin-bottom:48px}
+.option-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:var(--m700);
+  margin-bottom:14px;
+}
+.option-num{
+  width:22px;height:22px;border-radius:50%;background:var(--m900);
+  color:var(--white);font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.option-desc{font-size:11px;font-weight:400;color:var(--m500);margin-left:4px}
+.divider{height:1px;background:var(--m200);margin:40px 0}
+
+/* ─────────────────────────────────────────────────────
+   OPTION A — Icon-forward cards with chevron connectors
+───────────────────────────────────────────────────── */
+.oa-grid{display:flex;gap:0;align-items:stretch}
+.oa-tile{
+  flex:1;background:var(--white);border:.5px solid var(--m200);
+  border-radius:10px;padding:18px 14px 16px;
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;position:relative;transition:all .18s;cursor:pointer;
+}
+.oa-tile:hover{transform:translateY(-2px);box-shadow:var(--sh-md);z-index:1}
+.oa-connector{
+  display:flex;align-items:center;justify-content:center;
+  width:28px;flex-shrink:0;align-self:center;
+}
+.oa-icon-wrap{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:10px;flex-shrink:0;
+}
+.oa-count{font-size:34px;font-weight:800;line-height:1;margin-bottom:4px}
+.oa-label{font-size:11px;font-weight:700;margin-bottom:5px;letter-spacing:.02em}
+.oa-desc{font-size:10px;line-height:1.5;color:var(--m500)}
+
+/* Seeds = ubas */
+.oa-tile.seeds{background:var(--ub100);border-color:var(--ub400)}
+.oa-tile.seeds .oa-icon-wrap{background:var(--ub100)}
+.oa-tile.seeds .oa-count{color:var(--ub500)}
+.oa-tile.seeds .oa-label{color:var(--ub500)}
+/* Seedling = mushroom */
+.oa-tile.seedling .oa-icon-wrap{background:var(--m100)}
+.oa-tile.seedling .oa-count{color:var(--m700)}
+.oa-tile.seedling .oa-label{color:var(--m700)}
+/* Nursery = mango */
+.oa-tile.nursery{background:var(--ma50);border-color:var(--ma300)}
+.oa-tile.nursery .oa-icon-wrap{background:var(--ma100)}
+.oa-tile.nursery .oa-count{color:var(--ma600)}
+.oa-tile.nursery .oa-label{color:var(--ma600)}
+/* Sprout = wintermelon */
+.oa-tile.sprout .oa-icon-wrap{background:var(--wm100)}
+.oa-tile.sprout .oa-count{color:var(--wm500)}
+.oa-tile.sprout .oa-label{color:var(--wm500)}
+/* Bloom = kangkong */
+.oa-tile.bloom{background:var(--k50);border-color:var(--k200)}
+.oa-tile.bloom .oa-icon-wrap{background:var(--k100)}
+.oa-tile.bloom .oa-count{color:var(--k600)}
+.oa-tile.bloom .oa-label{color:var(--k600)}
+/* Thriving = blueberry */
+.oa-tile.thriving{background:var(--bl100);border-color:var(--bl400)}
+.oa-tile.thriving .oa-icon-wrap{background:var(--bl100)}
+.oa-tile.thriving .oa-count{color:var(--bl500)}
+.oa-tile.thriving .oa-label{color:var(--bl500)}
+
+/* ─────────────────────────────────────────────────────
+   OPTION B — Horizontal flow / journey bar
+───────────────────────────────────────────────────── */
+.ob-wrap{background:var(--white);border:.5px solid var(--m200);border-radius:14px;overflow:hidden}
+.ob-track{display:flex;height:6px}
+.ob-row{display:flex}
+.ob-stage{flex:1;padding:18px 14px 16px;border-right:.5px solid var(--m200);position:relative;cursor:pointer;transition:all .15s}
+.ob-stage:last-child{border-right:none}
+.ob-stage:hover{background:var(--m50)}
+.ob-stage-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ob-count{font-size:28px;font-weight:800;line-height:1}
+.ob-label{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+.ob-desc{font-size:10px;color:var(--m500);line-height:1.5;margin-top:4px}
+.ob-mini-bar{height:3px;border-radius:9999px;margin-top:10px;transition:width .8s ease}
+
+/* ─────────────────────────────────────────────────────
+   OPTION C — Tall cards, landscape layout, icon left
+───────────────────────────────────────────────────── */
+.oc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.oc-card{
+  border-radius:12px;padding:16px 12px;cursor:pointer;
+  transition:all .18s;border:.5px solid transparent;
+  display:flex;flex-direction:column;gap:0;
+}
+.oc-card:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.oc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.oc-badge{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:9999px}
+.oc-count{font-size:36px;font-weight:800;line-height:1;margin-bottom:6px}
+.oc-label{font-size:11px;font-weight:700;margin-bottom:5px}
+.oc-desc{font-size:10px;line-height:1.5;flex:1}
+.oc-foot{margin-top:12px;font-size:9px;font-weight:600;opacity:0;transition:opacity .15s}
+.oc-card:hover .oc-foot{opacity:1}
+
+/* seeds */
+.oc-seeds{background:var(--ub100);border-color:var(--ub400)}
+.oc-seeds .oc-count{color:var(--ub500)}
+.oc-seeds .oc-label{color:var(--ub500)}
+.oc-seeds .oc-desc{color:var(--m500)}
+.oc-seeds .oc-badge{background:rgba(128,90,213,.12);color:var(--ub500)}
+.oc-seeds .oc-foot{color:var(--ub500)}
+/* seedling */
+.oc-seedling{background:var(--m100);border-color:var(--m300)}
+.oc-seedling .oc-count{color:var(--m700)}
+.oc-seedling .oc-label{color:var(--m700)}
+.oc-seedling .oc-desc{color:var(--m500)}
+.oc-seedling .oc-badge{background:rgba(86,82,68,.1);color:var(--m700)}
+.oc-seedling .oc-foot{color:var(--m700)}
+/* nursery */
+.oc-nursery{background:var(--ma100);border-color:var(--ma500)}
+.oc-nursery .oc-count{color:var(--ma600)}
+.oc-nursery .oc-label{color:var(--ma600)}
+.oc-nursery .oc-desc{color:var(--m500)}
+.oc-nursery .oc-badge{background:rgba(183,121,31,.12);color:var(--ma600)}
+.oc-nursery .oc-foot{color:var(--ma600)}
+/* sprout */
+.oc-sprout{background:var(--wm100);border-color:var(--wm400)}
+.oc-sprout .oc-count{color:var(--wm500)}
+.oc-sprout .oc-label{color:var(--wm500)}
+.oc-sprout .oc-desc{color:var(--m500)}
+.oc-sprout .oc-badge{background:rgba(44,122,123,.1);color:var(--wm500)}
+.oc-sprout .oc-foot{color:var(--wm500)}
+/* bloom */
+.oc-bloom{background:var(--k50);border-color:var(--k200)}
+.oc-bloom .oc-count{color:var(--k600)}
+.oc-bloom .oc-label{color:var(--k600)}
+.oc-bloom .oc-desc{color:var(--m500)}
+.oc-bloom .oc-badge{background:rgba(31,110,31,.1);color:var(--k600)}
+.oc-bloom .oc-foot{color:var(--k600)}
+/* thriving */
+.oc-thriving{background:var(--bl100);border-color:var(--bl400)}
+.oc-thriving .oc-count{color:var(--bl500)}
+.oc-thriving .oc-label{color:var(--bl500)}
+.oc-thriving .oc-desc{color:var(--m500)}
+.oc-thriving .oc-badge{background:rgba(49,130,206,.1);color:var(--bl500)}
+.oc-thriving .oc-foot{color:var(--bl500)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-dot{animation:pulse 2s infinite}
+</style>
+</head>
+<body>
+
+<div style="font-size:20px;font-weight:800;color:var(--m900);margin-bottom:4px">Program Pipeline — 3 options</div>
+<div style="font-size:12px;color:var(--m500);margin-bottom:36px">Hover each option to see interactions. Same data, different energy.</div>
+
+<!-- ════════════════════════════════════════
+     OPTION A
+     Icon-forward tiles + chevron connectors
+════════════════════════════════════════ -->
+<div class="option-wrap">
+  <div class="option-tag">
+    <div class="option-num">A</div>
+    Icon-forward cards with chevron connectors
+    <span class="option-desc">— Each stage gets its own icon. Count is the hero. Chevrons make the flow explicit.</span>
+  </div>
+
+  <div class="oa-grid">
+
+    <!-- Seeds -->
+    <div class="oa-tile seeds">
+      <div class="oa-icon-wrap">
+        <!-- IcoWishlist heart + plus -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#805ad5" strokeWidth="1.4" fill="#805ad5" fillOpacity="0.15"/>
+          <line x1="12" y1="9" x2="12" y2="15" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="9" y1="12" x2="15" y2="12" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div class="oa-count">8</div>
+      <div class="oa-label">Seeds</div>
+      <div class="oa-desc">Ideas waiting to be built</div>
+    </div>
+
+    <!-- Chevron -->
+    <div class="oa-connector">
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none"><path d="M2 2 L12 11 L2 20" stroke="#ccc9bc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+
+    <!-- Seedling -->
+    <div class="oa-tile seedling">
+      <div class="oa-icon-wrap">
+        <!-- seedling sprout -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/>
+          <path d="M12 16 C10 14 7 14 6.5 15.5" stroke="#565244" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
+          <path d="M12 13 C14 11 17 11 17.5 12.5" stroke="#565244" strokeWidth="1.1" strokeLinecap="round" fill="none"/>
+          <path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.12"/>
+        </svg>
+      </div>
+      <div class="oa-count">4</div>
+      <div class="oa-label">Seedling</div>
+      <div class="oa-desc">Being built</div>
+    </div>
+
+    <!-- Chevron -->
+    <div class="oa-connector">
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none"><path d="M2 2 L12 11 L2 20" stroke="#ccc9bc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+
+    <!-- Nursery -->
+    <div class="oa-tile nursery">
+      <div class="oa-icon-wrap">
+        <!-- shield / gate icon -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#b7791f" strokeWidth="1.4" fill="#b7791f" fillOpacity="0.12"/>
+          <line x1="12" y1="10" x2="12" y2="15" stroke="#b7791f" strokeWidth="1.8" strokeLinecap="round"/>
+          <circle cx="12" cy="17.5" r="1" fill="#b7791f"/>
+        </svg>
+      </div>
+      <div class="oa-count">2</div>
+      <div class="oa-label">Nursery</div>
+      <div class="oa-desc">Awaiting review</div>
+    </div>
+
+    <!-- Chevron -->
+    <div class="oa-connector">
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none"><path d="M2 2 L12 11 L2 20" stroke="#ccc9bc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+
+    <!-- Sprout -->
+    <div class="oa-tile sprout">
+      <div class="oa-icon-wrap">
+        <!-- garden plant -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#2c7a7b" strokeWidth="1.3" fill="#2c7a7b" fillOpacity="0.12"/>
+          <line x1="12" y1="20" x2="12" y2="8" stroke="#2c7a7b" strokeWidth="1.3" strokeLinecap="round"/>
+          <path d="M12 14 C10 12 8 12 7.5 13" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+          <path d="M12 11 C14 9 16 9 16.5 10" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="oa-count">5</div>
+      <div class="oa-label">Sprout</div>
+      <div class="oa-desc">Approved, in development</div>
+    </div>
+
+    <!-- Chevron -->
+    <div class="oa-connector">
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none"><path d="M2 2 L12 11 L2 20" stroke="#ccc9bc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+
+    <!-- Bloom -->
+    <div class="oa-tile bloom">
+      <div class="oa-icon-wrap">
+        <!-- blossom / star flower -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3" stroke="#1f6e1f" strokeWidth="1.3" fill="#1f6e1f" fillOpacity="0.2"/>
+          <path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+          <path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+          <path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+          <path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+          <path d="M5.7 5.7 C5.7 5.7 7.5 8.5 9.5 9.5 C9.2 7 5.7 5.7 5.7 5.7Z" stroke="#1f6e1f" strokeWidth="1" fill="#1f6e1f" fillOpacity="0.12" strokeLinecap="round"/>
+          <path d="M14.5 14.5 C14.5 14.5 16.5 17.5 18.3 18.3 C17.5 16.5 14.5 14.5 14.5 14.5Z" stroke="#1f6e1f" strokeWidth="1" fill="#1f6e1f" fillOpacity="0.12" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div class="oa-count">4</div>
+      <div class="oa-label">Bloom</div>
+      <div class="oa-desc">In user testing</div>
+    </div>
+
+    <!-- Chevron -->
+    <div class="oa-connector">
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none"><path d="M2 2 L12 11 L2 20" stroke="#ccc9bc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    </div>
+
+    <!-- Thriving -->
+    <div class="oa-tile thriving">
+      <div class="oa-icon-wrap">
+        <!-- check circle / trophy -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="8.5" stroke="#3182ce" strokeWidth="1.3" fill="#3182ce" fillOpacity="0.1"/>
+          <path d="M7.5 12 L10.5 15 L16.5 9" stroke="#3182ce" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div class="oa-count">5</div>
+      <div class="oa-label">Thriving</div>
+      <div class="oa-desc">Live, delivering value</div>
+    </div>
+
+  </div><!-- oa-grid -->
+</div><!-- option A -->
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+     OPTION B
+     One unified panel, stages in a row
+     with a live proportion bar on top
+════════════════════════════════════════ -->
+<div class="option-wrap">
+  <div class="option-tag">
+    <div class="option-num">B</div>
+    Unified panel — proportion bar + stage columns
+    <span class="option-desc">— One card, no borders between stages. Proportion bar on top shows where the weight is.</span>
+  </div>
+
+  <div class="ob-wrap">
+
+    <!-- proportion bar -->
+    <div class="ob-track">
+      <div style="flex:8;background:#9f7aea;opacity:.7"></div><!-- seeds -->
+      <div style="flex:4;background:#928e7c;opacity:.7"></div><!-- seedling -->
+      <div style="flex:2;background:#d69e2e;opacity:.8"></div><!-- nursery -->
+      <div style="flex:5;background:#38b2ac;opacity:.7"></div><!-- sprout -->
+      <div style="flex:4;background:#4aaa4a;opacity:.7"></div><!-- bloom -->
+      <div style="flex:5;background:#63b3ed;opacity:.8"></div><!-- thriving -->
+    </div>
+
+    <div class="ob-row">
+
+      <!-- Seeds -->
+      <div class="ob-stage" style="border-right:.5px solid var(--m200)">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#805ad5" strokeWidth="1.4" fill="#805ad5" fillOpacity="0.15"/>
+            <line x1="12" y1="9" x2="12" y2="15" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="9" y1="12" x2="15" y2="12" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#805ad5">Seeds</div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#805ad5">8</div>
+        <div class="ob-desc">Ideas waiting to be built</div>
+        <div class="ob-mini-bar" style="background:#805ad5;width:80%"></div>
+      </div>
+
+      <!-- Seedling -->
+      <div class="ob-stage" style="border-right:.5px solid var(--m200)">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/>
+            <path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.12"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#565244">Seedling</div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#565244">4</div>
+        <div class="ob-desc">Being built</div>
+        <div class="ob-mini-bar" style="background:#928e7c;width:40%"></div>
+      </div>
+
+      <!-- Nursery -->
+      <div class="ob-stage" style="border-right:.5px solid var(--m200)">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#b7791f" strokeWidth="1.4" fill="#b7791f" fillOpacity="0.12"/>
+            <line x1="12" y1="10" x2="12" y2="15" stroke="#b7791f" strokeWidth="1.8" strokeLinecap="round"/>
+            <circle cx="12" cy="17.5" r="1" fill="#b7791f"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#b7791f">Nursery</div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#b7791f">2</div>
+        <div class="ob-desc">Awaiting review</div>
+        <div class="ob-mini-bar" style="background:#d69e2e;width:20%"></div>
+      </div>
+
+      <!-- Sprout -->
+      <div class="ob-stage" style="border-right:.5px solid var(--m200)">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#2c7a7b" strokeWidth="1.3" fill="#2c7a7b" fillOpacity="0.12"/>
+            <line x1="12" y1="20" x2="12" y2="8" stroke="#2c7a7b" strokeWidth="1.3" strokeLinecap="round"/>
+            <path d="M12 14 C10 12 8 12 7.5 13" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+            <path d="M12 11 C14 9 16 9 16.5 10" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#2c7a7b">Sprout</div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#2c7a7b">5</div>
+        <div class="ob-desc">Approved, in development</div>
+        <div class="ob-mini-bar" style="background:#38b2ac;width:50%"></div>
+      </div>
+
+      <!-- Bloom -->
+      <div class="ob-stage" style="border-right:.5px solid var(--m200)">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="2.5" stroke="#1f6e1f" strokeWidth="1.3" fill="#1f6e1f" fillOpacity="0.2"/>
+            <path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+            <path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+            <path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+            <path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.15" strokeLinecap="round"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#1f6e1f">Bloom</div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#1f6e1f">4</div>
+        <div class="ob-desc">In user testing</div>
+        <div class="ob-mini-bar" style="background:#4aaa4a;width:40%"></div>
+      </div>
+
+      <!-- Thriving -->
+      <div class="ob-stage">
+        <div class="ob-stage-top">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="8.5" stroke="#3182ce" strokeWidth="1.3" fill="#3182ce" fillOpacity="0.1"/>
+            <path d="M7.5 12 L10.5 15 L16.5 9" stroke="#3182ce" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div>
+            <div class="ob-label" style="color:#3182ce">Thriving <span class="live-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3182ce;vertical-align:middle;margin-left:3px"></span></div>
+          </div>
+        </div>
+        <div class="ob-count" style="color:#3182ce">5</div>
+        <div class="ob-desc">Live, delivering value</div>
+        <div class="ob-mini-bar" style="background:#63b3ed;width:50%"></div>
+      </div>
+
+    </div><!-- ob-row -->
+  </div><!-- ob-wrap -->
+</div><!-- option B -->
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+     OPTION C
+     Tall cards — icon top-right badge,
+     count dominates, description below
+════════════════════════════════════════ -->
+<div class="option-wrap">
+  <div class="option-tag">
+    <div class="option-num">C</div>
+    Tall cards — icon as badge, count dominates
+    <span class="option-desc">— Count is the biggest element. Icon sits top-right as a small badge. More vertical breathing room.</span>
+  </div>
+
+  <div class="oc-grid">
+
+    <!-- Seeds -->
+    <div class="oc-card oc-seeds">
+      <div class="oc-top">
+        <span class="oc-badge" style="background:rgba(128,90,213,.1);color:#805ad5">Seeds</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#805ad5" strokeWidth="1.4" fill="#805ad5" fillOpacity="0.18"/>
+          <line x1="12" y1="9" x2="12" y2="15" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="9" y1="12" x2="15" y2="12" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div class="oc-count">8</div>
+      <div class="oc-label">Seeds</div>
+      <div class="oc-desc">Ideas waiting to be built by someone</div>
+      <div class="oc-foot">Browse Seeds →</div>
+    </div>
+
+    <!-- Seedling -->
+    <div class="oc-card oc-seedling">
+      <div class="oc-top">
+        <span class="oc-badge">Seedling</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/>
+          <path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.14"/>
+          <path d="M12 16 C10 14 7 14 6.5 15.5" stroke="#565244" strokeWidth="1" strokeLinecap="round" fill="none"/>
+          <path d="M12 13 C14 11 17 11 17.5 12.5" stroke="#565244" strokeWidth="1" strokeLinecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="oc-count">4</div>
+      <div class="oc-label">Seedling</div>
+      <div class="oc-desc">Actively being built, pre-review</div>
+      <div class="oc-foot">View all →</div>
+    </div>
+
+    <!-- Nursery -->
+    <div class="oc-card oc-nursery">
+      <div class="oc-top">
+        <span class="oc-badge">Nursery</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#b7791f" strokeWidth="1.4" fill="#b7791f" fillOpacity="0.14"/>
+          <line x1="12" y1="10" x2="12" y2="15" stroke="#b7791f" strokeWidth="1.8" strokeLinecap="round"/>
+          <circle cx="12" cy="17.5" r="1" fill="#b7791f"/>
+        </svg>
+      </div>
+      <div class="oc-count">2</div>
+      <div class="oc-label">Nursery</div>
+      <div class="oc-desc">Awaiting leadership review</div>
+      <div class="oc-foot">View queue →</div>
+    </div>
+
+    <!-- Sprout -->
+    <div class="oc-card oc-sprout">
+      <div class="oc-top">
+        <span class="oc-badge">Sprout</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#2c7a7b" strokeWidth="1.3" fill="#2c7a7b" fillOpacity="0.14"/>
+          <line x1="12" y1="20" x2="12" y2="8" stroke="#2c7a7b" strokeWidth="1.3" strokeLinecap="round"/>
+          <path d="M12 14 C10 12 8 12 7.5 13" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+          <path d="M12 11 C14 9 16 9 16.5 10" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="oc-count">5</div>
+      <div class="oc-label">Sprout</div>
+      <div class="oc-desc">Approved, building with momentum</div>
+      <div class="oc-foot">View all →</div>
+    </div>
+
+    <!-- Bloom -->
+    <div class="oc-card oc-bloom">
+      <div class="oc-top">
+        <span class="oc-badge">Bloom</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="2.5" stroke="#1f6e1f" strokeWidth="1.3" fill="#1f6e1f" fillOpacity="0.2"/>
+          <path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/>
+          <path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/>
+          <path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/>
+          <path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <div class="oc-count">4</div>
+      <div class="oc-label">Bloom</div>
+      <div class="oc-desc">Live with real users, collecting feedback</div>
+      <div class="oc-foot">View all →</div>
+    </div>
+
+    <!-- Thriving -->
+    <div class="oc-card oc-thriving">
+      <div class="oc-top">
+        <span class="oc-badge" style="display:flex;align-items:center;gap:4px">
+          <span class="live-dot" style="width:5px;height:5px;border-radius:50%;background:#3182ce"></span>
+          Thriving
+        </span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="8.5" stroke="#3182ce" strokeWidth="1.3" fill="#3182ce" fillOpacity="0.12"/>
+          <path d="M7.5 12 L10.5 15 L16.5 9" stroke="#3182ce" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div class="oc-count">5</div>
+      <div class="oc-label">Thriving</div>
+      <div class="oc-desc">Deployed and delivering real value</div>
+      <div class="oc-foot">View all →</div>
+    </div>
+
+  </div><!-- oc-grid -->
+</div><!-- option C -->
+
+<div style="background:var(--white);border:.5px solid var(--m200);border-radius:10px;padding:16px 20px;margin-top:8px">
+  <div style="font-size:11px;font-weight:700;color:var(--m700);margin-bottom:8px">Notes on each option</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--m600);margin-bottom:4px">A — Chevron cards</div>
+      <div style="font-size:11px;color:var(--m500);line-height:1.6">Most "flow" feeling. Chevrons make the journey from idea→production explicit. Works well if pipeline progression is the story you want to tell. Slightly more horizontal weight.</div>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--m600);margin-bottom:4px">B — Unified panel</div>
+      <div style="font-size:11px;color:var(--m500);line-height:1.6">Most data-dense. Proportion bar on top gives an instant read on where the weight is sitting in the pipeline. Feels like a dashboard control room. Mini bars show relative volume within each stage.</div>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--m600);margin-bottom:4px">C — Tall cards</div>
+      <div style="font-size:11px;color:var(--m500);line-height:1.6">Most readable. Count is the biggest thing on each card — execs read it in one glance. Icon sits quietly as a stage identifier. More breathing room, longer description text possible.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

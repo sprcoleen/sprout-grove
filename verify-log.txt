@@ -1,0 +1,5 @@
+2d24ea8 feat: add Stages guide tab to Help panel with tab nav and per-stage content
+6ca35f9 feat: add helpTab state for Help panel tab navigation
+781d3a7 fix: WelcomeModal — stopPropagation, defensive teamLabel, remove unused firstName param
+c0c0a07 feat: redesign WelcomeModal — dark green header, stage list, simplified props
+7305afb debug: add auth flow console logs to trace loading hang

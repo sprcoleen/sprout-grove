@@ -1,0 +1,4 @@
+[main 0164d3c] feat: redesign directory tiles — clean card with stage badge, avatar, dept chip
+ 1 file changed, 30 insertions(+), 32 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   136eadb..0164d3c  main -> main

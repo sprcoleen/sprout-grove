@@ -1,0 +1,3 @@
+c298116 feat: board view visual refresh — accent bar, description, richer headers, for label
+8d4f691 fix: board card — stacked layout for builder + dept tags (Option A)
+032cda0 feat: improve board card UX — tag overflow, owner-only chips, title weight, hover drag handle

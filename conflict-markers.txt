@@ -1,0 +1,16 @@
+116:<<<<<<< HEAD
+122:=======
+128:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+1959:<<<<<<< HEAD
+1960:=======
+2088:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+3823:<<<<<<< HEAD
+3824:=======
+3933:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+3964:<<<<<<< HEAD
+3965:=======
+4009:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+4103:<<<<<<< HEAD
+4105:=======
+4108:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+15 C:/Users/KVirata/Desktop/sprout-garden/conflict-markers.txt

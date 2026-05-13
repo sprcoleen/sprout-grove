@@ -1,0 +1,1 @@
+fatal: 'grove-enhancements' is already used by worktree at 'C:/Users/KVirata/Desktop/sprout-garden/.worktrees/grove-enhancements'

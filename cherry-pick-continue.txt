@@ -1,0 +1,5 @@
+[main a0e77f4] feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text
+ Date: Mon Mar 16 23:47:07 2026 +0800
+ 2 files changed, 358 insertions(+), 6 deletions(-)
+ create mode 100644 supabase/functions/send-notification/index.ts
+EXIT:0

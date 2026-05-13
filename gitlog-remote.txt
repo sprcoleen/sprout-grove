@@ -1,0 +1,3 @@
+c52ef42 fix: Overview — spotlight plants visible, Recent Activity real data, Seeds to Claim layout
+248f1bb fix: Overview visual fixes — spotlight plants, tile top bar, seeds badge
+68db985 fix: crash on Overview load — useEffect dep spotlightProject → projects

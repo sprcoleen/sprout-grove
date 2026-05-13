@@ -1,0 +1,3 @@
+d6f7151 feat: pipeline tiles — Variant A oversized watermark + Nursery copy
+0f78915 feat: redesign Overview Dashboard — exec/personal split, Momentum feed, elevated Tools, Rankings toggle
+9dde0b0 design: align homepage, garden, seeds — transparent tod backgrounds, garden header, stats tiles, filter scroll

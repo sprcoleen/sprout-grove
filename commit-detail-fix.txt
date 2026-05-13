@@ -1,0 +1,4 @@
+[main e0fd70c] fix: align detail panel with Add to Garden form fields
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   4615643..e0fd70c  main -> main

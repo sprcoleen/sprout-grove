@@ -1,0 +1,46 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90mC:/Users/KVirata/Desktop/sprout-garden[39m
+
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — email match[2m > [22mreturns projects where builderEmail matches authUser.email[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — email match[2m > [22mreturns empty array when no email match and no displayName match[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — email match[2m > [22mreturns empty array when authUser is null[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mfalls back to builder displayName when builderEmail is empty[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mfalls back to builder displayName when builderEmail is null[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mdoes NOT fall back when authUser.displayName is undefined[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mdoes NOT use displayName fallback when email already matches[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mapprover sees their own plants via email match[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterMyProjects — displayName fallback[2m > [22mapprover sees their plants after approval (stage changed to sprout)[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterNurseryQueue[2m > [22mreturns only nursery-stage projects[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterNurseryQueue[2m > [22mreturns empty array when no nursery plants[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mfilterNurseryQueue[2m > [22mincludes all nursery plants regardless of review_status[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns true for isApprover[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns true for isAdmin[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns false for a normal user[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns false for null authUser[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns false for undefined authUser[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanApprove — permission guard[2m > [22mreturns true for user with both isApprover and isAdmin[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanMoveStage[2m > [22mallows builder to move their own project[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanMoveStage[2m > [22mdenies user who is not the builder[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanMoveStage[2m > [22mallows admin to move any project[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mcanMoveStage[2m > [22mdenies null authUser[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22misValidStageMove — adjacent stages only for normal users[2m > [22mallows seedling → sprout (only adjacent) for builder[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22misValidStageMove — adjacent stages only for normal users[2m > [22mallows sprout → bloom or sprout → nursery for builder[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22misValidStageMove — adjacent stages only for normal users[2m > [22mallows admin to skip stages[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22misValidStageMove — adjacent stages only for normal users[2m > [22mrejects current stage as target[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22misValidStageMove — adjacent stages only for normal users[2m > [22mrejects invalid stage string[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mtoProject preserves builderEmail[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mtoProject preserves stage after approval[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mfromProject preserves builder_email[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mfromProject does NOT include country (immutability rule)[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mtoProject with null builder_email maps to null builderEmail[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mtoProject / fromProject — builderEmail round-trip[2m > [22mmyProjects filter catches null builder_email via displayName fallback[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mgetAdjacentStages[2m > [22mseedling has only nursery as adjacent[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mgetAdjacentStages[2m > [22mnursery has seedling and sprout as adjacent[32m 1[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mgetAdjacentStages[2m > [22mthriving has only bloom as adjacent[32m 0[2mms[22m[39m
+ [32m✓[39m src/lib/approver.test.js[2m > [22mgetAdjacentStages[2m > [22mreturns empty array for unknown stage[32m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m37 passed[39m[22m[90m (37)[39m
+[2m   Start at [22m 11:22:05
+[2m   Duration [22m 3.02s[2m (transform 96ms, setup 282ms, import 101ms, tests 18ms, environment 2.33s)[22m
+

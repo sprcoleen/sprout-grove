@@ -1,0 +1,6 @@
+a0e77f4 feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text
+b0a408b Docs: Grove v2 design spec — stage rename, Nursery, ExCom role, notifications
+1d9825c Feat: Tool Used field — form picker, card chips, dashboard
+aa3dadb Fix: edit button now works for both plants and seeds
+bbbf9f0 Feat: clickable dashboard stage tiles navigate to Board view
+EXIT:0

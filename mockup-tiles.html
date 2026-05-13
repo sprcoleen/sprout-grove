@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grove — Tiles Stage Placement Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #F7F6F3;
+    padding: 32px;
+    color: #1a1a1a;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9a9a8a;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .section-sub {
+    font-size: 12px;
+    color: #6B6860;
+    margin-bottom: 16px;
+  }
+  .section { margin-bottom: 40px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  /* ── Base card ── */
+  .card {
+    background: #fff;
+    border: 1px solid #E8E6E0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+
+  .card-name { font-size: 14px; font-weight: 700; color: #1C1B18; line-height: 1.35; }
+  .card-desc { font-size: 12px; color: #6B6860; line-height: 1.6;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-divider { border: none; border-top: 1px solid #F0EEE9; margin: 2px 0; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-builder { display: flex; align-items: center; gap: 7px; }
+
+  .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .builder-name { font-size: 12px; color: #6B6860; font-weight: 500; }
+
+  .dept-chip { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .dept-sales     { background: #FFE8E8; color: #C0392B; }
+  .dept-marketing { background: #FFF0E0; color: #D4620A; }
+  .dept-finance   { background: #E3F4E9; color: #1E7E3E; }
+
+  .av-1 { background: #6741D9; }
+  .av-2 { background: #1A7B52; }
+  .av-3 { background: #D4620A; }
+
+  /* ── Stage badges ── */
+  .stage { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+  .stage-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* seedling */  .s-seedling  { background: #FFF8E8; color: #A87A00; border: 1px solid #FFE099; }  .d-seedling  { background: #A87A00; }
+  /* nursery */   .s-nursery   { background: #EEF4FF; color: #3B5FBF; border: 1px solid #C0D0F5; }  .d-nursery   { background: #3B5FBF; }
+  /* sprout */    .s-sprout    { background: #E8F5EC; color: #1E7E3E; border: 1px solid #A8D9B5; }  .d-sprout    { background: #1E7E3E; }
+  /* bloom */     .s-bloom     { background: #FFF0FB; color: #9C2D8A; border: 1px solid #E8A8DD; }  .d-bloom     { background: #9C2D8A; }
+  /* thriving */  .s-thriving  { background: #E6F4F1; color: #1A6B5A; border: 1px solid #9AD4C8; }  .d-thriving  { background: #1A6B5A; }
+
+  /* ── Option A: top-right corner ── */
+  .corner-badge { position: absolute; top: 14px; right: 14px; }
+
+  /* ── Option C: footer left of avatar ── */
+  .footer-left { display: flex; align-items: center; gap: 6px; }
+
+  /* Divider between options */
+  .option-divider { border: none; border-top: 1px dashed #D0CEC8; margin: 0 0 32px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     OPTION A — Stage badge pinned to top-right corner
+     ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Option A — Corner badge</div>
+  <div class="section-sub">Stage sits top-right. Name and description have full width. Clean, unobtrusive.</div>
+  <div class="grid">
+
+    <div class="card">
+      <span class="stage s-seedling corner-badge"><span class="stage-dot d-seedling"></span>Seedling</span>
+      <div class="card-name">Sales EverBoarding</div>
+      <div class="card-desc">Automates onboarding doc prep for new sales reps, cutting setup from 3 days to a few hours.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-1">KV</div><span class="builder-name">kvirata</span></div>
+        <span class="dept-chip dept-sales">Sales</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="stage s-sprout corner-badge"><span class="stage-dot d-sprout"></span>Sprout</span>
+      <div class="card-name">Marketing Intelligence Dashboard</div>
+      <div class="card-desc">Aggregates campaign data across channels into a single live view with AI-generated weekly highlights.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-2">JM</div><span class="builder-name">jmendoza</span></div>
+        <span class="dept-chip dept-marketing">Marketing</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="stage s-thriving corner-badge"><span class="stage-dot d-thriving"></span>Thriving</span>
+      <div class="card-name">Finance Forecast Copilot</div>
+      <div class="card-desc">Assists the finance team in generating quarterly forecasts by pulling signals from ERP data automatically.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-3">RL</div><span class="builder-name">rlim</span></div>
+        <span class="dept-chip dept-finance">Finance</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr class="option-divider"/>
+
+<!-- ══════════════════════════════════════════════════════════
+     OPTION B — Stage badge below the name
+     ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Option B — Below name</div>
+  <div class="section-sub">Stage sits directly under the project name, before the description. Makes stage very prominent.</div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-name">Sales EverBoarding</div>
+      <span class="stage s-seedling" style="align-self:flex-start"><span class="stage-dot d-seedling"></span>Seedling</span>
+      <div class="card-desc">Automates onboarding doc prep for new sales reps, cutting setup from 3 days to a few hours.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-1">KV</div><span class="builder-name">kvirata</span></div>
+        <span class="dept-chip dept-sales">Sales</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-name">Marketing Intelligence Dashboard</div>
+      <span class="stage s-sprout" style="align-self:flex-start"><span class="stage-dot d-sprout"></span>Sprout</span>
+      <div class="card-desc">Aggregates campaign data across channels into a single live view with AI-generated weekly highlights.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-2">JM</div><span class="builder-name">jmendoza</span></div>
+        <span class="dept-chip dept-marketing">Marketing</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-name">Finance Forecast Copilot</div>
+      <span class="stage s-thriving" style="align-self:flex-start"><span class="stage-dot d-thriving"></span>Thriving</span>
+      <div class="card-desc">Assists the finance team in generating quarterly forecasts by pulling signals from ERP data automatically.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="card-builder"><div class="avatar av-3">RL</div><span class="builder-name">rlim</span></div>
+        <span class="dept-chip dept-finance">Finance</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr class="option-divider"/>
+
+<!-- ══════════════════════════════════════════════════════════
+     OPTION C — Stage in the footer, left side
+     ═══════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-label">Option C — Footer, left side</div>
+  <div class="section-sub">Stage sits in the footer next to the avatar. Everything is tucked away until you reach the bottom.</div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-name">Sales EverBoarding</div>
+      <div class="card-desc">Automates onboarding doc prep for new sales reps, cutting setup from 3 days to a few hours.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="footer-left">
+          <div class="card-builder"><div class="avatar av-1">KV</div><span class="builder-name">kvirata</span></div>
+          <span class="stage s-seedling"><span class="stage-dot d-seedling"></span>Seedling</span>
+        </div>
+        <span class="dept-chip dept-sales">Sales</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-name">Marketing Intelligence Dashboard</div>
+      <div class="card-desc">Aggregates campaign data across channels into a single live view with AI-generated weekly highlights.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="footer-left">
+          <div class="card-builder"><div class="avatar av-2">JM</div><span class="builder-name">jmendoza</span></div>
+          <span class="stage s-sprout"><span class="stage-dot d-sprout"></span>Sprout</span>
+        </div>
+        <span class="dept-chip dept-marketing">Marketing</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-name">Finance Forecast Copilot</div>
+      <div class="card-desc">Assists the finance team in generating quarterly forecasts by pulling signals from ERP data automatically.</div>
+      <hr class="card-divider"/>
+      <div class="card-footer">
+        <div class="footer-left">
+          <div class="card-builder"><div class="avatar av-3">RL</div><span class="builder-name">rlim</span></div>
+          <span class="stage s-thriving"><span class="stage-dot d-thriving"></span>Thriving</span>
+        </div>
+        <span class="dept-chip dept-finance">Finance</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grove — Overview Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Rubik",system-ui,sans-serif;background:linear-gradient(160deg,#d6f0d6 0%,#fafaf8 40%,#f2f1ed 100%);min-height:100vh;color:#201e18}
+
+  /* ── Tokens ── */
+  :root{
+    --k50:#f0faf0;--k100:#d6f0d6;--k200:#aadcaa;--k300:#77c277;--k400:#4aaa4a;
+    --k500:#2d8c2d;--k600:#1f6e1f;--k700:#165216;
+    --m50:#fafaf8;--m100:#f2f1ed;--m200:#e4e2da;--m300:#ccc9bc;--m400:#b0ac9c;
+    --m500:#928e7c;--m600:#736f5e;--m700:#565244;--m800:#3a372e;--m900:#201e18;
+    --mango50:#fffff0;--mango100:#fefcbf;--mango300:#f6e05e;--mango500:#d69e2e;--mango600:#b7791f;--mango700:#975a16;
+    --carrot100:#feebc8;--carrot500:#dd6b20;
+    --wm100:#e6fffa;--wm400:#38b2ac;--wm500:#2c7a7b;
+    --bl100:#ebf8ff;--bl400:#63b3ed;--bl500:#3182ce;
+    --ub100:#faf5ff;--ub400:#9f7aea;--ub500:#805ad5;
+    --white:#ffffff;
+    --sh-sm:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+    --sh-md:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  }
+
+  .page{padding:28px 32px;max-width:1200px;margin:0 auto;position:relative;z-index:1}
+
+  /* ── Hero ── */
+  .hero{margin-bottom:20px;animation:fadeUp .4s ease both}
+  .hero-greeting{font-size:19px;font-weight:700;color:var(--m900);letter-spacing:-.01em;margin-bottom:3px}
+  .hero-sub{font-size:12px;color:var(--m500)}
+
+  /* ── Pipeline ── */
+  .pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:24px;animation:fadeUp .4s ease .05s both}
+  .tile{
+    border-radius:10px;padding:16px 12px;cursor:pointer;text-align:center;
+    transition:all .18s ease;position:relative;overflow:hidden;
+  }
+  .tile:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+  .tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px}
+  .tile-count{font-size:32px;font-weight:800;line-height:1;margin-bottom:5px}
+  .tile-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+  .tile-desc{font-size:9px;line-height:1.5;color:var(--m500)}
+  .tile-nav{font-size:9px;font-weight:600;color:var(--k500);margin-top:6px;opacity:0;transition:opacity .18s}
+  .tile:hover .tile-nav{opacity:1}
+
+  /* Stage tile themes */
+  .tile-seeds{background:var(--ub100);border:.5px solid var(--ub400)}.tile-seeds::before{background:var(--ub500)}.tile-seeds .tile-count{color:var(--ub500)}
+  .tile-seedling{background:var(--m100);border:.5px solid var(--m300)}.tile-seedling::before{background:var(--m400)}.tile-seedling .tile-count{color:var(--m700)}
+  .tile-nursery{background:var(--mango100);border:.5px solid var(--mango500)}.tile-nursery::before{background:var(--mango500)}.tile-nursery .tile-count{color:var(--mango600)}
+  .tile-sprout{background:var(--wm100);border:.5px solid var(--wm400)}.tile-sprout::before{background:var(--wm400)}.tile-sprout .tile-count{color:var(--wm500)}
+  .tile-bloom{background:var(--k50);border:.5px solid var(--k200)}.tile-bloom::before{background:var(--k400)}.tile-bloom .tile-count{color:var(--k600)}
+  .tile-thriving{background:var(--bl100);border:.5px solid var(--bl400)}.tile-thriving::before{background:var(--bl500)}.tile-thriving .tile-count{color:var(--bl500)}
+
+  /* ── Two-col body ── */
+  .body{display:flex;gap:16px;align-items:start}
+  .col-main{flex:1.55 1 0;min-width:0;display:flex;flex-direction:column;gap:14px}
+  .col-side{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:14px}
+
+  /* ── Section label ── */
+  .section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m500);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+
+  /* ── Cards ── */
+  .card{background:var(--white);border:.5px solid var(--m200);border-radius:10px;padding:14px}
+  .card-green{background:var(--k50);border:.5px solid var(--k200)}
+  .card-mango{background:var(--mango50);border:.5px solid var(--mango300)}
+
+  /* ── Row items ── */
+  .row-item{display:flex;align-items:center;gap:10;padding:7px 0;border-bottom:.5px solid var(--m100);transition:all .15s;cursor:pointer}
+  .row-item:last-child{border-bottom:none}
+  .row-item:hover{background:var(--m50);padding-left:8px;margin:0 -8px;padding-right:8px;border-radius:6px}
+
+  /* ── Bars ── */
+  .bar-wrap{flex:1;height:8px;background:var(--m100);border-radius:9999px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:9999px;transition:width .8s ease .3s}
+
+  /* ── Badges / chips ── */
+  .badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;border-radius:9999px;padding:2px 8px;line-height:1.4}
+  .badge-stage-thriving{background:var(--bl100);color:var(--bl500);border:.5px solid var(--bl400)}
+  .badge-green{background:var(--k100);color:var(--k700);border:.5px solid var(--k200)}
+  .badge-mango{background:var(--mango100);color:var(--mango600);border:.5px solid var(--mango500)}
+  .badge-wm{background:var(--wm100);color:var(--wm500);border:.5px solid var(--wm400)}
+  .badge-muted{background:var(--m100);color:var(--m600);border:.5px solid var(--m200)}
+  .badge-ub{background:var(--ub100);color:var(--ub500);border:.5px solid var(--ub400)}
+
+  /* ── Momentum dot ── */
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+  /* ── Toggle ── */
+  .toggle{display:inline-flex;background:var(--m100);border-radius:9999px;padding:2px}
+  .toggle-btn{font-size:10px;font-weight:600;padding:3px 10px;border-radius:9999px;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--m500);font-family:inherit}
+  .toggle-btn.active{background:var(--white);color:var(--k600);box-shadow:var(--sh-sm)}
+
+  /* ── Impact chip ── */
+  .impact-chip{display:inline-flex;align-items:center;gap:5px;background:var(--k50);border:.5px solid var(--k200);border-radius:8px;padding:5px 10px}
+  .impact-num{font-size:20px;font-weight:800;color:var(--k600);line-height:1}
+  .impact-label{font-size:10px;color:var(--k700);line-height:1.3}
+
+  /* ── Pulse dot ── */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .pulse{animation:pulse 2s infinite}
+
+  /* ── Anims ── */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ── Side section header ── */
+  .side-header{font-size:12px;font-weight:700;color:var(--m800);margin-bottom:4px}
+  .side-role-tag{font-size:9px;font-weight:600;background:var(--k100);color:var(--k700);border:.5px solid var(--k200);border-radius:9999px;padding:1px 7px}
+
+  /* ── Annotation banner ── */
+  .annotation{
+    position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+    background:#fffbe6;border:1px solid #f6d860;border-radius:8px;
+    padding:6px 10px;font-size:11px;color:#7a5c00;line-height:1.4;
+    white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:10;
+  }
+  .annotation::before{
+    content:"";position:absolute;left:-6px;top:50%;transform:translateY(-50%);
+    border:5px solid transparent;border-right-color:#f6d860;
+  }
+  .change-tag{
+    display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;
+    border-radius:4px;margin-left:6px;vertical-align:middle;
+    background:#fef3c7;color:#92400e;border:1px solid #fde68a;
+  }
+  .removed-tag{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+  .new-tag{background:#dcfce7;color:#166534;border-color:#86efac}
+  .moved-tag{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- LEGEND -->
+  <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:11px;font-weight:700;color:var(--m600)">Changes key:</span>
+    <span class="change-tag new-tag">NEW</span><span style="font-size:11px;color:var(--m600)">new element</span>
+    <span class="change-tag moved-tag">MOVED</span><span style="font-size:11px;color:var(--m600)">repositioned</span>
+    <span class="change-tag removed-tag">REMOVED</span><span style="font-size:11px;color:var(--m600)">deleted</span>
+    <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe">ENHANCED</span><span style="font-size:11px;color:var(--m600)">same data, better display</span>
+  </div>
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="hero-greeting">Good afternoon, Kris!</div>
+    <div class="hero-sub">26 internal AI projects across PH &amp; TH — 18 plants, 8 seeds</div>
+  </div>
+
+  <!-- ── PIPELINE HERO ── -->
+  <div style="margin-bottom:6px">
+    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--m500)">
+      Program Pipeline
+      <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe">ENHANCED</span>
+      <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--m400);margin-left:6px">Larger numbers · stage accent bars · Seeds from wishlist</span>
+    </span>
+  </div>
+  <div class="pipeline">
+
+    <div class="tile tile-seeds">
+      <div class="tile-count">8</div>
+      <div class="tile-label">Seeds</div>
+      <div class="tile-desc">Ideas waiting to be built</div>
+      <div class="tile-nav">Browse Seeds →</div>
+    </div>
+
+    <div class="tile tile-seedling">
+      <div class="tile-count">4</div>
+      <div class="tile-label">Seedling</div>
+      <div class="tile-desc">Being built</div>
+      <div class="tile-nav">View all →</div>
+    </div>
+
+    <div class="tile tile-nursery">
+      <div class="tile-count">2</div>
+      <div class="tile-label">Nursery</div>
+      <div class="tile-desc">Awaiting review</div>
+      <div class="tile-nav">View queue →</div>
+    </div>
+
+    <div class="tile tile-sprout">
+      <div class="tile-count">5</div>
+      <div class="tile-label">Sprout</div>
+      <div class="tile-desc">Approved, in development</div>
+      <div class="tile-nav">View all →</div>
+    </div>
+
+    <div class="tile tile-bloom">
+      <div class="tile-count">4</div>
+      <div class="tile-label">Bloom</div>
+      <div class="tile-desc">In user testing</div>
+      <div class="tile-nav">View all →</div>
+    </div>
+
+    <div class="tile tile-thriving">
+      <div class="tile-count">5</div>
+      <div class="tile-label">Thriving</div>
+      <div class="tile-desc">Live and delivering value</div>
+      <div class="tile-nav">View all →</div>
+    </div>
+
+  </div>
+
+  <!-- ── BODY ── -->
+  <div class="body">
+
+    <!-- ═══════════════════════════════════════════
+         LEFT COLUMN — exec view
+    ═══════════════════════════════════════════ -->
+    <div class="col-main" style="animation:fadeUp .4s ease .1s both">
+
+      <!-- MOMENTUM -->
+      <div>
+        <div class="section-label">
+          <span>Momentum <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe">ENHANCED</span>
+            <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--m400);margin-left:4px">Replaces "What's Happening" — curated signals only</span>
+          </span>
+          <span style="font-size:9px;color:var(--m400)">Just now</span>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+
+          <!-- Awaiting action signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#d69e2e"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              <strong>ChatAssist TH</strong> is waiting in Nursery — 3d without review
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">3d ago</div>
+          </div>
+
+          <!-- Thriving signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#3182ce"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              <strong>CodeReview AI</strong> reached <em>Thriving</em> — delivering value to Engineering
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">2d ago</div>
+          </div>
+
+          <!-- New project signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#b0ac9c"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              <strong>MeetingSumAI</strong> was planted by Rob Chen
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">2d ago</div>
+          </div>
+
+          <!-- Milestone signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#2d8c2d"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              <strong>OnboardBot</strong> moved to <em>Bloom</em> — in user testing
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">5d ago</div>
+          </div>
+
+          <!-- Fulfilled signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#2c7a7b"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              <strong>SmartReply</strong> fulfilled a seed — "Auto-answer common CS queries"
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">1w ago</div>
+          </div>
+
+          <!-- Seed signal -->
+          <div class="row-item" style="padding:9px 12px;margin:0;gap:10px">
+            <div class="dot" style="background:#9f7aea"></div>
+            <div style="flex:1;font-size:12px;color:var(--m800);line-height:1.4">
+              New seed: <strong>"Auto-summarize Slack threads"</strong> — 6 upvotes
+            </div>
+            <div style="font-size:10px;color:var(--m400);flex-shrink:0">8d ago</div>
+          </div>
+
+        </div>
+
+        <!-- REMOVED: Seeds nudge banner -->
+        <div style="margin-top:6px;padding:7px 12px;background:#fee2e2;border:.5px dashed #fca5a5;border-radius:8px;font-size:11px;color:#991b1b;display:flex;justify-content:space-between;align-items:center;opacity:.5">
+          <span>⚠️ This Seeds unclaimed banner <span class="change-tag removed-tag">REMOVED</span></span>
+          <span style="font-size:10px">No longer needed — Seeds already in pipeline above</span>
+        </div>
+      </div>
+
+      <!-- PROJECT SPOTLIGHT -->
+      <div>
+        <div class="section-label">
+          Project Spotlight
+          <span class="change-tag moved-tag">MOVED</span>
+          <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--m400);margin-left:4px">from right sidebar → main column</span>
+          <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe;margin-left:4px">ENHANCED</span>
+          <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--m400);margin-left:4px">+ builder, impact, team served</span>
+        </div>
+        <div class="card card-green" style="cursor:pointer;transition:all .18s" onmouseenter="this.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'" onmouseleave="this.style.boxShadow='none'">
+
+          <!-- Header row -->
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+            <div class="dot pulse" style="background:var(--k500);width:8px;height:8px"></div>
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--k700)">Most recently thriving</span>
+          </div>
+
+          <!-- Name -->
+          <div style="font-size:18px;font-weight:700;color:var(--m900);margin-bottom:6px">CodeReview AI</div>
+
+          <!-- Description -->
+          <div style="font-size:12px;color:var(--m700);line-height:1.6;margin-bottom:12px">
+            Automated pull request review tool that catches bugs and style issues before human review — cutting PR cycle time by 30%.
+          </div>
+
+          <!-- NEW: Impact chip + team served row -->
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+            <div class="impact-chip">
+              <div>
+                <div class="impact-num">30%</div>
+                <div class="impact-label">faster<br>PR cycles</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;color:var(--m500);margin-bottom:3px">Built by</div>
+              <div style="font-size:13px;font-weight:600;color:var(--m900)">Kai Nakamura</div>
+              <div style="font-size:11px;color:var(--m500)">for <strong style="color:var(--m700)">Engineering</strong> · PH</div>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-stage-thriving">Thriving</span>
+            <span class="badge" style="background:var(--ub100);color:var(--ub500);border:.5px solid var(--ub400)">LLM</span>
+            <span class="badge badge-muted">Engineering</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TOOLS IN USE -->
+      <div>
+        <div class="section-label">
+          Tools in Use
+          <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe">ENHANCED</span>
+          <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--m400);margin-left:4px">Elevated — single-column, taller bars</span>
+        </div>
+        <div class="card">
+          <div style="display:flex;flex-direction:column;gap:8px">
+
+            <!-- Tool rows -->
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Claude Code</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:90%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">9</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Claude Chat</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:70%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">7</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">ChatGPT</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:50%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">5</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Cursor</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:40%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">4</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Cowork</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:30%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">3</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Zapier / Make</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:20%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">2</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;font-weight:500;color:var(--m800);width:130px;flex-shrink:0">Copilot</span>
+              <div class="bar-wrap"><div class="bar-fill" style="width:10%;background:var(--k500)"></div></div>
+              <span style="font-size:11px;color:var(--m500);width:24px;text-align:right;flex-shrink:0">1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RANKINGS -->
+      <div>
+        <div class="section-label">
+          <span>Rankings</span>
+          <div class="toggle" id="rankToggle">
+            <button class="toggle-btn active" onclick="setRank('people',this)">By People</button>
+            <button class="toggle-btn" onclick="setRank('dept',this)">By Dept</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px">
+
+          <!-- Top Builders -->
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:600;color:var(--m500);margin-bottom:8px" id="rankLabel">Top Builders</div>
+            <div class="card" id="rankPanel">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">1</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--m100);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--m600);flex-shrink:0">KN</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1">Kai Nakamura</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:100%;background:var(--k500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">3</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">2</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--m100);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--m600);flex-shrink:0">MS</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1">Maya Santos</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:67%;background:var(--k500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">2</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">3</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--m100);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--m600);flex-shrink:0">LP</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1">Lena Park</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:67%;background:var(--k500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">2</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">4</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--m100);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--m600);flex-shrink:0">JR</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1">James Reyes</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:33%;background:var(--k500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Seeds -->
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:600;color:var(--m500);margin-bottom:8px">Top Seeds by Demand</div>
+            <div class="card">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">1</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--ub100);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ub500);flex-shrink:0">▲</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Auto-summarize Slack threads</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:100%;background:var(--ub500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">6</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">2</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--ub100);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ub500);flex-shrink:0">▲</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">HR policy chatbot</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:67%;background:var(--ub500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">4</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--m300);width:12px;flex-shrink:0">3</span>
+                  <div style="width:22px;height:22px;border-radius:5px;background:var(--ub100);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ub500);flex-shrink:0">▲</div>
+                  <span style="font-size:11px;color:var(--m800);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Customer churn predictor</span>
+                  <div class="bar-wrap" style="width:60px"><div class="bar-fill" style="width:50%;background:var(--ub500)"></div></div>
+                  <span style="font-size:10px;color:var(--m500);width:16px;text-align:right;flex-shrink:0">3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end left col -->
+
+
+    <!-- ═══════════════════════════════════════════
+         RIGHT COLUMN — personal view
+    ═══════════════════════════════════════════ -->
+    <div class="col-side" style="animation:fadeUp .4s ease .15s both">
+
+      <!-- MY CORNER header -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--m900)">
+              My Corner
+              <span class="change-tag moved-tag">MOVED</span>
+              <span class="change-tag" style="background:#f3e8ff;color:#6b21a8;border-color:#d8b4fe">ENHANCED</span>
+            </div>
+            <div style="font-size:10px;color:var(--m500);margin-top:1px">from left column → sidebar · renamed "Your Focus" → "My Corner"</div>
+          </div>
+          <span class="side-role-tag">Planter</span>
+        </div>
+
+        <!-- My Plants -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--m500);margin-bottom:8px">My Plants</div>
+          <div class="card">
+            <div class="row-item" style="padding:7px 0;margin:0;gap:8px;border-bottom:.5px solid var(--m100)">
+              <span class="badge badge-wm" style="flex-shrink:0">Sprout</span>
+              <span style="font-size:12px;font-weight:500;color:var(--m900);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">DocScan AI</span>
+              <span style="font-size:11px;font-weight:600;color:var(--k500);opacity:0;transition:opacity .15s" class="cta-hint">Add prototype →</span>
+            </div>
+            <div class="row-item" style="padding:7px 0;margin:0;gap:8px">
+              <span class="badge badge-muted" style="flex-shrink:0">Seedling</span>
+              <span style="font-size:12px;font-weight:500;color:var(--m900);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">BudgetBot</span>
+              <span style="font-size:11px;font-weight:600;color:var(--k500);opacity:0;transition:opacity .15s" class="cta-hint">View →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seeds to Claim -->
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--m500);margin-bottom:8px">Seeds to Claim</div>
+          <div class="card">
+            <div class="row-item" style="padding:7px 0;margin:0;gap:8px;border-bottom:.5px solid var(--m100)">
+              <span style="font-size:12px;font-weight:500;color:var(--m900);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Auto-summarize Slack threads</span>
+              <span style="font-size:10px;color:var(--ub500);font-weight:600;flex-shrink:0">▲ 6</span>
+            </div>
+            <div class="row-item" style="padding:7px 0;margin:0;gap:8px;border-bottom:.5px solid var(--m100)">
+              <span style="font-size:12px;font-weight:500;color:var(--m900);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">HR policy chatbot</span>
+              <span style="font-size:10px;color:var(--ub500);font-weight:600;flex-shrink:0">▲ 4</span>
+            </div>
+            <div class="row-item" style="padding:7px 0;margin:0;gap:8px">
+              <span style="font-size:12px;font-weight:500;color:var(--m900);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Customer churn predictor</span>
+              <span style="font-size:10px;color:var(--ub500);font-weight:600;flex-shrink:0">▲ 3</span>
+            </div>
+          </div>
+          <div style="margin-top:6px;text-align:center">
+            <a href="#" style="font-size:11px;font-weight:600;color:var(--k500);text-decoration:none">Browse all Seeds →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- REMOVED: Dept Coverage -->
+      <div style="padding:12px;background:#fee2e2;border:.5px dashed #fca5a5;border-radius:8px;opacity:.5">
+        <div style="font-size:11px;color:#991b1b;font-weight:600;margin-bottom:4px">
+          ⚠️ Dept Coverage <span class="change-tag removed-tag">REMOVED</span>
+        </div>
+        <div style="font-size:10px;color:#991b1b;line-height:1.5">
+          21-row list including depts with 0 projects.<br>
+          Adds noise — dept insights now covered by "By Dept" toggle in Rankings.
+        </div>
+      </div>
+
+    </div><!-- end right col -->
+
+  </div><!-- end body -->
+
+</div><!-- end page -->
+
+<script>
+const rankPeopleHTML = `
+  <div style="display:flex;flex-direction:column;gap:9px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">1</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">KN</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Kai Nakamura</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:100%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">3</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">2</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">MS</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Maya Santos</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:67%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">2</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">3</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">LP</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Lena Park</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:67%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">2</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">4</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">JR</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">James Reyes</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:33%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">1</span>
+    </div>
+  </div>`;
+
+const rankDeptHTML = `
+  <div style="display:flex;flex-direction:column;gap:9px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">1</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">EG</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Engineering</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:100%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">5</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">2</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">MK</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Marketing</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:60%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">3</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">3</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">OP</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Operations</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:40%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">2</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">4</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">FN</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">Finance</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:20%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">1</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:#b0ac9c;width:12px;flex-shrink:0">5</span>
+      <div style="width:22px;height:22px;border-radius:5px;background:#f2f1ed;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#736f5e;flex-shrink:0">CS</div>
+      <span style="font-size:11px;color:#3a372e;flex:1">CX</span>
+      <div style="flex:0 0 60px;height:8px;background:#f2f1ed;border-radius:9999px;overflow:hidden"><div style="height:100%;width:20%;background:#2d8c2d;border-radius:9999px"></div></div>
+      <span style="font-size:10px;color:#928e7c;width:16px;text-align:right;flex-shrink:0">1</span>
+    </div>
+  </div>`;
+
+function setRank(mode, btn) {
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = document.getElementById('rankPanel');
+  const label = document.getElementById('rankLabel');
+  if (mode === 'people') {
+    panel.innerHTML = rankPeopleHTML;
+    label.textContent = 'Top Builders';
+  } else {
+    panel.innerHTML = rankDeptHTML;
+    label.textContent = 'Top Departments';
+  }
+}
+</script>
+</body>
+</html>

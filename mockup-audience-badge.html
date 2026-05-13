@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audience Badge Mockup — Grove</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Rubik', system-ui, sans-serif;
+    background: #f2f1ed;
+    padding: 40px 32px;
+    color: #201e18;
+  }
+  h1 { font-size: 18px; font-weight: 700; color: #201e18; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #736f5e; margin-bottom: 32px; }
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #928e7c; margin-bottom: 12px;
+  }
+  .section { margin-bottom: 40px; }
+  .cards-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+  .card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #e4e2da;
+    width: 280px;
+    font-family: 'Rubik', system-ui, sans-serif;
+    transition: box-shadow 0.15s, transform 0.15s;
+    cursor: pointer;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.04);
+    border-color: #ccc9bc;
+  }
+
+  .top-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; margin-bottom: 8px;
+  }
+  .name {
+    font-size: 14px; font-weight: 700; color: #201e18;
+    line-height: 1.3; letter-spacing: -0.01em; flex: 1;
+  }
+  .desc {
+    font-size: 12px; color: #928e7c; line-height: 1.5; margin-bottom: 12px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bottom-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 700; flex-shrink: 0;
+  }
+  .builder-name { font-size: 12px; color: #736f5e; font-weight: 500; flex: 1; min-width: 0; }
+
+  /* Stage badge */
+  .stage-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 9999px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .stage-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .stage-seedling { background: #f2f1ed; color: #736f5e; }
+  .stage-seedling .stage-dot { background: #b0ac9c; }
+  .stage-sprout { background: #e6fffa; color: #2c7a7b; }
+  .stage-sprout .stage-dot { background: #38b2ac; }
+  .stage-thriving { background: #ebf8ff; color: #3182ce; }
+  .stage-thriving .stage-dot { background: #3182ce; }
+
+  /* Audience badge */
+  .aud-internal {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 9999px;
+    background: #f2f1ed; color: #736f5e; border: 1px solid #ccc9bc;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .aud-external {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 9999px;
+    background: #ebf8ff; color: #3182ce; border: 1px solid #63b3ed;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .aud-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .aud-dot-i { background: #928e7c; }
+  .aud-dot-e { background: #3182ce; }
+</style>
+</head>
+<body>
+
+<h1>Audience Badge — Final Layout</h1>
+<p class="subtitle">Stage badge top-right. Audience badge bottom row, replacing the "for team" chips.</p>
+
+<div class="section">
+  <div class="section-label">Internal projects</div>
+  <div class="cards-row">
+
+    <div class="card">
+      <div class="top-row">
+        <div class="name">Absenteeism Report Generator</div>
+        <span class="stage-badge stage-seedling"><span class="stage-dot"></span>Seedling</span>
+      </div>
+      <div class="desc">This automation will be used during the implementation phase to provide client updates on attendance progress.</div>
+      <div class="bottom-row">
+        <div class="avatar" style="background:#E0F2F1;color:#00695C">JL</div>
+        <span class="builder-name">J. Lacandazo</span>
+        <span class="aud-internal"><span class="aud-dot aud-dot-i"></span>Internal</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="top-row">
+        <div class="name">HR Policy Assistant</div>
+        <span class="stage-badge stage-thriving"><span class="stage-dot"></span>Thriving</span>
+      </div>
+      <div class="desc">Answers employee policy questions using the latest HR handbook and escalates to PeopleOps when needed.</div>
+      <div class="bottom-row">
+        <div class="avatar" style="background:#F3E5F5;color:#6A1B9A">AJ</div>
+        <span class="builder-name">Ana J.</span>
+        <span class="aud-internal"><span class="aud-dot aud-dot-i"></span>Internal</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">External projects</div>
+  <div class="cards-row">
+
+    <div class="card">
+      <div class="top-row">
+        <div class="name">Client Onboarding Bot</div>
+        <span class="stage-badge stage-sprout"><span class="stage-dot"></span>Sprout</span>
+      </div>
+      <div class="desc">Guides new clients through setup steps, answers questions, and routes escalations to the right CSM.</div>
+      <div class="bottom-row">
+        <div class="avatar" style="background:#F3E5F5;color:#6A1B9A">MR</div>
+        <span class="builder-name">Marco R.</span>
+        <span class="aud-external"><span class="aud-dot aud-dot-e"></span>External</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="top-row">
+        <div class="name">Content Repurposing Agent</div>
+        <span class="stage-badge stage-sprout"><span class="stage-dot"></span>Sprout</span>
+      </div>
+      <div class="desc">Automatically transforms long-form content into multiple formats such as social posts, blogs, and webinars.</div>
+      <div class="bottom-row">
+        <div class="avatar" style="background:#FFF8E1;color:#F57F17">CP</div>
+        <span class="builder-name">Crispy P.</span>
+        <span class="aud-external"><span class="aud-dot aud-dot-e"></span>External</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p style="font-size:11px;color:#b0ac9c;margin-top:8px">Hover to see lift. Stage badge top-right, audience badge bottom-right alongside builder name.</p>
+
+</body>
+</html>

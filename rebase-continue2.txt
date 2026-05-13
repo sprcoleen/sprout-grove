@@ -1,0 +1,4 @@
+[detached HEAD fb9169a] feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text
+ 2 files changed, 13 insertions(+), 13 deletions(-)
+Successfully rebased and updated refs/heads/main.
+EXIT:0

@@ -1,0 +1,20 @@
+2a9635c feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text
+bcfc14a Merge pull request #1 from kvirata-web/worktree-grove-v2
+b11ce94 fix: Seed column STAGE_COLORS crash — use inline color object instead of removed seed key
+8ad09fd feat: send-notification Edge Function for in-app + email notifications
+7ee7908 feat: in-app notifications — load, nav badge, mark-read on panel open
+bc707ae feat: Seeds tab rename, claim creates Seedling, un-claim flow, parallel builders chip
+747af8c feat: approveProject and needsRework handlers for ExCom review flow
+3b9df9f feat: submitToNursery, withdrawFromNursery handlers + locked state UI
+6eec49d feat: block drag-to-nursery, enforce adjacency for non-Gardeners
+0427fc7 feat: Seedling card states (incomplete/ready chips) + Nursery age indicator
+9fbcf72 feat: 6-tile dashboard with Seedling, Nursery, Sprout, Bloom, Thriving
+c3c20bf feat: load isExcom from profile, show ExCom badge in nav
+30a0371 feat: add SIcoSeedling + SIcoNursery icons, update StageIcon and PlantMap
+1cef9bd fix: handle seeds column header not being in STAGE_FLORA
+b13618d feat: rename stages to seedling/nursery/sprout/bloom/thriving
+2ab5b40 feat: add Nursery review fields to db.js transforms, loadNotifications
+a4679b0 chore: ExCom role, notifications table, updated RLS policies
+3d7f712 chore: add Nursery review fields to projects table
+b0a408b Docs: Grove v2 design spec — stage rename, Nursery, ExCom role, notifications
+1d9825c Feat: Tool Used field — form picker, card chips, dashboard

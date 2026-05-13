@@ -1,0 +1,10 @@
+33:<<<<<<< HEAD
+35:=======
+37:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+48:<<<<<<< HEAD
+51:=======
+54:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+66:<<<<<<< HEAD
+69:=======
+72:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+EXIT:0

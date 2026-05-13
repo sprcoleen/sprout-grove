@@ -1,0 +1,4 @@
+[main b606ac7] Fix: move ModalField outside AddProjectModal to prevent input focus loss
+ 1 file changed, 27 insertions(+), 23 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   493f84c..b606ac7  main -> main

@@ -1,0 +1,4 @@
+[main 88c0afc] Fix auth: unblock UI immediately from session, sync profile in background
+ 1 file changed, 26 insertions(+), 28 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   c5cd715..88c0afc  main -> main

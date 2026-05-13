@@ -1,0 +1,12 @@
+[master (root-commit) ea3d6d0] Phase 0: Scaffold Vite React app with SproutAIGarden prototype
+ 10 files changed, 10103 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 SproutAIGarden_PRD.docx
+ create mode 100644 SproutAIGarden_v9.jsx
+ create mode 100644 claude.md
+ create mode 100644 index.html
+ create mode 100644 package-lock.json
+ create mode 100644 package.json
+ create mode 100644 src/App.jsx
+ create mode 100644 src/main.jsx
+ create mode 100644 vite.config.js

@@ -1,0 +1,2 @@
+[staging c149a17] feat: Help panel — About + What's New tabs, wider panel, icons, styled feedback items
+ 1 file changed, 159 insertions(+), 11 deletions(-)

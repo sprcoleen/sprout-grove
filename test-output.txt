@@ -1,0 +1,7 @@
++ grove-enhancements
+* main
++ worktree-grove-v2
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/grove-enhancements
+  remotes/origin/main
+  remotes/origin/worktree-grove-v2

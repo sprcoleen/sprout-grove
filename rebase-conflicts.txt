@@ -1,0 +1,21 @@
+117:<<<<<<< HEAD
+119:=======
+121:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+2089:<<<<<<< HEAD
+2091:=======
+2093:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+2129:<<<<<<< HEAD
+2131:=======
+2133:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+2139:<<<<<<< HEAD
+2141:=======
+2143:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+4011:<<<<<<< HEAD
+4013:=======
+4015:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+4158:<<<<<<< HEAD
+4160:=======
+4162:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+4286:<<<<<<< HEAD
+4289:=======
+4292:>>>>>>> a0e77f4 (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)

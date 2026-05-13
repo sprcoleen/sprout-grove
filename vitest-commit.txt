@@ -1,0 +1,6 @@
+[main ad40134] test: add Vitest unit test suite for pure utility functions
+ 8 files changed, 737 insertions(+), 106 deletions(-)
+ create mode 100644 src/lib/db.test.js
+ create mode 100644 src/lib/utils.js
+ create mode 100644 src/lib/utils.test.js
+ create mode 100644 src/test/setup.js

@@ -1,0 +1,4 @@
+[main c5cd715] Phase 1: Wire Supabase auth and create DB schema
+ 3 files changed, 272 insertions(+), 49 deletions(-)
+ create mode 100644 src/lib/supabase.js
+ create mode 100644 supabase/schema.sql

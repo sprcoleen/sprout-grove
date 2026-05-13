@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pipeline — Option C refined + 3 background variants</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Rubik",system-ui,sans-serif;background:#f2f1ed;padding:32px;color:#201e18}
+
+:root{
+  --k50:#f0faf0;--k100:#d6f0d6;--k200:#aadcaa;--k400:#4aaa4a;--k500:#2d8c2d;--k600:#1f6e1f;--k700:#165216;
+  --m50:#fafaf8;--m100:#f2f1ed;--m200:#e4e2da;--m300:#ccc9bc;--m400:#b0ac9c;--m500:#928e7c;--m600:#736f5e;--m700:#565244;--m800:#3a372e;--m900:#201e18;
+  --ma50:#fffff0;--ma100:#fefcbf;--ma500:#d69e2e;--ma600:#b7791f;--ma700:#975a16;
+  --wm100:#e6fffa;--wm400:#38b2ac;--wm500:#2c7a7b;
+  --bl100:#ebf8ff;--bl400:#63b3ed;--bl500:#3182ce;
+  --ub100:#faf5ff;--ub400:#9f7aea;--ub500:#805ad5;
+  --white:#fff;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:0 4px 12px rgba(0,0,0,.1),0 2px 4px rgba(0,0,0,.06);
+}
+
+.section-title{font-size:20px;font-weight:800;color:var(--m900);margin-bottom:4px}
+.section-sub{font-size:12px;color:var(--m500);margin-bottom:36px}
+.variant-label{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:var(--m700);margin-bottom:14px;
+}
+.vnum{width:22px;height:22px;border-radius:50%;background:var(--m900);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vdesc{font-size:11px;font-weight:400;color:var(--m500);margin-left:2px}
+.divider{height:1px;background:var(--m200);margin:44px 0}
+
+/* ── PIPELINE ROW (shared) ── */
+.pipe-row{display:flex;align-items:stretch;gap:0}
+.chevron{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;align-self:center}
+
+/* ── BASE CARD ── */
+.pc{
+  flex:1;border-radius:12px;padding:18px 14px 16px;
+  cursor:pointer;transition:all .18s;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  border:.5px solid transparent;
+}
+.pc:hover{transform:translateY(-3px);box-shadow:var(--sh-md)}
+
+/* inner content sits above background layers */
+.pc-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:100%}
+
+/* top row: icon only (no badge label — name is below count) */
+.pc-top{display:flex;justify-content:flex-end;margin-bottom:10px}
+
+/* count */
+.pc-count{font-size:36px;font-weight:800;line-height:1;margin-bottom:6px}
+
+/* stage name — single location, below count */
+.pc-name{font-size:12px;font-weight:700;letter-spacing:.02em;margin-bottom:5px}
+
+/* description */
+.pc-desc{font-size:10px;line-height:1.55;flex:1}
+
+/* cta */
+.pc-cta{margin-top:12px;font-size:9px;font-weight:700;letter-spacing:.04em;opacity:0;transition:opacity .15s;text-transform:uppercase}
+.pc:hover .pc-cta{opacity:1}
+
+/* live dot on thriving */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.live{display:inline-block;width:6px;height:6px;border-radius:50%;vertical-align:middle;margin-left:4px;animation:pulse 2s infinite}
+
+
+/* ══════════════════════════════════════════
+   VARIANT 0 — Base (clean, no bg image)
+   — just to show the fix before bg variants
+══════════════════════════════════════════ */
+.v0-seeds    {background:var(--ub100);border-color:var(--ub400)}
+.v0-seeds    .pc-count,.v0-seeds    .pc-name{color:var(--ub500)}
+.v0-seeds    .pc-desc{color:var(--m600)}
+.v0-seeds    .pc-cta{color:var(--ub500)}
+
+.v0-seedling {background:var(--m100);border-color:var(--m300)}
+.v0-seedling .pc-count,.v0-seedling .pc-name{color:var(--m700)}
+.v0-seedling .pc-desc{color:var(--m500)}
+.v0-seedling .pc-cta{color:var(--m600)}
+
+.v0-nursery  {background:var(--ma100);border-color:var(--ma500)}
+.v0-nursery  .pc-count,.v0-nursery  .pc-name{color:var(--ma600)}
+.v0-nursery  .pc-desc{color:var(--m500)}
+.v0-nursery  .pc-cta{color:var(--ma600)}
+
+.v0-sprout   {background:var(--wm100);border-color:var(--wm400)}
+.v0-sprout   .pc-count,.v0-sprout   .pc-name{color:var(--wm500)}
+.v0-sprout   .pc-desc{color:var(--m500)}
+.v0-sprout   .pc-cta{color:var(--wm500)}
+
+.v0-bloom    {background:var(--k50);border-color:var(--k200)}
+.v0-bloom    .pc-count,.v0-bloom    .pc-name{color:var(--k600)}
+.v0-bloom    .pc-desc{color:var(--m500)}
+.v0-bloom    .pc-cta{color:var(--k600)}
+
+.v0-thriving {background:var(--bl100);border-color:var(--bl400)}
+.v0-thriving .pc-count,.v0-thriving .pc-name{color:var(--bl500)}
+.v0-thriving .pc-desc{color:var(--m500)}
+.v0-thriving .pc-cta{color:var(--bl500)}
+
+
+/* ══════════════════════════════════════════
+   VARIANT 1 — Botanical line art in corners
+   Subtle organic illustration as bg layer
+══════════════════════════════════════════ */
+.v1-bg{
+  position:absolute;inset:0;z-index:0;
+  opacity:.13;pointer-events:none;
+  display:flex;align-items:flex-end;justify-content:flex-end;
+}
+.v1-bg svg{width:80%;height:80%}
+
+/* same color rules as v0 but richer backgrounds */
+.v1-seeds    {background:var(--ub100);border-color:var(--ub400)}
+.v1-seeds    .pc-count,.v1-seeds    .pc-name{color:var(--ub500)}
+.v1-seeds    .pc-desc{color:var(--m600)}
+.v1-seeds    .pc-cta{color:var(--ub500)}
+
+.v1-seedling {background:var(--m100);border-color:var(--m300)}
+.v1-seedling .pc-count,.v1-seedling .pc-name{color:var(--m700)}
+.v1-seedling .pc-desc{color:var(--m500)}
+.v1-seedling .pc-cta{color:var(--m600)}
+
+.v1-nursery  {background:#fffbeb;border-color:var(--ma500)}
+.v1-nursery  .pc-count,.v1-nursery  .pc-name{color:var(--ma600)}
+.v1-nursery  .pc-desc{color:var(--m500)}
+.v1-nursery  .pc-cta{color:var(--ma600)}
+
+.v1-sprout   {background:var(--wm100);border-color:var(--wm400)}
+.v1-sprout   .pc-count,.v1-sprout   .pc-name{color:var(--wm500)}
+.v1-sprout   .pc-desc{color:var(--m500)}
+.v1-sprout   .pc-cta{color:var(--wm500)}
+
+.v1-bloom    {background:var(--k50);border-color:var(--k200)}
+.v1-bloom    .pc-count,.v1-bloom    .pc-name{color:var(--k600)}
+.v1-bloom    .pc-desc{color:var(--m500)}
+.v1-bloom    .pc-cta{color:var(--k600)}
+
+.v1-thriving {background:var(--bl100);border-color:var(--bl400)}
+.v1-thriving .pc-count,.v1-thriving .pc-name{color:var(--bl500)}
+.v1-thriving .pc-desc{color:var(--m500)}
+.v1-thriving .pc-cta{color:var(--bl500)}
+
+
+/* ══════════════════════════════════════════
+   VARIANT 2 — Rich gradient + grain texture
+   Deep, saturated gradients per stage
+══════════════════════════════════════════ */
+@keyframes grain{0%,100%{transform:translate(0,0)}10%{transform:translate(-2%,-2%)}30%{transform:translate(2%,-1%)}50%{transform:translate(-1%,2%)}70%{transform:translate(1%,1%)}90%{transform:translate(-1%,-1%)}}
+
+.v2-seeds{
+  background:linear-gradient(135deg,#f3e8ff 0%,#e9d5ff 60%,#ddd6fe 100%);
+  border-color:#c4b5fd;
+}
+.v2-seeds .pc-count,.v2-seeds .pc-name{color:#6d28d9}
+.v2-seeds .pc-desc{color:#7c3aed}
+.v2-seeds .pc-cta{color:#6d28d9}
+
+.v2-seedling{
+  background:linear-gradient(135deg,#f5f0e8 0%,#ede8df 60%,#e4ddd1 100%);
+  border-color:#c9bfad;
+}
+.v2-seedling .pc-count,.v2-seedling .pc-name{color:#44403c}
+.v2-seedling .pc-desc{color:#57534e}
+.v2-seedling .pc-cta{color:#44403c}
+
+.v2-nursery{
+  background:linear-gradient(135deg,#fefce8 0%,#fef9c3 60%,#fef08a 100%);
+  border-color:#fcd34d;
+}
+.v2-nursery .pc-count,.v2-nursery .pc-name{color:#92400e}
+.v2-nursery .pc-desc{color:#78350f}
+.v2-nursery .pc-cta{color:#92400e}
+
+.v2-sprout{
+  background:linear-gradient(135deg,#f0fdfa 0%,#ccfbf1 60%,#99f6e4 100%);
+  border-color:#5eead4;
+}
+.v2-sprout .pc-count,.v2-sprout .pc-name{color:#0f766e}
+.v2-sprout .pc-desc{color:#115e59}
+.v2-sprout .pc-cta{color:#0f766e}
+
+.v2-bloom{
+  background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#bbf7d0 100%);
+  border-color:#86efac;
+}
+.v2-bloom .pc-count,.v2-bloom .pc-name{color:#166534}
+.v2-bloom .pc-desc{color:#15803d}
+.v2-bloom .pc-cta{color:#166534}
+
+.v2-thriving{
+  background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 60%,#bfdbfe 100%);
+  border-color:#93c5fd;
+}
+.v2-thriving .pc-count,.v2-thriving .pc-name{color:#1d4ed8}
+.v2-thriving .pc-desc{color:#1e40af}
+.v2-thriving .pc-cta{color:#1d4ed8}
+
+/* grain overlay */
+.v2-grain{
+  position:absolute;inset:-50%;z-index:0;pointer-events:none;opacity:.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:128px;
+  animation:grain 0.5s steps(1) infinite;
+}
+
+
+/* ══════════════════════════════════════════
+   VARIANT 3 — Illustrated nature scene bg
+   Each card has a stage-themed SVG scene
+   in the bottom-right, softly cropped
+══════════════════════════════════════════ */
+.v3-scene{
+  position:absolute;bottom:0;right:0;z-index:0;
+  pointer-events:none;opacity:.18;
+  width:75%;height:75%;
+  display:flex;align-items:flex-end;justify-content:flex-end;
+}
+
+.v3-seeds    {background:linear-gradient(145deg,#faf5ff,#f3e8ff);border-color:var(--ub400)}
+.v3-seeds    .pc-count,.v3-seeds    .pc-name{color:#6d28d9}
+.v3-seeds    .pc-desc{color:#7c3aed}
+.v3-seeds    .pc-cta{color:#6d28d9}
+
+.v3-seedling {background:linear-gradient(145deg,#fafaf8,#f2f1ed);border-color:var(--m300)}
+.v3-seedling .pc-count,.v3-seedling .pc-name{color:var(--m800)}
+.v3-seedling .pc-desc{color:var(--m600)}
+.v3-seedling .pc-cta{color:var(--m700)}
+
+.v3-nursery  {background:linear-gradient(145deg,#fffbeb,#fef3c7);border-color:var(--ma500)}
+.v3-nursery  .pc-count,.v3-nursery  .pc-name{color:var(--ma700)}
+.v3-nursery  .pc-desc{color:var(--ma600)}
+.v3-nursery  .pc-cta{color:var(--ma600)}
+
+.v3-sprout   {background:linear-gradient(145deg,#f0fdfa,#ccfbf1);border-color:var(--wm400)}
+.v3-sprout   .pc-count,.v3-sprout   .pc-name{color:var(--wm500)}
+.v3-sprout   .pc-desc{color:var(--wm500)}
+.v3-sprout   .pc-cta{color:var(--wm500)}
+
+.v3-bloom    {background:linear-gradient(145deg,#f0fdf4,#dcfce7);border-color:var(--k200)}
+.v3-bloom    .pc-count,.v3-bloom    .pc-name{color:var(--k600)}
+.v3-bloom    .pc-desc{color:var(--k500)}
+.v3-bloom    .pc-cta{color:var(--k600)}
+
+.v3-thriving {background:linear-gradient(145deg,#eff6ff,#dbeafe);border-color:var(--bl400)}
+.v3-thriving .pc-count,.v3-thriving .pc-name{color:#1d4ed8}
+.v3-thriving .pc-desc{color:var(--bl500)}
+.v3-thriving .pc-cta{color:#1d4ed8}
+
+</style>
+</head>
+<body>
+
+<div class="section-title">Pipeline — Option C refined</div>
+<div class="section-sub">Stage name appears once. Chevrons added. Then 3 background variants below.</div>
+
+<!-- ═══════════════════════════════
+     BASE — fixed + chevrons
+═══════════════════════════════ -->
+<div class="variant-label">
+  <div class="vnum">0</div>
+  Base (clean) — name doubled fixed, chevrons added
+</div>
+
+<div class="pipe-row">
+
+  <!-- Seeds -->
+  <div class="pc v0-seeds">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- IcoWishlist -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#805ad5" strokeWidth="1.4" fill="#805ad5" fillOpacity="0.2"/><line x1="12" y1="9" x2="12" y2="15" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/><line x1="9" y1="12" x2="15" y2="12" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/></svg>
+      </div>
+      <div class="pc-count">8</div>
+      <div class="pc-name">Seeds</div>
+      <div class="pc-desc">Ideas waiting to be built by someone on the team</div>
+      <div class="pc-cta">Browse →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Seedling -->
+  <div class="pc v0-seedling">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- sprout icon -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/><path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.14"/><path d="M12 16 C10 14 7 14 6.5 15.5" stroke="#565244" strokeWidth="1" strokeLinecap="round" fill="none"/><path d="M12 13 C14 11 17 11 17.5 12.5" stroke="#565244" strokeWidth="1" strokeLinecap="round" fill="none"/></svg>
+      </div>
+      <div class="pc-count">4</div>
+      <div class="pc-name">Seedling</div>
+      <div class="pc-desc">Actively being built, pre-review</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Nursery -->
+  <div class="pc v0-nursery">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- IcoWarning shield -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#b7791f" strokeWidth="1.4" fill="#b7791f" fillOpacity="0.14"/><line x1="12" y1="10" x2="12" y2="15" stroke="#b7791f" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="17.5" r="1" fill="#b7791f"/></svg>
+      </div>
+      <div class="pc-count">2</div>
+      <div class="pc-name">Nursery</div>
+      <div class="pc-desc">Awaiting leadership review before proceeding</div>
+      <div class="pc-cta">View queue →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Sprout -->
+  <div class="pc v0-sprout">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- IcoGarden -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#2c7a7b" strokeWidth="1.3" fill="#2c7a7b" fillOpacity="0.14"/><line x1="12" y1="20" x2="12" y2="8" stroke="#2c7a7b" strokeWidth="1.3" strokeLinecap="round"/><path d="M12 14 C10 12 8 12 7.5 13" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/><path d="M12 11 C14 9 16 9 16.5 10" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/></svg>
+      </div>
+      <div class="pc-count">5</div>
+      <div class="pc-name">Sprout</div>
+      <div class="pc-desc">Approved, building with leadership backing</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Bloom -->
+  <div class="pc v0-bloom">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- flower -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.5" stroke="#1f6e1f" strokeWidth="1.3" fill="#1f6e1f" fillOpacity="0.2"/><path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/></svg>
+      </div>
+      <div class="pc-count">4</div>
+      <div class="pc-name">Bloom</div>
+      <div class="pc-desc">Live with real users, collecting feedback</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Thriving -->
+  <div class="pc v0-thriving">
+    <div class="pc-inner">
+      <div class="pc-top">
+        <!-- check circle -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="#3182ce" strokeWidth="1.3" fill="#3182ce" fillOpacity="0.12"/><path d="M7.5 12 L10.5 15 L16.5 9" stroke="#3182ce" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </div>
+      <div class="pc-count">5</div>
+      <div class="pc-name">Thriving <span class="live" style="background:#3182ce"></span></div>
+      <div class="pc-desc">Deployed and delivering measurable value</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+</div><!-- base pipe row -->
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════
+     VARIANT 1 — Botanical line art
+═══════════════════════════════ -->
+<div class="variant-label">
+  <div class="vnum">1</div>
+  Botanical line art — stage-themed illustration fades into each card corner
+  <span class="vdesc">Organic, hand-drawn feel. Branding through nature motifs.</span>
+</div>
+
+<div class="pipe-row">
+
+  <!-- Seeds -->
+  <div class="pc v1-seeds">
+    <!-- bg: scattered seeds / pods -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="60" cy="80" rx="18" ry="26" stroke="#805ad5" strokeWidth="2.5" fill="none"/>
+        <path d="M60 54 C60 54 55 46 60 40 C65 46 60 54 60 54Z" stroke="#805ad5" strokeWidth="2" fill="#805ad5" fillOpacity="0.3"/>
+        <ellipse cx="30" cy="95" rx="10" ry="14" stroke="#805ad5" strokeWidth="1.8" fill="none" transform="rotate(-20,30,95)"/>
+        <ellipse cx="90" cy="90" rx="8" ry="12" stroke="#805ad5" strokeWidth="1.5" fill="none" transform="rotate(15,90,90)"/>
+        <path d="M45 75 L48 68" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M75 72 L78 65" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#805ad5" strokeWidth="1.4" fill="#805ad5" fillOpacity="0.2"/><line x1="12" y1="9" x2="12" y2="15" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/><line x1="9" y1="12" x2="15" y2="12" stroke="#805ad5" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
+      <div class="pc-count" style="color:#6d28d9">8</div>
+      <div class="pc-name" style="color:#6d28d9">Seeds</div>
+      <div class="pc-desc">Ideas waiting to be built by someone on the team</div>
+      <div class="pc-cta" style="color:#6d28d9">Browse →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Seedling -->
+  <div class="pc v1-seedling">
+    <!-- bg: tiny sprout emerging from soil line -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none">
+        <line x1="60" y1="110" x2="60" y2="50" stroke="#565244" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M40 68 C40 50 60 42 60 42 C60 42 80 50 80 68 C80 80 70 85 60 85 C50 85 40 80 40 68Z" stroke="#565244" strokeWidth="2.5" fill="#565244" fillOpacity="0.15"/>
+        <path d="M60 75 C50 68 36 68 34 72" stroke="#565244" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M60 64 C70 57 84 57 86 61" stroke="#565244" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M20 110 L100 110" stroke="#565244" strokeWidth="2.5" strokeLinecap="round" opacity="0.4"/>
+        <path d="M15 110 C20 105 28 108 35 110" stroke="#565244" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" fill="none"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/><path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.14"/></svg></div>
+      <div class="pc-count" style="color:var(--m700)">4</div>
+      <div class="pc-name" style="color:var(--m700)">Seedling</div>
+      <div class="pc-desc">Actively being built, pre-review</div>
+      <div class="pc-cta" style="color:var(--m700)">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Nursery -->
+  <div class="pc v1-nursery">
+    <!-- bg: greenhouse arch / window panes -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none">
+        <path d="M20 110 L20 55 C20 35 60 20 100 55 L100 110 Z" stroke="#b7791f" strokeWidth="2.5" fill="none"/>
+        <line x1="60" y1="30" x2="60" y2="110" stroke="#b7791f" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+        <line x1="20" y1="75" x2="100" y2="75" stroke="#b7791f" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+        <line x1="20" y1="93" x2="100" y2="93" stroke="#b7791f" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+        <circle cx="60" cy="60" r="4" fill="#b7791f" opacity="0.3"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#b7791f" strokeWidth="1.4" fill="#b7791f" fillOpacity="0.14"/><line x1="12" y1="10" x2="12" y2="15" stroke="#b7791f" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="17.5" r="1" fill="#b7791f"/></svg></div>
+      <div class="pc-count" style="color:var(--ma700)">2</div>
+      <div class="pc-name" style="color:var(--ma700)">Nursery</div>
+      <div class="pc-desc">Awaiting leadership review before proceeding</div>
+      <div class="pc-cta" style="color:var(--ma700)">View queue →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Sprout -->
+  <div class="pc v1-sprout">
+    <!-- bg: leafy plant -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none">
+        <line x1="60" y1="112" x2="60" y2="40" stroke="#2c7a7b" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M60 80 C45 68 28 70 26 76 C24 82 38 88 60 80Z" stroke="#2c7a7b" strokeWidth="2" fill="#2c7a7b" fillOpacity="0.2"/>
+        <path d="M60 64 C75 52 92 54 94 60 C96 66 82 72 60 64Z" stroke="#2c7a7b" strokeWidth="2" fill="#2c7a7b" fillOpacity="0.15"/>
+        <path d="M60 96 C48 90 36 92 34 96 C32 100 44 104 60 100Z" stroke="#2c7a7b" strokeWidth="1.5" fill="#2c7a7b" fillOpacity="0.12"/>
+        <path d="M55 80 L52 88" stroke="#2c7a7b" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+        <path d="M65 64 L68 72" stroke="#2c7a7b" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#2c7a7b" strokeWidth="1.3" fill="#2c7a7b" fillOpacity="0.14"/><line x1="12" y1="20" x2="12" y2="8" stroke="#2c7a7b" strokeWidth="1.3" strokeLinecap="round"/><path d="M12 14 C10 12 8 12 7.5 13" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/><path d="M12 11 C14 9 16 9 16.5 10" stroke="#2c7a7b" strokeWidth="1" strokeLinecap="round" fill="none"/></svg></div>
+      <div class="pc-count" style="color:var(--wm500)">5</div>
+      <div class="pc-name" style="color:var(--wm500)">Sprout</div>
+      <div class="pc-desc">Approved, building with leadership backing</div>
+      <div class="pc-cta" style="color:var(--wm500)">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Bloom -->
+  <div class="pc v1-bloom">
+    <!-- bg: open flower -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none">
+        <circle cx="60" cy="65" r="14" stroke="#1f6e1f" strokeWidth="2.5" fill="#1f6e1f" fillOpacity="0.15"/>
+        <ellipse cx="60" cy="36" rx="10" ry="18" stroke="#1f6e1f" strokeWidth="2" fill="#1f6e1f" fillOpacity="0.12"/>
+        <ellipse cx="60" cy="94" rx="10" ry="18" stroke="#1f6e1f" strokeWidth="2" fill="#1f6e1f" fillOpacity="0.12"/>
+        <ellipse cx="31" cy="65" rx="10" ry="18" stroke="#1f6e1f" strokeWidth="2" fill="#1f6e1f" fillOpacity="0.12" transform="rotate(90,31,65)"/>
+        <ellipse cx="89" cy="65" rx="10" ry="18" stroke="#1f6e1f" strokeWidth="2" fill="#1f6e1f" fillOpacity="0.12" transform="rotate(90,89,65)"/>
+        <ellipse cx="38" cy="42" rx="8" ry="15" stroke="#1f6e1f" strokeWidth="1.5" fill="#1f6e1f" fillOpacity="0.1" transform="rotate(45,38,42)"/>
+        <ellipse cx="82" cy="42" rx="8" ry="15" stroke="#1f6e1f" strokeWidth="1.5" fill="#1f6e1f" fillOpacity="0.1" transform="rotate(-45,82,42)"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.5" stroke="#1f6e1f" strokeWidth="1.3" fill="#1f6e1f" fillOpacity="0.2"/><path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/><path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#1f6e1f" strokeWidth="1.1" fill="#1f6e1f" fillOpacity="0.18" strokeLinecap="round"/></svg></div>
+      <div class="pc-count" style="color:var(--k600)">4</div>
+      <div class="pc-name" style="color:var(--k600)">Bloom</div>
+      <div class="pc-desc">Live with real users, collecting feedback</div>
+      <div class="pc-cta" style="color:var(--k600)">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <!-- Thriving -->
+  <div class="pc v1-thriving">
+    <!-- bg: tall mature tree -->
+    <div class="v1-bg">
+      <svg viewBox="0 0 120 120" fill="none">
+        <line x1="60" y1="112" x2="60" y2="60" stroke="#3182ce" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="60" y1="80" x2="40" y2="95" stroke="#3182ce" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="60" y1="72" x2="80" y2="85" stroke="#3182ce" strokeWidth="2.5" strokeLinecap="round"/>
+        <ellipse cx="60" cy="45" rx="28" ry="34" stroke="#3182ce" strokeWidth="2.5" fill="#3182ce" fillOpacity="0.12"/>
+        <ellipse cx="38" cy="55" rx="16" ry="20" stroke="#3182ce" strokeWidth="1.8" fill="#3182ce" fillOpacity="0.1"/>
+        <ellipse cx="82" cy="52" rx="16" ry="20" stroke="#3182ce" strokeWidth="1.8" fill="#3182ce" fillOpacity="0.08"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="#3182ce" strokeWidth="1.3" fill="#3182ce" fillOpacity="0.12"/><path d="M7.5 12 L10.5 15 L16.5 9" stroke="#3182ce" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+      <div class="pc-count" style="color:#1d4ed8">5</div>
+      <div class="pc-name" style="color:#1d4ed8">Thriving <span class="live" style="background:#3182ce"></span></div>
+      <div class="pc-desc">Deployed and delivering measurable value</div>
+      <div class="pc-cta" style="color:#1d4ed8">View all →</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════
+     VARIANT 2 — Rich gradient + grain
+═══════════════════════════════ -->
+<div class="variant-label">
+  <div class="vnum">2</div>
+  Rich gradient backgrounds — saturated per stage, subtle grain texture
+  <span class="vdesc">More energy, less clinical. Each stage has its own personality.</span>
+</div>
+
+<div class="pipe-row">
+
+  <div class="pc v2-seeds">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#6d28d9" strokeWidth="1.4" fill="#6d28d9" fillOpacity="0.25"/><line x1="12" y1="9" x2="12" y2="15" stroke="#6d28d9" strokeWidth="1.5" strokeLinecap="round"/><line x1="9" y1="12" x2="15" y2="12" stroke="#6d28d9" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
+      <div class="pc-count">8</div>
+      <div class="pc-name">Seeds</div>
+      <div class="pc-desc">Ideas waiting to be built by someone on the team</div>
+      <div class="pc-cta">Browse →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v2-seedling">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><line x1="12" y1="21" x2="12" y2="10" stroke="#44403c" strokeWidth="1.4" strokeLinecap="round"/><path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#44403c" strokeWidth="1.3" fill="#44403c" fillOpacity="0.2"/></svg></div>
+      <div class="pc-count">4</div>
+      <div class="pc-name">Seedling</div>
+      <div class="pc-desc">Actively being built, pre-review</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v2-nursery">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#92400e" strokeWidth="1.4" fill="#92400e" fillOpacity="0.2"/><line x1="12" y1="10" x2="12" y2="15" stroke="#92400e" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="17.5" r="1" fill="#92400e"/></svg></div>
+      <div class="pc-count">2</div>
+      <div class="pc-name">Nursery</div>
+      <div class="pc-desc">Awaiting leadership review before proceeding</div>
+      <div class="pc-cta">View queue →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v2-sprout">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#0f766e" strokeWidth="1.3" fill="#0f766e" fillOpacity="0.2"/><line x1="12" y1="20" x2="12" y2="8" stroke="#0f766e" strokeWidth="1.3" strokeLinecap="round"/><path d="M12 14 C10 12 8 12 7.5 13" stroke="#0f766e" strokeWidth="1" strokeLinecap="round" fill="none"/></svg></div>
+      <div class="pc-count">5</div>
+      <div class="pc-name">Sprout</div>
+      <div class="pc-desc">Approved, building with leadership backing</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v2-bloom">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.5" stroke="#166534" strokeWidth="1.3" fill="#166534" fillOpacity="0.25"/><path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/></svg></div>
+      <div class="pc-count">4</div>
+      <div class="pc-name">Bloom</div>
+      <div class="pc-desc">Live with real users, collecting feedback</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v2-thriving">
+    <div class="v2-grain"></div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="#1d4ed8" strokeWidth="1.3" fill="#1d4ed8" fillOpacity="0.15"/><path d="M7.5 12 L10.5 15 L16.5 9" stroke="#1d4ed8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+      <div class="pc-count">5</div>
+      <div class="pc-name">Thriving <span class="live" style="background:#1d4ed8"></span></div>
+      <div class="pc-desc">Deployed and delivering measurable value</div>
+      <div class="pc-cta">View all →</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════
+     VARIANT 3 — Illustrated nature scene
+═══════════════════════════════ -->
+<div class="variant-label">
+  <div class="vnum">3</div>
+  Stage-themed nature scene — illustrated SVG in the background, content reads clearly over it
+  <span class="vdesc">Most branded. Each card tells a visual story that matches its stage in the plant lifecycle.</span>
+</div>
+
+<div class="pipe-row">
+
+  <div class="pc v3-seeds">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <ellipse cx="50" cy="62" rx="15" ry="22" stroke="#805ad5" strokeWidth="2.5"/>
+        <path d="M50 40 C50 40 44 32 50 24 C56 32 50 40 50 40Z" stroke="#805ad5" strokeWidth="2" fill="#805ad5" fillOpacity="0.4"/>
+        <ellipse cx="25" cy="78" rx="9" ry="13" stroke="#805ad5" strokeWidth="1.8" transform="rotate(-20 25 78)"/>
+        <ellipse cx="76" cy="74" rx="7" ry="10" stroke="#805ad5" strokeWidth="1.5" transform="rotate(15 76 74)"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" stroke="#6d28d9" strokeWidth="1.4" fill="#6d28d9" fillOpacity="0.3"/><line x1="12" y1="9" x2="12" y2="15" stroke="#6d28d9" strokeWidth="1.5" strokeLinecap="round"/><line x1="9" y1="12" x2="15" y2="12" stroke="#6d28d9" strokeWidth="1.5" strokeLinecap="round"/></svg></div>
+      <div class="pc-count" style="color:#6d28d9">8</div>
+      <div class="pc-name" style="color:#6d28d9">Seeds</div>
+      <div class="pc-desc" style="color:#7c3aed">Ideas waiting to be built by someone on the team</div>
+      <div class="pc-cta" style="color:#6d28d9">Browse →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v3-seedling">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <line x1="50" y1="95" x2="50" y2="42" stroke="#565244" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M34 55 C34 40 50 33 50 33 C50 33 66 40 66 55 C66 66 59 71 50 71 C41 71 34 66 34 55Z" stroke="#565244" strokeWidth="2.5" fill="#565244" fillOpacity="0.18"/>
+        <path d="M50 65 C40 58 28 59 26 64" stroke="#565244" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="20" y1="95" x2="80" y2="95" stroke="#565244" strokeWidth="2" opacity="0.35"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><line x1="12" y1="21" x2="12" y2="10" stroke="#565244" strokeWidth="1.4" strokeLinecap="round"/><path d="M9 10 C9 7 12 5 12 5 C12 5 15 7 15 10 C15 12.5 13.5 13 12 13 C10.5 13 9 12.5 9 10Z" stroke="#565244" strokeWidth="1.3" fill="#565244" fillOpacity="0.18"/></svg></div>
+      <div class="pc-count" style="color:var(--m800)">4</div>
+      <div class="pc-name" style="color:var(--m800)">Seedling</div>
+      <div class="pc-desc" style="color:var(--m600)">Actively being built, pre-review</div>
+      <div class="pc-cta" style="color:var(--m700)">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v3-nursery">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <path d="M15 95 L15 48 C15 28 50 14 85 48 L85 95 Z" stroke="#b7791f" strokeWidth="2.5"/>
+        <line x1="50" y1="24" x2="50" y2="95" stroke="#b7791f" strokeWidth="1.5" opacity="0.6"/>
+        <line x1="15" y1="65" x2="85" y2="65" stroke="#b7791f" strokeWidth="1.5" opacity="0.6"/>
+        <line x1="15" y1="80" x2="85" y2="80" stroke="#b7791f" strokeWidth="1.2" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3 L20 7.5 L20 13.5 C20 17.5 16.5 20.5 12 22 C7.5 20.5 4 17.5 4 13.5 L4 7.5 Z" stroke="#92400e" strokeWidth="1.4" fill="#92400e" fillOpacity="0.22"/><line x1="12" y1="10" x2="12" y2="15" stroke="#92400e" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="17.5" r="1" fill="#92400e"/></svg></div>
+      <div class="pc-count" style="color:#92400e">2</div>
+      <div class="pc-name" style="color:#92400e">Nursery</div>
+      <div class="pc-desc" style="color:#78350f">Awaiting leadership review before proceeding</div>
+      <div class="pc-cta" style="color:#92400e">View queue →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v3-sprout">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <line x1="50" y1="95" x2="50" y2="32" stroke="#2c7a7b" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M50 67 C37 57 22 58 20 64 C18 70 32 76 50 67Z" stroke="#2c7a7b" strokeWidth="2" fill="#2c7a7b" fillOpacity="0.22"/>
+        <path d="M50 50 C63 40 78 41 80 47 C82 53 68 59 50 50Z" stroke="#2c7a7b" strokeWidth="2" fill="#2c7a7b" fillOpacity="0.18"/>
+        <path d="M50 82 C41 76 30 77 28 81 C26 85 36 88 50 85Z" stroke="#2c7a7b" strokeWidth="1.5" fill="#2c7a7b" fillOpacity="0.14"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 20 C12 20 5 16 5 10 C5 6 8 4 12 4 C16 4 19 6 19 10 C19 16 12 20 12 20Z" stroke="#0f766e" strokeWidth="1.3" fill="#0f766e" fillOpacity="0.2"/><line x1="12" y1="20" x2="12" y2="8" stroke="#0f766e" strokeWidth="1.3" strokeLinecap="round"/></svg></div>
+      <div class="pc-count" style="color:#0f766e">5</div>
+      <div class="pc-name" style="color:#0f766e">Sprout</div>
+      <div class="pc-desc" style="color:#115e59">Approved, building with leadership backing</div>
+      <div class="pc-cta" style="color:#0f766e">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v3-bloom">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <circle cx="50" cy="52" r="12" stroke="#166534" strokeWidth="2.5" fill="#166534" fillOpacity="0.18"/>
+        <ellipse cx="50" cy="24" rx="9" ry="17" stroke="#166534" strokeWidth="2" fill="#166534" fillOpacity="0.14"/>
+        <ellipse cx="50" cy="80" rx="9" ry="17" stroke="#166534" strokeWidth="2" fill="#166534" fillOpacity="0.14"/>
+        <ellipse cx="22" cy="52" rx="9" ry="17" stroke="#166534" strokeWidth="2" fill="#166534" fillOpacity="0.14" transform="rotate(90 22 52)"/>
+        <ellipse cx="78" cy="52" rx="9" ry="17" stroke="#166534" strokeWidth="2" fill="#166534" fillOpacity="0.14" transform="rotate(90 78 52)"/>
+        <ellipse cx="31" cy="31" rx="7" ry="14" stroke="#166534" strokeWidth="1.5" fill="#166534" fillOpacity="0.1" transform="rotate(45 31 31)"/>
+        <ellipse cx="69" cy="31" rx="7" ry="14" stroke="#166534" strokeWidth="1.5" fill="#166534" fillOpacity="0.1" transform="rotate(-45 69 31)"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.5" stroke="#166534" strokeWidth="1.3" fill="#166534" fillOpacity="0.25"/><path d="M12 4 C12 4 10.5 7 12 9 C13.5 7 12 4 12 4Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M12 15 C12 15 10.5 18 12 20 C13.5 18 12 15 12 15Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M4 12 C4 12 7 10.5 9 12 C7 13.5 4 12 4 12Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/><path d="M15 12 C15 12 18 10.5 20 12 C18 13.5 15 12 15 12Z" stroke="#166534" strokeWidth="1.1" fill="#166534" fillOpacity="0.25" strokeLinecap="round"/></svg></div>
+      <div class="pc-count" style="color:#166534">4</div>
+      <div class="pc-name" style="color:#166534">Bloom</div>
+      <div class="pc-desc" style="color:#15803d">Live with real users, collecting feedback</div>
+      <div class="pc-cta" style="color:#166534">View all →</div>
+    </div>
+  </div>
+
+  <div class="chevron"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M2 2 L10 10 L2 18" stroke="#ccc9bc" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+
+  <div class="pc v3-thriving">
+    <div class="v3-scene">
+      <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+        <line x1="50" y1="95" x2="50" y2="50" stroke="#1d4ed8" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="50" y1="68" x2="32" y2="80" stroke="#1d4ed8" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="50" y1="60" x2="68" y2="72" stroke="#1d4ed8" strokeWidth="2.5" strokeLinecap="round"/>
+        <ellipse cx="50" cy="36" rx="24" ry="30" stroke="#1d4ed8" strokeWidth="2.5" fill="#1d4ed8" fillOpacity="0.14"/>
+        <ellipse cx="31" cy="46" rx="14" ry="18" stroke="#1d4ed8" strokeWidth="1.8" fill="#1d4ed8" fillOpacity="0.1"/>
+        <ellipse cx="69" cy="44" rx="14" ry="18" stroke="#1d4ed8" strokeWidth="1.8" fill="#1d4ed8" fillOpacity="0.08"/>
+      </svg>
+    </div>
+    <div class="pc-inner">
+      <div class="pc-top"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="#1d4ed8" strokeWidth="1.3" fill="#1d4ed8" fillOpacity="0.15"/><path d="M7.5 12 L10.5 15 L16.5 9" stroke="#1d4ed8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+      <div class="pc-count" style="color:#1d4ed8">5</div>
+      <div class="pc-name" style="color:#1d4ed8">Thriving <span class="live" style="background:#1d4ed8"></span></div>
+      <div class="pc-desc" style="color:#1e40af">Deployed and delivering measurable value</div>
+      <div class="pc-cta" style="color:#1d4ed8">View all →</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Summary notes -->
+<div style="margin-top:32px;background:#fff;border:.5px solid #e4e2da;border-radius:10px;padding:16px 20px">
+  <div style="font-size:11px;font-weight:700;color:#3a372e;margin-bottom:10px">Design notes</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+    <div><div style="font-size:10px;font-weight:700;color:#565244;margin-bottom:3px">0 — Base (fixed)</div><div style="font-size:11px;color:#928e7c;line-height:1.5">Stage name shows once. Icon sits top-right, count dominates. Chevrons connect the journey. Clean, ready to ship.</div></div>
+    <div><div style="font-size:10px;font-weight:700;color:#565244;margin-bottom:3px">1 — Botanical art</div><div style="font-size:11px;color:#928e7c;line-height:1.5">Each card has a faded nature illustration that matches its lifecycle stage. Seed pods → sprout → greenhouse → leaf plant → flower → tree. Subtle but distinctive.</div></div>
+    <div><div style="font-size:10px;font-weight:700;color:#565244;margin-bottom:3px">2 — Rich gradient</div><div style="font-size:11px;color:#928e7c;line-height:1.5">Saturated gradient per stage with a grain texture layer. More energy and personality without illustrations. Easy to implement, most vibrant feel.</div></div>
+    <div><div style="font-size:10px;font-weight:700;color:#565244;margin-bottom:3px">3 — Nature scene</div><div style="font-size:11px;color:#928e7c;line-height:1.5">Full SVG scene illustration in each card corner — the most branded option. Visual storytelling per stage. Each card "shows" what that stage means.</div></div>
+  </div>
+</div>
+
+</body>
+</html>

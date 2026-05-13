@@ -1,0 +1,335 @@
+Grove — Help Feature
+Feature Spec · For Claude Code Implementation
+Prepared March 2026 · Sprout Internal
+
+1. Overview
+Help is a persistent feature that allows any logged-in Grove user to submit bug reports or ask questions about the app. All submissions are visible to everyone. Gardeners (admins) can mark items as resolved or answered.
+
+Feature name
+Help
+Entry point
+Floating button, fixed bottom-right, visible on all pages
+Item types
+Report (bug) · Ask (question)
+Visibility
+All submissions visible to all logged-in users
+Resolve/Answer
+Gardeners only
+Notifications
+None — not in scope for v1
+Scope
+General only — not linked to specific Plants or Seeds
+Auth required
+Yes — logged-in users only, submitter name auto-filled from session
+
+2. Entry Point — Floating Button
+A floating action button (FAB) sits in the fixed bottom-right corner of the app, always visible regardless of which tab or view the user is on. Clicking it opens the Help slide-over panel from the right. The panel opens without navigating away from the current page.
+
+FAB Specs
+
+Position
+Fixed, bottom: 20px, right: 20px
+Size
+40 × 40px, border-radius: 50%
+Background
+spr-bg-kangkong700 (#1B5E20)
+Hover state
+spr-bg-kangkong800, scale(1.05)
+Icon
+Question mark — ph:question (Phosphor icon)
+Icon size
+18 × 18px, fill: white
+Z-index
+Above all page content, below the panel overlay
+Shadow
+0 2px 8px rgba(0,0,0,0.18)
+
+3. Panel Layout
+The Help panel is a slide-over that appears from the right edge of the viewport. It does not push content — it overlays on top of the page.
+
+Width
+320px
+Height
+Full viewport height (100%)
+Background
+spr-bg-white-50 (#FFFFFF)
+Left border
+1px solid spr-mushroom-200 (#DDDBD5)
+Animation
+transform translateX(100%) → translateX(0), 220ms cubic-bezier(0.4,0,0.2,1)
+Close trigger
+✕ button top-right, or clicking FAB again
+
+Panel Header (always visible)
+
+Title: &quot;Help&quot; — 15px, font-weight 600, color: mushroom-900
+Close button (✕) — top right, 28×28px, border-radius 6px, hover: mushroom-200 background
+Action buttons row: + Report and + Ask — side by side, equal width, 7px border-radius
+  + Report hover: tomato-100 background, tomato-700 text, border #FFCCBC
+  + Ask hover: blueberry-100 background, blueberry-700 text, border #BBDEFB
+Filter tabs row: All · Reports · Asks — underline active state in kangkong-600, 12px font
+
+4. Feed View
+The default state of the panel. Shows all submitted items newest first, paginated at 20 items per page. A filter tab row allows narrowing to Reports or Asks.
+
+Feed Item Anatomy
+
+[ colored dot ]  Title of the report or question
+Name · Date ago                          [ ↑ votes ]  [ status pill ]
+
+Feed Item Fields
+
+Element
+Description
+Spec
+Type dot
+5×5px circle, left of title
+Tomato-600 for Report · Blueberry-600 for Ask
+Title
+Short description of the report or question
+13px, font-weight 500, mushroom-900
+Submitter
+Auto-filled from session on submit
+11px, mushroom-500, not editable
+Date
+Relative time (Today, Yesterday, X days ago)
+11px, mushroom-500
+Upvote button
+Arrow icon + count. One vote per user, cannot vote own item
+Border 1px mushroom-200, hover/voted: kangkong-50 bg + kangkong-700 text
+Status pill
+Current state of the item
+See status states table below
+
+Status States
+
+Status
+Description + Visual
+open
+Report submitted, not yet resolved. Pill: mango-100 background, mango-700 text.
+resolved
+Gardener has marked as resolved. Pill: kangkong-100 bg, kangkong-700 text. Item opacity 0.5 in feed.
+unanswered
+Ask submitted, not yet answered. Pill: mango-100 background, mango-700 text.
+answered
+Gardener has marked as answered. Pill: kangkong-100 bg, kangkong-700 text. Item opacity 0.5 in feed.
+
+Resolved / Answered Visibility
+Resolved and answered items remain visible in the feed — never hidden or deleted
+Visual treatment: opacity reduced to 0.5 to indicate settled state
+Status pill changes from mango (open) to kangkong (resolved/answered)
+
+Pagination
+20 items per page
+Prev / Next buttons at panel footer, 11px, border: 1px mushroom-200
+Page indicator: &quot;X of Y&quot; centered between buttons, 11px mushroom-500
+Prev disabled on page 1, Next disabled on last page
+
+5. Submit View
+Opens when user clicks + Report or + Ask. Replaces the feed content within the same panel (feed header remains, filter tabs and action row are hidden during submission). Clicking back returns to the feed.
+
+Submit View Elements
+
+Back button — arrow icon + &quot;Back to Help&quot;, 12px mushroom-500, top of view
+View heading — &quot;Submit a report&quot; or &quot;Ask a question&quot; — 14px, font-weight 600
+Type toggle — Report / Ask toggle, pre-selected based on which button triggered open
+  Report selected: tomato-100 bg, tomato-700 text, #FFCCBC border
+  Ask selected: blueberry-100 bg, blueberry-700 text, #BBDEFB border
+Submitter strip — avatar initials + &quot;Submitting as [Name]&quot; — mushroom-50 bg, border mushroom-200
+Title field — required, placeholder: &quot;Brief description...&quot;
+Description field — optional, textarea, placeholder: &quot;Steps to reproduce, or more context...&quot;
+Submit button — full width, kangkong-700 bg, white text, hover: kangkong-800
+
+Form Validation
+Title is required — Submit button does nothing if title is empty
+Description is optional — can submit without it
+Submitter name is auto-filled from session — not shown as an editable field
+
+On Submit
+New help_item record created in DB
+Panel returns to feed view automatically
+Filter resets to All, page resets to 1
+New item appears at top of feed
+
+6. Editing Items
+Submitters can edit their own Report or Ask after posting
+Edit is available only while status is open or unanswered — locked once Gardener resolves/answers
+Editing opens the same submit form pre-filled with existing title and description
+Submitter, type, and created_at are not editable
+
+7. Gardener Actions
+Gardeners (is_gardener = true) have additional controls visible on each feed item. These are not visible to regular employees.
+
+Action
+Trigger
+Result
+Mark as Resolved
+Button on Report item (Gardener only)
+status → resolved, resolved_by and resolved_at recorded, item opacity 0.5
+Mark as Answered
+Button on Ask item (Gardener only)
+status → answered, resolved_by and resolved_at recorded, item opacity 0.5
+Delete item
+Delete button on any item (Gardener only)
+Hard delete from DB, item removed from feed immediately
+
+No Re-open in v1
+Once marked resolved or answered, there is no re-open action in v1. Gardeners can delete and submitter can repost if needed.
+
+8. Database — help_items table
+
+Field
+Type
+Notes
+id
+uuid
+Primary key, auto-generated
+type
+text
+&apos;report&apos; or &apos;ask&apos;
+title
+text, not null
+Required, short description
+description
+text, nullable
+Optional, longer detail
+submitted_by
+text
+Email from session, auto-filled
+created_at
+timestamptz
+Auto, set on insert
+updated_at
+timestamptz
+Auto, updated on edit
+status
+text
+&apos;open&apos; or &apos;resolved&apos; (reports) · &apos;unanswered&apos; or &apos;answered&apos; (asks)
+resolved_by
+text, nullable
+Email of Gardener who resolved/answered
+resolved_at
+timestamptz, nullable
+Timestamp of resolution
+upvoters
+text[]
+Array of emails. Same pattern as wishes.upvoters[]
+
+Supabase RLS Policies Required
+SELECT: all authenticated users (select all rows)
+INSERT: authenticated users (submitted_by must match auth.email())
+UPDATE (title, description): submitted_by = auth.email() AND status is open/unanswered
+UPDATE (status, resolved_by, resolved_at): is_gardener = true only
+UPDATE (upvoters): authenticated users, cannot add own email
+DELETE: is_gardener = true only
+
+9. Permission Summary
+
+Action
+Employee
+Gardener
+View all items in feed
+✓
+✓
+Submit a Report or Ask
+✓
+✓
+Edit own item (while open)
+✓
+✓
+Upvote any item (not own)
+✓
+✓
+Mark as Resolved / Answered
+✗
+✓
+Delete any item
+✗
+✓
+
+10. Design Tokens Reference
+All colors use Sprout DS tokens. Use class names where possible, hex values as fallback.
+
+Element
+Token
+Hex
+FAB background
+spr-bg-kangkong700
+#1B5E20
+FAB hover
+spr-bg-kangkong800
+#144D18
+Panel background
+spr-bg-white-50
+#FFFFFF
+Panel border
+spr-mushroom-200
+#DDDBD5
+Surface / row alt
+spr-bg-mushroom-50
+#F7F6F4
+Surface 2
+spr-bg-mushroom-100
+#EEEDE9
+Report dot / text
+spr-tomato-600 / spr-tomato-700
+#D32F2F / #B71C1C
+Report hover bg
+spr-bg-tomato-100
+#FDECEA
+Ask dot / text
+spr-blueberry-600 / spr-blueberry-700
+#1565C0 / #0D47A1
+Ask hover bg
+spr-bg-blueberry-100
+#E3F2FD
+Open / unanswered pill bg
+spr-bg-mango-100
+#FFF8E1
+Open / unanswered pill text
+spr-mango-700
+#F57F17
+Resolved / answered pill bg
+spr-bg-kangkong-100
+#D4EBD4
+Resolved / answered pill text
+spr-kangkong-700
+#1B5E20
+Upvote voted state
+spr-bg-kangkong-50 + spr-kangkong-700
+#EEF6EE + #1B5E20
+Submit button
+spr-bg-kangkong700
+#1B5E20
+Primary text
+spr-mushroom-900
+#2A2926
+Secondary text
+spr-mushroom-700
+#5C5A54
+Hint text
+spr-mushroom-500
+#9A9890
+Default border
+spr-mushroom-200
+#DDDBD5
+
+11. Hard Constraints
+No localStorage or sessionStorage — Supabase session only
+No notifications in v1 — no email or in-app alerts on submission or resolution
+No threading or comments — each item is a standalone record
+No linking to Plants or Seeds — general scope only
+No re-open action — once resolved/answered, status is final in v1
+Submitter name is always auto-filled — never a manual input
+Upvoting own item is not allowed — enforced in both UI and RLS
+Permission checks on all mutations enforced in both UI and Supabase RLS
+
+12. Open Items
+Not in scope for v1 — revisit after launch
+Re-open action: allow Gardeners to revert resolved/answered status
+Gardener response: allow Gardeners to add a public reply to an Ask
+Notification: in-app or email ping when item is resolved/answered
+Admin view: dedicated Gardener dashboard showing open items count
+Search: text search within the Help feed
+
+End of Help Feature Spec — March 2026

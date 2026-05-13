@@ -1,0 +1,4 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'claude.md', LF will be replaced by CRLF the next time Git touches it
+Saved working directory and index state WIP on main: a0e77f4 feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text
+EXIT:0

@@ -1,0 +1,5 @@
+7261c8f feat: update dept list to 21 depts — rename CA/CSM/PeopleOps/ExCom, split Aurora/Prometheus into Prd/Eng, add Data and DevOps
+2d0967c fix: apply 7 UI polish tasks — Help rename, tab order, view order, remove AI Type filter, remove Preview section, remove project image in details, update loading messages
+1a6f54d fix: ensure garden scene height resolves correctly in all browsers
+cd903c1 feat: redesign Garden view with Garden Horizon layout
+9fe53b1 feat: replace garden plants with solid silhouette icons — distinct per stage

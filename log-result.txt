@@ -1,0 +1,5 @@
+9fe53b1 feat: replace garden plants with solid silhouette icons — distinct per stage
+4ad5d55 feat: replace stage icons with solid silhouettes + garden horizon redesign
+4963754 fix: remove impact field from spotlight card and garden map tooltip
+3dff21e feat: align board card style with directory — white bg, no left border, matching sizes
+1ed4524 feat: update board kanban cards — remove flag/tools/impact, add avatar + dept chip

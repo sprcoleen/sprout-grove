@@ -1,0 +1,4 @@
+[main 1ed4524] feat: update board kanban cards — remove flag/tools/impact, add avatar + dept chip
+ 1 file changed, 22 insertions(+), 19 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   0164d3c..1ed4524  main -> main

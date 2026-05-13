@@ -1,0 +1,10 @@
+2078:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+3813:<<<<<<< HEAD
+3814:=======
+3923:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+3954:<<<<<<< HEAD
+3955:=======
+3999:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)
+4093:<<<<<<< HEAD
+4095:=======
+4098:>>>>>>> 2a9635c (feat: rename roles — Gardener→Admin, ExCom→Approver in all user-facing text)

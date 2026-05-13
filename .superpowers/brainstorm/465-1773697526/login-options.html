@@ -1,0 +1,226 @@
+<style>
+  body { background: #F7F6F4; font-family: 'Inter', system-ui, sans-serif; }
+  .q { font-size: 13px; color: #5C5A54; margin-bottom: 20px; }
+
+  .split {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  /* Card shell for each option */
+  .card-shell {
+    background: white;
+    border: 1px solid #DDDBD5;
+    border-radius: 12px;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .option-label {
+    background: #EEEDE9;
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5C5A54;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .option-label .rec {
+    background: #2E7D32;
+    color: white;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  /* Option A — minimal centered */
+  .login-a {
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    min-height: 340px;
+    justify-content: center;
+  }
+  .grove-logo-a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .grove-icon {
+    width: 32px;
+    height: 32px;
+    background: #2E7D32;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .grove-wordmark {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2A2926;
+    letter-spacing: -0.02em;
+  }
+  .grove-tagline {
+    font-size: 12px;
+    color: #9A9890;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .google-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid #DDDBD5;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #2A2926;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .google-btn:hover { background: #F7F6F4; }
+  .google-logo {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .domain-hint {
+    font-size: 11px;
+    color: #9A9890;
+    text-align: center;
+  }
+
+  /* Option B — branded header */
+  .login-b-header {
+    background: #1B5E20;
+    padding: 28px 32px 24px;
+    text-align: center;
+  }
+  .login-b-header .grove-wordmark { color: white; font-size: 22px; }
+  .login-b-header .grove-tagline { color: rgba(255,255,255,0.65); margin-top: 6px; }
+  .login-b-body {
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .login-b-body .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5C5A54;
+    text-align: center;
+  }
+  .divider-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #9A9890;
+  }
+  .divider-line::before, .divider-line::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #DDDBD5;
+  }
+
+  /* Error state preview */
+  .error-preview {
+    background: #FDECEA;
+    border: 1px solid #FFCDD2;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #B71C1C;
+    text-align: center;
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+  .clickable:hover .card-shell {
+    border-color: #2E7D32;
+    box-shadow: 0 0 0 2px rgba(46,125,50,0.15);
+  }
+</style>
+
+<h2>Enhancement 1 — Login Screen</h2>
+<p class="q">Two layout options for the Google SSO login. Both replace email/password entirely.</p>
+
+<div class="split">
+
+  <!-- Option A: Minimal -->
+  <div class="option clickable" data-choice="a" onclick="toggleSelect(this)" style="flex:1">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Minimal — logo + button</h3>
+      <p>Clean, centered. Grove mark, one-line tagline, Google button, domain hint below.</p>
+    </div>
+    <div style="margin-top:16px">
+      <div class="card-shell">
+        <div class="option-label">Preview</div>
+        <div class="login-a">
+          <div class="grove-logo-a">
+            <div class="grove-icon">🌿</div>
+            <span class="grove-wordmark">Grove</span>
+          </div>
+          <div class="grove-tagline">Sprout's AI project tracker</div>
+          <button class="google-btn">
+            <svg class="google-logo" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+            Sign in with Google
+          </button>
+          <div class="domain-hint">@sprout.ph and @sproutsolutions.io only</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Branded header -->
+  <div class="option clickable" data-choice="b" onclick="toggleSelect(this)" style="flex:1">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Branded header</h3>
+      <p>Dark green header with Grove name and tagline, white card body below with Google button.</p>
+    </div>
+    <div style="margin-top:16px">
+      <div class="card-shell">
+        <div class="option-label">Preview</div>
+        <div class="login-b-header">
+          <div class="grove-wordmark">🌿 Grove</div>
+          <div class="grove-tagline">Sprout's AI project tracker</div>
+        </div>
+        <div class="login-b-body">
+          <div class="section-label">Sign in with your Sprout account</div>
+          <button class="google-btn">
+            <svg class="google-logo" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+            Sign in with Google
+          </button>
+          <div class="domain-hint" style="text-align:center">@sprout.ph · @sproutsolutions.io accounts only</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:24px; background: #FFFBF0; border: 1px solid #FFE082; border-radius: 8px; padding: 14px 16px;">
+  <div style="font-size: 12px; font-weight: 600; color: #5C5A54; margin-bottom: 6px;">Both options include:</div>
+  <div style="font-size: 12px; color: #5C5A54; line-height: 1.8;">
+    • Domain rejection after OAuth (non-Sprout accounts see an error and get signed out)<br>
+    • No sign-up form, no password reset — Google manages accounts<br>
+    • First name extracted from Google profile on first login, stored in profiles table<br>
+    • Country auto-set from email domain (same logic as before)
+  </div>
+</div>

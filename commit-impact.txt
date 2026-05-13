@@ -1,0 +1,4 @@
+[main 4963754] fix: remove impact field from spotlight card and garden map tooltip
+ 1 file changed, 5 deletions(-)
+To https://github.com/kvirata-web/sprout-garden.git
+   3dff21e..4963754  main -> main

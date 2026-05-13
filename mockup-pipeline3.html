@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pipeline Tiles — 3 Expressive Variants</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Rubik",system-ui,sans-serif;background:#f2f1ed;padding:40px 32px;color:#201e18}
+
+/* ── section labels ── */
+.section{margin-bottom:56px}
+.section-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#201e18;color:#fff;padding:5px 14px 5px 6px;
+  border-radius:999px;margin-bottom:8px;
+}
+.snum{width:22px;height:22px;border-radius:50%;background:#fff;color:#201e18;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.slabel{font-size:12px;font-weight:700;letter-spacing:.01em}
+.sdesc{font-size:11.5px;color:#736f5e;margin-bottom:20px;max-width:680px;line-height:1.55}
+.divider{height:1px;background:#e4e2da;margin:52px 0}
+
+/* ── shared pipeline row ── */
+.pipe-row{display:flex;align-items:stretch;gap:0}
+.chev{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0}
+
+/* ── pulse keyframe (Variant B) ── */
+@keyframes pulse-ring{
+  0%{transform:scale(.85);opacity:.55}
+  100%{transform:scale(1.7);opacity:0}
+}
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+}
+
+/* ── sway keyframe (Variant C) ── */
+@keyframes sway{
+  0%,100%{transform:rotate(-2.5deg)}
+  50%{transform:rotate(2.5deg)}
+}
+@keyframes swayb{
+  0%,100%{transform:rotate(2deg) scale(.65)}
+  50%{transform:rotate(-2deg) scale(.65)}
+}
+@keyframes swayc{
+  0%,100%{transform:rotate(-1.5deg) scale(.4)}
+  50%{transform:rotate(1.5deg) scale(.4)}
+}
+
+/* ── live dot (Thriving) ── */
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.2}}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  vertical-align:middle;margin-left:5px;animation:livepulse 1.8s infinite}
+
+
+/* ════════════════════════════════════════════════════
+   VARIANT A — OVERSIZED WATERMARK
+   Icon blows up huge behind each card. Premium, editorial.
+   Hover: ghost fades in further + card lifts.
+════════════════════════════════════════════════════ */
+.va{
+  flex:1;border-radius:12px;padding:18px 14px 16px;
+  cursor:pointer;transition:transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  min-height:148px;
+  border:.5px solid transparent;
+}
+.va:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06)}
+.va-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:12px 0 0 12px}
+.va-wm{
+  position:absolute;bottom:-18px;right:-14px;
+  transition:opacity .3s,transform .3s;
+  pointer-events:none;
+}
+.va:hover .va-wm{transform:scale(1.08) rotate(6deg)}
+.va-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:100%}
+.va-toprow{display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.va-count{font-size:42px;font-weight:800;line-height:1;margin-bottom:3px}
+.va-name{font-size:12px;font-weight:700;letter-spacing:.025em;margin-bottom:6px}
+.va-desc{font-size:10px;line-height:1.65;flex:1;color:#565244}
+.va-cta{margin-top:11px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  opacity:0;transition:opacity .15s}
+.va:hover .va-cta{opacity:1}
+
+
+/* ════════════════════════════════════════════════════
+   VARIANT B — PULSE & FLOAT
+   Icon is the hero — always floating, always glowing.
+   Most "alive" variant. Centered, playful energy.
+════════════════════════════════════════════════════ */
+.vb{
+  flex:1;border-radius:14px;padding:20px 12px 16px;
+  cursor:pointer;transition:transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  min-height:168px;
+  border:.5px solid transparent;
+}
+.vb:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06)}
+.vb-glow{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:110px;height:90px;border-radius:50%;
+  filter:blur(24px);pointer-events:none;opacity:.55;
+}
+.vb-icon-wrap{
+  position:relative;margin-bottom:14px;
+  width:64px;height:64px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.vb-ring{
+  position:absolute;inset:-8px;border-radius:50%;
+  animation:pulse-ring 2.4s ease-out infinite;
+}
+.vb-ring2{
+  position:absolute;inset:-8px;border-radius:50%;
+  animation:pulse-ring 2.4s ease-out infinite 1.2s;
+}
+.vb-icon{animation:float 3.8s ease-in-out infinite;position:relative;z-index:1}
+.vb-count{font-size:38px;font-weight:800;line-height:1;margin-bottom:5px;position:relative;z-index:1}
+.vb-sep{width:20px;height:2px;border-radius:2px;margin:0 auto 7px;opacity:.45}
+.vb-name{font-size:11px;font-weight:700;letter-spacing:.03em;margin-bottom:5px;position:relative;z-index:1}
+.vb-desc{font-size:10px;line-height:1.55;position:relative;z-index:1;color:#565244}
+
+
+/* ════════════════════════════════════════════════════
+   VARIANT C — GARDEN FLOOR
+   Multiple icon instances swaying at different scales
+   behind a ground line. Living garden scene per stage.
+════════════════════════════════════════════════════ */
+.vc{
+  flex:1;border-radius:12px;padding:16px 14px 14px;
+  cursor:pointer;transition:transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  min-height:158px;
+  border:.5px solid transparent;
+}
+.vc:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12),0 4px 8px rgba(0,0,0,.06)}
+.vc-ground{position:absolute;bottom:0;left:0;right:0;height:36px;
+  border-radius:0 0 12px 12px;opacity:.14}
+.vc-ground-line{position:absolute;bottom:36px;left:0;right:0;height:1px;opacity:.2}
+/* plant C — smallest, leftmost */
+.vc-pc{
+  position:absolute;bottom:2px;left:8px;
+  transform-origin:bottom center;
+  animation:swayc 5s ease-in-out infinite .4s;
+  pointer-events:none;
+}
+/* plant B — medium, center-left */
+.vc-pb{
+  position:absolute;bottom:2px;left:32%;
+  transform-origin:bottom center;
+  animation:swayb 4.2s ease-in-out infinite;
+  pointer-events:none;
+}
+/* plant A — large, right */
+.vc-pa{
+  position:absolute;bottom:2px;right:8px;
+  transform-origin:bottom center;
+  animation:sway 6s ease-in-out infinite .8s;
+  pointer-events:none;
+}
+.vc-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:100%}
+.vc-top{margin-bottom:9px}
+.vc-count{font-size:40px;font-weight:800;line-height:1;margin-bottom:4px}
+.vc-name{font-size:12px;font-weight:700;letter-spacing:.025em;margin-bottom:5px}
+.vc-desc{font-size:10px;line-height:1.65;flex:1;color:#565244}
+.vc-cta{margin-top:11px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  opacity:0;transition:opacity .15s}
+.vc:hover .vc-cta{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- VARIANT A -->
+<div class="section">
+  <div class="section-badge">
+    <div class="snum">A</div>
+    <span class="slabel">Oversized Watermark</span>
+  </div>
+  <p class="sdesc">Each stage icon is blown up 10× and ghosted behind the card. Premium, editorial feel. Hover pulls the icon forward — feels like the stage is "emerging." Count and name stay front and center.</p>
+  <div id="va-row" class="pipe-row"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- VARIANT B -->
+<div class="section">
+  <div class="section-badge">
+    <div class="snum">B</div>
+    <span class="slabel">Pulse &amp; Float</span>
+  </div>
+  <p class="sdesc">The icon is always alive — floating up/down on a loop, with two concentric glow rings pulsing outward from it. The card has a radial gradient wash from the stage color. Most kinetic of the three.</p>
+  <div id="vb-row" class="pipe-row"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- VARIANT C -->
+<div class="section">
+  <div class="section-badge">
+    <div class="snum">C</div>
+    <span class="slabel">Garden Floor</span>
+  </div>
+  <p class="sdesc">Three sizes of the stage icon grow up from a ground line at the bottom of each card, swaying gently at different rhythms. Feels like a living garden scene. Organic, narrative, on-brand.</p>
+  <div id="vc-row" class="pipe-row"></div>
+</div>
+
+<script>
+const stages=[
+  {key:"seeds",    label:"Seeds",    count:12, sub:"Ideas waiting to be built",
+   accent:"#805ad5",bg:"#faf5ff",border:"#c4b5fd",countColor:"#6b46c1"},
+  {key:"seedling", label:"Seedling", count:4,  sub:"Idea captured, scoping in progress",
+   accent:"#928e7c",bg:"#f2f1ed",border:"#ccc9bc",countColor:"#565244"},
+  {key:"nursery",  label:"Nursery",  count:7,  sub:"ExCom-reviewed, cleared to build",
+   accent:"#b7791f",bg:"#fefcbf",border:"#d69e2e",countColor:"#975a16"},
+  {key:"sprout",   label:"Sprout",   count:9,  sub:"Under active development",
+   accent:"#2c7a7b",bg:"#e6fffa",border:"#38b2ac",countColor:"#285e61"},
+  {key:"bloom",    label:"Bloom",    count:5,  sub:"Testing with real users",
+   accent:"#2d8c2d",bg:"#f0faf0",border:"#77c277",countColor:"#1f6e1f"},
+  {key:"thriving", label:"Thriving", count:3,  sub:"Live and making an impact",
+   accent:"#3182ce",bg:"#ebf8ff",border:"#63b3ed",countColor:"#2c5282"},
+];
+
+function ico(key,size,col){
+  const f=col,q=.8,r=.75,s=.7,t=.65;
+  if(key==="seeds") return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none">
+    <path d="M12 20 C12 20 4 15 4 9.5 C4 7 6 5 8.5 5 C10 5 11.2 5.8 12 6.8 C12.8 5.8 14 5 15.5 5 C18 5 20 7 20 9.5 C20 15 12 20 12 20Z" fill="${f}" fill-opacity=".18" stroke="${f}" stroke-width="1.4"/>
+    <line x1="12" y1="9" x2="12" y2="15" stroke="${f}" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="9" y1="12" x2="15" y2="12" stroke="${f}" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>`;
+  if(key==="seedling") return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none">
+    <rect x="7.5" y="9" width="1" height="5" rx=".5" fill="${f}"/>
+    <path d="M8 12.5 Q5.5 11 4.5 8.5 C6.5 8 8 10 8 12Z" fill="${f}"/>
+    <path d="M8 12.5 Q10.5 11 11.5 8.5 C9.5 8 8 10 8 12Z" fill="${f}" opacity="${q}"/>
+  </svg>`;
+  if(key==="nursery") return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none">
+    <path d="M5.5 10.5 L6.5 14.5 L9.5 14.5 L10.5 10.5 Z" fill="${f}" opacity=".55"/>
+    <rect x="5" y="9" width="6" height="2" rx="1" fill="${f}"/>
+    <rect x="7.5" y="5" width="1" height="4.5" rx=".5" fill="${f}"/>
+    <path d="M8 9 Q5 7.5 4 5 C6.5 5 8 7 8 8.5Z" fill="${f}"/>
+    <path d="M8 9 Q11 7.5 12 5 C9.5 5 8 7 8 8.5Z" fill="${f}" opacity="${q}"/>
+    <path d="M8 7 Q5.5 5.5 5 3 C7 3.5 8 5.5 8 6.5Z" fill="${f}" opacity="${s}"/>
+    <path d="M8 7 Q10.5 5.5 11 3 C9 3.5 8 5.5 8 6.5Z" fill="${f}" opacity=".6"/>
+  </svg>`;
+  if(key==="sprout") return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none">
+    <rect x="7.5" y="3.5" width="1" height="11" rx=".5" fill="${f}"/>
+    <path d="M8 12 Q4.5 10 3 7 C5 6.5 7.5 8.5 8 11.5Z" fill="${f}"/>
+    <path d="M8 12 Q11.5 10 13 7 C11 6.5 8.5 8.5 8 11.5Z" fill="${f}" opacity=".85"/>
+    <path d="M8 8.5 Q5 7 4 4.5 C6.5 4.5 8 6 8 8Z" fill="${f}" opacity="${q}"/>
+    <path d="M8 8.5 Q11 7 12 4.5 C9.5 4.5 8 6 8 8Z" fill="${f}" opacity="${r}"/>
+  </svg>`;
+  if(key==="bloom") return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none">
+    <rect x="7.5" y="9" width="1" height="6" rx=".5" fill="${f}"/>
+    <path d="M8 12 Q5 11 3.5 9 C5.5 8.5 8 10 8 11.5Z" fill="${f}" opacity="${r}"/>
+    <path d="M8 12 Q11 11 12.5 9 C10.5 8.5 8 10 8 11.5Z" fill="${f}" opacity="${t}"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity=".8" transform="rotate(0 8 7)"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity="${t}" transform="rotate(60 8 7)"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity=".8" transform="rotate(120 8 7)"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity="${t}" transform="rotate(180 8 7)"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity=".8" transform="rotate(240 8 7)"/>
+    <ellipse cx="8" cy="4.5" rx="2.2" ry="4" fill="${f}" opacity="${t}" transform="rotate(300 8 7)"/>
+    <circle cx="8" cy="7" r="2.5" fill="#e8c020"/>
+    <circle cx="8" cy="7" r="1.5" fill="#c8a010"/>
+  </svg>`;
+  if(key==="thriving") return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none">
+    <rect x="6.5" y="9.5" width="3" height="5.5" rx="1" fill="${f}" opacity=".7"/>
+    <circle cx="5.5" cy="8.5" r="3.5" fill="${f}" opacity=".8"/>
+    <circle cx="10.5" cy="8.5" r="3.5" fill="${f}" opacity=".8"/>
+    <circle cx="8" cy="6.5" r="4.5" fill="${f}"/>
+    <circle cx="8" cy="4" r="3" fill="${f}" opacity=".9"/>
+  </svg>`;
+}
+
+function chev(){
+  return `<div class="chev"><svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+    <path d="M6 4L10 8L6 12" stroke="#b0ac9c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg></div>`;
+}
+
+/* ─── Variant A ─────────────────────────────────────── */
+function buildA(){
+  return stages.map((s,i)=>{
+    const live = s.key==="thriving";
+    const wmOpacity = s.key==="seedling"?.07:.09;
+    return `
+    <div class="va" style="background:${s.bg};border-color:${s.border}">
+      <div class="va-bar" style="background:${s.accent}"></div>
+      <div class="va-wm" style="opacity:${wmOpacity}">${ico(s.key,145,s.accent)}</div>
+      <div class="va-inner">
+        <div class="va-toprow">
+          ${ico(s.key,20,s.accent)}
+        </div>
+        <div class="va-count" style="color:${s.countColor}">${s.count}</div>
+        <div class="va-name" style="color:${s.countColor}">${s.label}${live?`<span class="live-dot" style="background:${s.accent}"></span>`:""}</div>
+        <div class="va-desc">${s.sub}</div>
+        <div class="va-cta" style="color:${s.accent}">View all →</div>
+      </div>
+    </div>${i<stages.length-1?chev():""}`;
+  }).join("");
+}
+
+/* ─── Variant B ─────────────────────────────────────── */
+function buildB(){
+  return stages.map((s,i)=>{
+    const gradBg=`radial-gradient(ellipse at 50% 0%, ${s.border}60 0%, ${s.bg} 58%)`;
+    return `
+    <div class="vb" style="background:${gradBg};border-color:${s.border}">
+      <div class="vb-glow" style="background:${s.accent}"></div>
+      <div class="vb-icon-wrap">
+        <div class="vb-ring" style="background:${s.accent}2a"></div>
+        <div class="vb-ring2" style="background:${s.accent}1a"></div>
+        <div class="vb-icon">${ico(s.key,48,s.accent)}</div>
+      </div>
+      <div class="vb-count" style="color:${s.countColor}">${s.count}</div>
+      <div class="vb-sep" style="background:${s.accent}"></div>
+      <div class="vb-name" style="color:${s.countColor}">${s.label}</div>
+      <div class="vb-desc">${s.sub}</div>
+    </div>${i<stages.length-1?chev():""}`;
+  }).join("");
+}
+
+/* ─── Variant C ─────────────────────────────────────── */
+function buildC(){
+  return stages.map((s,i)=>{
+    return `
+    <div class="vc" style="background:${s.bg};border-color:${s.border}">
+      <div class="vc-ground" style="background:${s.accent}"></div>
+      <div class="vc-ground-line" style="background:${s.accent}"></div>
+      <div class="vc-pc">${ico(s.key,38,s.accent)}</div>
+      <div class="vc-pb">${ico(s.key,76,s.accent)}</div>
+      <div class="vc-pa" style="opacity:.09">${ico(s.key,100,s.accent)}</div>
+      <div class="vc-inner">
+        <div class="vc-top">${ico(s.key,20,s.accent)}</div>
+        <div class="vc-count" style="color:${s.countColor}">${s.count}</div>
+        <div class="vc-name" style="color:${s.countColor}">${s.label}</div>
+        <div class="vc-desc">${s.sub}</div>
+        <div class="vc-cta" style="color:${s.accent}">View all →</div>
+      </div>
+    </div>${i<stages.length-1?chev():""}`;
+  }).join("");
+}
+
+document.getElementById("va-row").innerHTML=buildA();
+document.getElementById("vb-row").innerHTML=buildB();
+document.getElementById("vc-row").innerHTML=buildC();
+</script>
+</body>
+</html>
