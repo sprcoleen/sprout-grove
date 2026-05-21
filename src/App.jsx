@@ -1940,6 +1940,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
   const showSeeds = stageFilter === "All" || stageFilter === "seed";
 
   const filteredAlpha = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  const tierCounts = [1,2,3].map(t => filtered.filter(p=>p.tier===t).length);
 
   const moveStage = (project, dirOrStage) => onMoveStage(project, dirOrStage);
 
@@ -2109,6 +2110,15 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
             <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,fontWeight:600}}>
               {filtered.length} plant{filtered.length!==1?"s":""} across PH &amp; TH{showSeeds&&filteredWishes.length>0?` · ${filteredWishes.length} seed${filteredWishes.length!==1?"s":""}`:""}</div>
           </div>
+          {tierCounts.some(c=>c>0)&&(
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
+              {[[1,tierCounts[0],C.mushroom700,C.mushroom50,C.mushroom300],[2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400],[3,tierCounts[2],C.carrot500,C.carrot100,C.carrot500]].filter(([,c])=>c>0).map(([tier,count,color,bg,border])=>(
+                <span key={tier} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:DS.radius.full,background:bg,border:`1px solid ${border}`,fontFamily:FF,fontSize:11,fontWeight:700,color}}>
+                  Tier {tier} · {count}
+                </span>
+              ))}
+            </div>
+          )}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16}}>
             {filteredAlpha.map(p => {
               const sc  = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
@@ -2198,7 +2208,17 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
 
       {/* ── Board (Kanban) View ── */}
       {viewMode === "board" && (
-        <div style={{display:"flex",gap:0,flex:1,overflowX:"auto",overflowY:"hidden",padding:"16px 20px"}}>
+        <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+          {tierCounts.some(c=>c>0)&&(
+            <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 20px 0",flexShrink:0}}>
+              {[[1,tierCounts[0],C.mushroom700,C.mushroom50,C.mushroom300],[2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400],[3,tierCounts[2],C.carrot500,C.carrot100,C.carrot500]].filter(([,c])=>c>0).map(([tier,count,color,bg,border])=>(
+                <span key={tier} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:DS.radius.full,background:bg,border:`1px solid ${border}`,fontFamily:FF,fontSize:11,fontWeight:700,color}}>
+                  Tier {tier} · {count}
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{display:"flex",gap:0,flex:1,overflowX:"auto",overflowY:"hidden",padding:"16px 20px"}}>
 
           {/* Seed column — from wishes */}
           {(()=>{
@@ -2407,6 +2427,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -2825,6 +2846,32 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             </div>
           ))}
         </div>
+
+        {project.tier!==null&&(()=>{
+          const [tierColor,tierBg,tierBorder,tierLabel] =
+            project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
+            project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
+                             [C.carrot500,  C.carrot100,  C.carrot500,  "External App"];
+          return (
+            <div style={{marginBottom:16,padding:"12px 14px",background:tierBg,border:`1px solid ${tierBorder}`,borderRadius:DS.radius.lg}}>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Tier Classification</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
+                <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tierLabel}</span>
+              </div>
+              {[
+                {q:"UI-only / static content?",      v:project.isUiOnly},
+                {q:"External APIs / third-party?",   v:project.usesExternalApis},
+                {q:"Requires deployment?",           v:project.requiresDeployment},
+              ].filter(r=>r.v!==null).map((r,i,arr)=>(
+                <div key={r.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<arr.length-1?`1px solid ${tierBorder}`:"none"}}>
+                  <span style={{fontFamily:FF,fontSize:11,color:C.mushroom600}}>{r.q}</span>
+                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:r.v===true?C.kangkong600:C.mushroom500}}>{r.v===true?"Yes":"No"}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {project.collaboratorEmails?.length>0&&(
           <div style={{marginBottom:16}}>
@@ -3611,6 +3658,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     dataSources:[], dataSourcesOther:"",
     description:"", demoLink:"", collaboratorEmails:[],
     problem:"", built:"", betterNow:"",
+    isUiOnly:null, usesExternalApis:null, requiresDeployment:null,
   });
   const setP = (k,v) => setPlantRaw(p=>({...p,[k]:v}));
 
@@ -3641,8 +3689,16 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
   const [aiOverlapChecked, setAiOverlapChecked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Tier computation (derived from yes/no answers)
+  const plantTier =
+    plant.isUiOnly === true           ? 1 :
+    plant.usesExternalApis === true   ? 3 :
+    plant.requiresDeployment === true ? 2 :
+    plant.requiresDeployment === false? 1 :
+    null;
+
   // Validation
-  const plantStep1Valid = !!(plant.name.trim() && plant.builtFor.length>0);
+  const plantStep1Valid = !!(plant.name.trim() && plant.builtFor.length>0 && plantTier !== null);
   const plantStep2Valid = !!(plant.aiAssistant.length>0 && plant.builderTools.length>0 && plant.agenticFramework.length>0 && plant.dataSources.length>0);
   const seedStep1Valid  = seed.title.trim().length>0;
   const seedStep2Valid  = !!(seed.why.trim() && seed.builtFor.length>0);
@@ -3678,6 +3734,8 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
       agenticFramework:[...plant.agenticFramework,...(plant.agenticFrameworkOther?[plant.agenticFrameworkOther]:[])],
       dataSources:[...plant.dataSources,...(plant.dataSourcesOther?[plant.dataSourcesOther]:[])],
       problem:plant.problem, built:plant.built, betterNow:plant.betterNow,
+      isUiOnly:plant.isUiOnly, usesExternalApis:plant.usesExternalApis, requiresDeployment:plant.requiresDeployment,
+      tier:plantTier,
       problemSpace:"", capability:"",
       id:Date.now(), lastUpdated:0, notes:[],
       zx:35+Math.random()*25, zy:35+Math.random()*25,
@@ -3833,6 +3891,63 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
                 })}
               </div>
             </div>
+
+            {/* ── TIER QUESTIONS ── */}
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                Is this project UI-only or static content — no backend logic or automation? <span style={{color:C.carrot500}}>*</span>
+              </label>
+              <div style={{display:"flex",gap:8}}>
+                {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                  <button key={String(opt.v)} type="button"
+                    onClick={()=>{setP("isUiOnly",opt.v);setP("usesExternalApis",null);setP("requiresDeployment",null);}}
+                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:plant.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.isUiOnly===opt.v?700:400,color:plant.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {plant.isUiOnly===false&&(
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                  Does it use any external APIs or third-party services outside Sprout? <span style={{color:C.carrot500}}>*</span>
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                    <button key={String(opt.v)} type="button"
+                      onClick={()=>{setP("usesExternalApis",opt.v);setP("requiresDeployment",null);}}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:plant.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.usesExternalApis===opt.v?700:400,color:plant.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plant.isUiOnly===false&&plant.usesExternalApis===false&&(
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                  Does it require deployment to infrastructure (Vercel, Azure, or similar)? <span style={{color:C.carrot500}}>*</span>
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                    <button key={String(opt.v)} type="button"
+                      onClick={()=>setP("requiresDeployment",opt.v)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:plant.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.requiresDeployment===opt.v?700:400,color:plant.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plantTier!==null&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:plantTier===1?C.mushroom50:plantTier===2?C.blueberry100:C.carrot100,border:`1px solid ${plantTier===1?C.mushroom300:plantTier===2?C.blueberry400:C.carrot500}`}}>
+                <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:plantTier===1?C.mushroom700:plantTier===2?C.blueberry500:C.carrot500}}>Tier {plantTier}</span>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Markup / Simple Logic":plantTier===2?"Internal App (Kindly coordinate with Raffy)":"External App (Kindly coordinate with Belle or Coleen)"}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -4465,6 +4580,9 @@ const AddProjectModal = ({onClose, onAdd, onSave, projects, prefill=null, existi
     dataSource:         existing?.dataSource  || "",
     dataSources:        existing?.dataSources || [],
     demoLink:           existing?.demoLink    || "",
+    isUiOnly:          existing?.isUiOnly          ?? null,
+    usesExternalApis:  existing?.usesExternalApis  ?? null,
+    requiresDeployment:existing?.requiresDeployment ?? null,
     toolUsed:           existing?.toolUsed          || [],
     agenticFramework:   existing?.agenticFramework  || [],
     collaboratorEmails: existing?.collaboratorEmails || [],
@@ -4490,6 +4608,13 @@ const AddProjectModal = ({onClose, onAdd, onSave, projects, prefill=null, existi
   };
 
   const canSummarize = !!(form.name.trim() && (form.problem || form.built || form.betterNow));
+
+  const editingTier =
+    form.isUiOnly === true            ? 1 :
+    form.usesExternalApis === true    ? 3 :
+    form.requiresDeployment === true  ? 2 :
+    form.requiresDeployment === false ? 1 :
+    null;
 
   const handleSummarize = async () => {
     if (!canSummarize || aiSummarizing) return;
@@ -4523,7 +4648,7 @@ const AddProjectModal = ({onClose, onAdd, onSave, projects, prefill=null, existi
   };
 
   const doSave = () => {
-    onSave({...existing, ...form, problemSpace: "", capability: ""});
+    onSave({...existing, ...form, tier: editingTier, problemSpace: "", capability: ""});
     onClose();
   };
 
@@ -4742,6 +4867,81 @@ const AddProjectModal = ({onClose, onAdd, onSave, projects, prefill=null, existi
             })}
           </div>
         </div>
+
+        {/* ── Section 4: Tier Classification (edit-only) ── */}
+        {isEditing&&(
+          <>
+            <SectionHeader title="Tier Classification"/>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+
+              {/* Q1 */}
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
+                  Is this project UI-only or static content — no backend logic or automation?
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                    <button key={String(opt.v)} type="button"
+                      onClick={()=>{setField("isUiOnly",opt.v);setField("usesExternalApis",null);setField("requiresDeployment",null);}}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:form.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.isUiOnly===opt.v?700:400,color:form.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Q2 */}
+              {form.isUiOnly===false&&(
+                <div>
+                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
+                    Does it use any external APIs or third-party services outside Sprout?
+                  </label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                      <button key={String(opt.v)} type="button"
+                        onClick={()=>{setField("usesExternalApis",opt.v);setField("requiresDeployment",null);}}
+                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:form.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.usesExternalApis===opt.v?700:400,color:form.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Q3 */}
+              {form.isUiOnly===false&&form.usesExternalApis===false&&(
+                <div>
+                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
+                    Does it require deployment to infrastructure (Vercel, Azure, or similar)?
+                  </label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                      <button key={String(opt.v)} type="button"
+                        onClick={()=>setField("requiresDeployment",opt.v)}
+                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:form.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.requiresDeployment===opt.v?700:400,color:form.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resolved tier badge */}
+              {editingTier!==null&&(()=>{
+                const [tierColor,tierBg,tierBorder,tierLabel] =
+                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
+                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App (Kindly coordinate with Raffy)"]:
+                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External App (Kindly coordinate with Belle or Coleen)"];
+                return (
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:tierBg,border:`1px solid ${tierBorder}`}}>
+                    <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {editingTier}</span>
+                    <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tierLabel}</span>
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
 
         {/* AI Duplicate Check result */}
         {aiOverlapChecked&&(
