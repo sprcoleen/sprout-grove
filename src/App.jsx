@@ -2111,11 +2111,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               {filtered.length} plant{filtered.length!==1?"s":""} across PH &amp; TH{showSeeds&&filteredWishes.length>0?` · ${filteredWishes.length} seed${filteredWishes.length!==1?"s":""}`:""}</div>
           </div>
           {tierCounts.some(c=>c>0)&&(
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-              {[[1,tierCounts[0],C.mushroom700,C.mushroom50,C.mushroom300],[2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400],[3,tierCounts[2],C.carrot500,C.carrot100,C.carrot500]].filter(([,c])=>c>0).map(([tier,count,color,bg,border])=>(
-                <span key={tier} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:DS.radius.full,background:bg,border:`1px solid ${border}`,fontFamily:FF,fontSize:11,fontWeight:700,color}}>
-                  Tier {tier} · {count}
-                </span>
+            <div style={{display:"flex",gap:10,marginBottom:18}}>
+              {[
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic",   "No backend or external users — prompt engineering, scripts, and simple logic."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",        "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",          "Faces customers or external partners. Coordinate with Belle or Coleen."],
+              ].map(([tier,count,color,bg,border,accent,label,desc])=>(
+                <div key={tier} style={{flex:1,position:"relative",background:bg,border:`1px solid ${border}`,borderRadius:DS.radius.md,padding:"12px 12px 12px 16px",overflow:"hidden",display:"flex",flexDirection:"column",minHeight:88}}>
+                  <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:accent,borderRadius:`${DS.radius.md} 0 0 ${DS.radius.md}`}}/>
+                  <div style={{fontFamily:FF,fontSize:26,fontWeight:800,color,lineHeight:1,marginBottom:2}}>{count}</div>
+                  <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color,marginBottom:4}}>Tier {tier} · {label}</div>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>{desc}</div>
+                </div>
               ))}
             </div>
           )}
@@ -2210,11 +2217,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
       {viewMode === "board" && (
         <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
           {tierCounts.some(c=>c>0)&&(
-            <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 20px 0",flexShrink:0}}>
-              {[[1,tierCounts[0],C.mushroom700,C.mushroom50,C.mushroom300],[2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400],[3,tierCounts[2],C.carrot500,C.carrot100,C.carrot500]].filter(([,c])=>c>0).map(([tier,count,color,bg,border])=>(
-                <span key={tier} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:DS.radius.full,background:bg,border:`1px solid ${border}`,fontFamily:FF,fontSize:11,fontWeight:700,color}}>
-                  Tier {tier} · {count}
-                </span>
+            <div style={{display:"flex",gap:10,padding:"12px 20px 0",flexShrink:0}}>
+              {[
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic",   "No backend or external users — prompt engineering, scripts, and simple logic."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",        "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",          "Faces customers or external partners. Coordinate with Belle or Coleen."],
+              ].map(([tier,count,color,bg,border,accent,label,desc])=>(
+                <div key={tier} style={{flex:1,position:"relative",background:bg,border:`1px solid ${border}`,borderRadius:DS.radius.md,padding:"12px 12px 12px 16px",overflow:"hidden",display:"flex",flexDirection:"column",minHeight:88}}>
+                  <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:accent,borderRadius:`${DS.radius.md} 0 0 ${DS.radius.md}`}}/>
+                  <div style={{fontFamily:FF,fontSize:26,fontWeight:800,color,lineHeight:1,marginBottom:2}}>{count}</div>
+                  <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color,marginBottom:4}}>Tier {tier} · {label}</div>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>{desc}</div>
+                </div>
               ))}
             </div>
           )}
