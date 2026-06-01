@@ -6990,89 +6990,141 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
 }
 
 // ── DevopsBoard ──────────────────────────────────────────────────────────────
-const DEVOPS_COLS = [
-  {id:'todo',        label:'To Do',       color:C.mushroom600, bg:C.mushroom50, border:C.mushroom200, nextId:'in_progress', nextLabel:'Start →'},
-  {id:'in_progress', label:'In Progress', color:C.mango600,    bg:C.mango50,    border:C.mango300,   nextId:'done',        nextLabel:'Mark Done →'},
-  {id:'done',        label:'Done',        color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200, nextId:null,          nextLabel:null},
+const JIRA_COLS = [
+  { cat:'new',           label:'Open',        color:C.mushroom600,  bg:C.mushroom50,   border:C.mushroom200  },
+  { cat:'indeterminate', label:'In Progress',  color:C.mango600,     bg:C.mango50,      border:C.mango300     },
+  { cat:'done',          label:'Done',         color:C.kangkong600,  bg:C.kangkong50,   border:C.kangkong200  },
 ];
-function DevopsBoard({ requests, authUser, onUpdate, onDelete, onViewProject }) {
-  const [noteInput, setNoteInput] = React.useState({});
-  const [confirmDelete, setConfirmDelete] = React.useState(null);
-  const canManage = authUser?.isAdmin || authUser?.isDevops;
+function DevopsBoard({ authUser }) {
+  const [tickets,  setTickets]  = React.useState([]);
+  const [loading,  setLoading]  = React.useState(true);
+  const [error,    setError]    = React.useState(null);
+  const [lastSync, setLastSync] = React.useState(null);
+
+  const fetchTickets = async () => {
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch('/api/get-jira-tickets');
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to load tickets'); return; }
+      setTickets(data.tickets || []);
+      setLastSync(new Date());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { fetchTickets(); }, []);
+
+  const fmt = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+  };
+  const fmtRel = (iso) => {
+    if (!iso) return '—';
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    return d === 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d}d ago`;
+  };
+
   return (
-    <div style={{flex:1,overflowY:'auto',background:C.mushroom50,display:'flex',flexDirection:'column',fontFamily:FF}}>
-      <div style={{padding:'20px 28px 12px',background:C.white,borderBottom:'1px solid '+C.mushroom200,display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',background:C.mushroom50,fontFamily:FF,overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{padding:'20px 28px 14px',background:C.white,borderBottom:'1px solid '+C.mushroom200,display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
         <IcoDevops size={22} color={C.carrot500}/>
         <div>
-          <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900}}>DevOps Requests</div>
-          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:1}}>Deployment & setup requests for Tier 3 projects</div>
+          <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900}}>Tool Shed</div>
+          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:1}}>
+            Jira tickets · DEV project · label: <code style={{fontFamily:DS.fonts.mono,fontSize:11,background:C.mushroom100,padding:'1px 5px',borderRadius:DS.radius.sm}}>Src-Grove</code>
+            {lastSync&&<span style={{marginLeft:8,color:C.mushroom400}}>· synced {fmtRel(lastSync.toISOString())}</span>}
+          </div>
         </div>
         <div style={{flex:1}}/>
-        <a href={JIRA_BOARD_URL} target="_blank" rel="noreferrer" style={{padding:'7px 14px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,color:C.blueberry500,textDecoration:'none',display:'flex',alignItems:'center',gap:5}}
-        >View in Jira ↗</a>
+        <button onClick={fetchTickets} disabled={loading}
+          style={{padding:'6px 12px',background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom600,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:5,transition:'all 0.15s'}}
+          onMouseOver={e=>{if(!loading){e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}}
+          onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.color=C.mushroom600;}}
+        >
+          <svg width={12} height={12} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M11 6A5 5 0 1 1 6 1" style={{transformOrigin:'center',animation:loading?'spin 1s linear infinite':'none'}}/>
+            <path d="M11 1v5H6"/>
+          </svg>
+          {loading ? 'Syncing…' : 'Refresh'}
+        </button>
+        <a href={JIRA_BOARD_URL} target="_blank" rel="noreferrer"
+          style={{padding:'6px 14px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.blueberry500,textDecoration:'none',display:'flex',alignItems:'center',gap:5}}>
+          View in Jira ↗
+        </a>
       </div>
-      <div style={{flex:1,overflowX:'auto',padding:24}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,minWidth:640}}>
-          {DEVOPS_COLS.map(col => {
-            const cards = requests.filter(r => r.status === col.id);
+
+      {/* Error state */}
+      {error&&(
+        <div style={{margin:'20px 28px',padding:'12px 16px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,color:C.tomato600}}>
+          ⚠ {error}
+        </div>
+      )}
+
+      {/* Kanban columns */}
+      <div style={{flex:1,overflowX:'auto',overflowY:'hidden',padding:'20px 28px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,height:'100%',minWidth:640}}>
+          {JIRA_COLS.map(col => {
+            const cards = tickets.filter(t => (t.statusCategory||'new') === col.cat);
             return (
-              <div key={col.id} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.xl,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:DS.shadow.sm}}>
-                <div style={{padding:'12px 16px',background:col.bg,borderBottom:'1px solid '+col.border,display:'flex',alignItems:'center',gap:8}}>
+              <div key={col.cat} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.xl,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:DS.shadow.sm}}>
+
+                {/* Column header */}
+                <div style={{padding:'12px 16px',background:col.bg,borderBottom:'1px solid '+col.border,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
                   <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:col.color,textTransform:'uppercase',letterSpacing:0.5}}>{col.label}</span>
-                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,background:C.white,color:col.color,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'1px 7px',marginLeft:'auto'}}>{cards.length}</span>
+                  <span style={{marginLeft:'auto',fontFamily:FF,fontSize:11,fontWeight:700,background:C.white,color:col.color,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'1px 8px'}}>{cards.length}</span>
                 </div>
-                <div style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:10,minHeight:120}}>
-                  {cards.length===0&&<div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:'italic',textAlign:'center',padding:'20px 0'}}>No requests here</div>}
-                  {cards.map(req => (
-                    <div key={req.id} style={{background:C.mushroom50,border:'1px solid '+(confirmDelete===req.id?C.tomato500:C.mushroom200),borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm,transition:'border-color 0.15s'}}>
-                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:4}}>
-                        <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{req.projectName}</div>
-                        {authUser?.isAdmin&&(
-                          confirmDelete===req.id
-                            ? <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
-                                <span style={{fontFamily:FF,fontSize:10,color:C.tomato600,fontWeight:600}}>Delete?</span>
-                                <button onClick={()=>{onDelete(req.id);setConfirmDelete(null);}}
-                                  style={{padding:'2px 8px',background:C.tomato500,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:700,color:C.white,cursor:'pointer'}}>Yes</button>
-                                <button onClick={()=>setConfirmDelete(null)}
-                                  style={{padding:'2px 8px',background:C.mushroom200,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom600,cursor:'pointer'}}>No</button>
-                              </div>
-                            : <button onClick={()=>setConfirmDelete(req.id)} title="Delete ticket"
-                                style={{background:'none',border:'none',cursor:'pointer',padding:2,borderRadius:DS.radius.sm,color:C.mushroom400,display:'flex',alignItems:'center',flexShrink:0,transition:'color 0.15s'}}
-                                onMouseOver={e=>e.currentTarget.style.color=C.tomato500}
-                                onMouseOut={e=>e.currentTarget.style.color=C.mushroom400}
-                              ><IcoTrash size={13}/></button>
-                        )}
-                      </div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:8}}>
-                        Requested by {req.requestedBy.split('@')[0]}
-                        {req.createdAt&&<span style={{color:C.mushroom400}}> · {new Date(req.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</span>}
-                      </div>
-                      {[['GitHub',req.githubRepo],['Hosting',req.hosting],['DB',req.database]].filter(([,v])=>v).map(([k,v])=>(
-                        <div key={k} style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginBottom:3,display:'flex',gap:6}}><span style={{fontWeight:700,color:C.mushroom500,minWidth:46}}>{k}</span><span style={{wordBreak:'break-all'}}>{v}</span></div>
-                      ))}
-                      {req.jiraTicketKey&&(
-                        <a href={'https://sprouthq.atlassian.net/browse/'+req.jiraTicketKey} target='_blank' rel='noreferrer'
-                          style={{display:'inline-flex',alignItems:'center',gap:5,marginTop:8,marginBottom:2,padding:'3px 9px',background:C.blueberry100,border:'1px solid '+C.blueberry400,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.blueberry500,textDecoration:'none'}}>
-                          <svg width={11} height={11} viewBox='0 0 20 20' fill='none'><rect x='2' y='2' width='16' height='16' rx='3' stroke='currentColor' strokeWidth='2'/><path d='M7 10h6M10 7l3 3-3 3' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'/></svg>
-                          {req.jiraTicketKey}
+
+                {/* Cards */}
+                <div style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:10}}>
+                  {loading&&cards.length===0&&(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,textAlign:'center',padding:'24px 0'}}>Loading…</div>
+                  )}
+                  {!loading&&cards.length===0&&(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:'italic',textAlign:'center',padding:'24px 0'}}>No tickets here</div>
+                  )}
+                  {cards.map(t => (
+                    <div key={t.key} style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm,transition:'box-shadow 0.15s'}}
+                      onMouseOver={e=>e.currentTarget.style.boxShadow=DS.shadow.md}
+                      onMouseOut={e=>e.currentTarget.style.boxShadow=DS.shadow.sm}
+                    >
+                      {/* Ticket key + Jira link */}
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                        <a href={t.url} target="_blank" rel="noreferrer"
+                          style={{fontFamily:DS.fonts.mono,fontSize:11,fontWeight:700,color:C.blueberry500,textDecoration:'none',background:C.blueberry100,border:'1px solid '+C.blueberry400,borderRadius:DS.radius.full,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4}}>
+                          <svg width={9} height={9} viewBox='0 0 20 20' fill='none'><rect x='2' y='2' width='16' height='16' rx='3' stroke='currentColor' strokeWidth='2.2'/><path d='M7 10h6M10 7l3 3-3 3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'/></svg>
+                          {t.key}
                         </a>
-                      )}
-                      {req.devopsNotes&&<div style={{marginTop:8,padding:'6px 8px',background:C.kangkong50,border:'1px solid '+C.kangkong100,borderRadius:DS.radius.sm,fontFamily:FF,fontSize:11,color:C.kangkong700,borderLeft:'3px solid '+C.kangkong400}}>{req.devopsNotes}</div>}
-                      <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
-                        <button onClick={()=>onViewProject&&onViewProject(req)} style={{padding:'4px 10px',background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,cursor:'pointer',color:C.mushroom600}}>View project</button>
-                        {canManage&&col.nextId&&(
-                          <button onClick={()=>onUpdate(req.id, col.nextId, req.devopsNotes)} style={{padding:'4px 10px',background:col.bg,border:'1.5px solid '+col.border,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,cursor:'pointer',color:col.color}}>{col.nextLabel}</button>
-                        )}
+                        {/* Status badge */}
+                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:col.color,background:col.bg,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'2px 8px',whiteSpace:'nowrap'}}>{t.status}</span>
                       </div>
-                      {canManage&&(
-                        <div style={{display:'flex',gap:6,marginTop:8}}>
-                          <input value={noteInput[req.id]||''} onChange={e=>setNoteInput(p=>({...p,[req.id]:e.target.value}))}
-                            placeholder="Add devops note…"
-                            style={{flex:1,padding:'5px 8px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom200,fontFamily:FF,fontSize:11,color:C.mushroom700,background:C.white,outline:'none'}}
-                          />
-                          <button onClick={()=>{if(noteInput[req.id]?.trim())onUpdate(req.id,req.status,noteInput[req.id]);setNoteInput(p=>({...p,[req.id]:''}));}}
-                            style={{padding:'5px 10px',background:C.kangkong500,color:C.white,border:'none',borderRadius:DS.radius.sm,fontFamily:FF,fontSize:11,fontWeight:600,cursor:'pointer'}}
-                          >Save</button>
+
+                      {/* Title */}
+                      <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,lineHeight:1.4,marginBottom:10}}>{t.summary}</div>
+
+                      {/* Dates grid */}
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                        {[
+                          ['Created',     fmt(t.created)],
+                          ['Last Update',  fmtRel(t.updated)],
+                        ].map(([label,value])=>(
+                          <div key={label} style={{background:C.white,borderRadius:DS.radius.sm,padding:'5px 8px',border:'1px solid '+C.mushroom100}}>
+                            <div style={{fontFamily:FF,fontSize:9,textTransform:'uppercase',letterSpacing:0.7,color:C.mushroom400,marginBottom:1}}>{label}</div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom700}}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Assignee */}
+                      {t.assignee&&(
+                        <div style={{marginTop:8,fontFamily:FF,fontSize:11,color:C.mushroom500,display:'flex',alignItems:'center',gap:4}}>
+                          <svg width={10} height={10} viewBox="0 0 12 12" fill="none" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"><circle cx="6" cy="4" r="2.5"/><path d="M1.5 11c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg>
+                          {t.assignee}
                         </div>
                       )}
                     </div>
@@ -8012,7 +8064,7 @@ export default function SproutAIGarden() {
           {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
           {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
-          {view==="devops"    && <DevopsBoard requests={devopsRequests} authUser={authUser} onUpdate={handleUpdateDevopsRequest} onDelete={handleDeleteDevopsRequest} onViewProject={p=>{setDetailProject(projects.find(pr=>String(pr.id)===String(p.projectId))||p);setView("project-detail");}}/>}
+          {view==="devops"    && <DevopsBoard authUser={authUser}/>}
           {view==="project-detail"&&detailProject&&(
             <ProjectDetailPage
               project={projects.find(p=>p.id===detailProject.id)||detailProject}
