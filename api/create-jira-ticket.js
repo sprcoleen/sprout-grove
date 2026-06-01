@@ -57,8 +57,12 @@ export default async function handler(req, res) {
 
   const body = await jiraRes.json();
   if (!jiraRes.ok) {
-    console.error('Jira error:', body);
-    return res.status(jiraRes.status).json({ error: body.errorMessages || body });
+    console.error('Jira error:', JSON.stringify(body));
+    const detail = [
+      ...(body.errorMessages || []),
+      ...Object.values(body.errors || {}),
+    ].join('; ') || `HTTP ${jiraRes.status}`;
+    return res.status(jiraRes.status).json({ error: detail });
   }
 
   // Add a comment indicating the ticket was generated from Grove

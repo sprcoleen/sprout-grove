@@ -7302,7 +7302,7 @@ export default function SproutAIGarden() {
           summary: "Grove SRC: " + req.projectName,
           description: ticketDesc,
           assigneeAccountId: "5b30a5fb6c008d2dbf9805f0",
-          labels: ["Src=Grove"],
+          labels: ["Src-Grove"],
           requestedBy: authUser?.displayName || req.requestedBy,
         }),
       });
