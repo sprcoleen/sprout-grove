@@ -49,6 +49,8 @@ export const toProject = (row) => ({
   submittedAt:     row.submitted_at    || null,
   lastUpdated:     daysAgo(row.last_updated),
   lastUpdatedAt:   row.last_updated  || null,
+  createdAt:       row.created_at    || null,
+  createdDaysAgo:  row.created_at ? daysAgo(row.created_at) : null,
 })
 
 export const fromProject = (proj) => ({
