@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Jira credentials not configured on server' });
   }
 
-  const { summary, description, assigneeAccountId, labels, requestedBy } = req.body || {};
+  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, githubRepo, hosting, database } = req.body || {};
   if (!summary) {
     return res.status(400).json({ error: 'summary is required' });
   }
@@ -49,6 +49,13 @@ export default async function handler(req, res) {
           ],
         },
         issuetype: { name: 'Task' },
+        customfield_10035: `DevOps setup requested for "${projectName || summary}" by ${requestedBy || 'a Grove user'}.`,
+        customfield_10036: [
+          `Please set up the DevOps infrastructure for this project:`,
+          githubRepo  ? `- GitHub Repo: ${githubRepo}` : '',
+          hosting     ? `- Hosting: ${hosting}`       : '',
+          database    ? `- Database: ${database}`     : '',
+        ].filter(Boolean).join('\n'),
         ...(assigneeAccountId && { assignee: { accountId: assigneeAccountId } }),
         ...(labels?.length  && { labels }),
       },
