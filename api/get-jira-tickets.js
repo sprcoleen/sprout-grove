@@ -15,13 +15,19 @@ export default async function handler(req, res) {
   }
 
   const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_TOKEN}`).toString('base64');
-  const jql  = encodeURIComponent('project = DEV AND labels = "Src-Grove" ORDER BY created DESC');
-  const fields = 'summary,status,created,updated,assignee,labels';
 
   try {
     const jiraRes = await fetch(
-      `https://${JIRA_HOST}/rest/api/3/search?jql=${jql}&fields=${fields}&maxResults=50`,
-      { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' } }
+      `https://${JIRA_HOST}/rest/api/3/search/jql`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jql: 'project = DEV AND labels = "Src-Grove" ORDER BY created DESC',
+          fields: ['summary', 'status', 'created', 'updated', 'assignee', 'labels'],
+          maxResults: 50,
+        }),
+      }
     );
 
     const body = await jiraRes.json();

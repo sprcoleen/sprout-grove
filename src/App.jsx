@@ -1840,13 +1840,6 @@ function IcoDevops({size=20,color=C.mushroom500}) {
   );
 }
 
-function IcoTrash({size=14,color=C.tomato500}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l.8 8.5A1 1 0 0 0 4.8 13.5h6.4a1 1 0 0 0 1-.9L13 4" stroke={color} strokeWidth="1.4"/>
-    </svg>
-  );
-}
 
 
 // ── Active Filter Chip ─────────────────────────────────────────────────────────
@@ -6885,7 +6878,13 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
   const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
   const [hosting,    setHosting]    = React.useState(project.hosting    || '');
-  const [database,   setDatabase]   = React.useState(project.database   || '');
+  const [database,   setDatabase]   = React.useState(
+    project.database ||
+    (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
+    project.dataSource ||
+    ''
+  );
+  const [remarks, setRemarks] = React.useState('');
   const ticketSummary = 'Grove SRC: ' + project.name;
   const monoField = (label, value) =>
     label.padEnd(13) + (value || 'TBD');
@@ -6897,6 +6896,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
     monoField("GitHub Repo:", githubRepo),
     monoField("Hosting:",     hosting),
     monoField("Database:",    database),
+    ...(remarks.trim() ? ['', 'Additional Remarks:', remarks.trim()] : []),
   ].join('\n');
   const handleCopy = () => {
     navigator.clipboard.writeText(ticketSummary + '\n\n' + ticketDesc).then(() => {
@@ -6914,6 +6914,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       githubRepo,
       hosting,
       database,
+      remarks,
       status:       'todo',
       country:      project.country,
     });
@@ -6944,6 +6945,20 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
         <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:16}}>
           <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket info</div>
           <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
+
+          {/* Date + Creator meta */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+            {[
+              {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
+              {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
+            ].map(item=>(
+              <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
+                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
+                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+              </div>
+            ))}
+          </div>
+
           <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom700,lineHeight:1.8,marginBottom:10,whiteSpace:'pre-wrap'}}>
             {'Project: '  + project.name + '\n'}
             {'Builder: '  + project.builderEmail + '\n\n'}
@@ -6952,6 +6967,16 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
           {fieldRow("GitHub Repo:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo")}
           {fieldRow("Hosting:",     hosting,    setHosting,    "e.g. Vercel, AWS")}
           {fieldRow("Database:",    database,   setDatabase,   "e.g. Supabase, MySQL")}
+          <div style={{marginTop:10}}>
+            <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,marginBottom:5}}>Additional Remarks <span style={{color:C.mushroom400,fontSize:10}}>(optional)</span></div>
+            <textarea value={remarks} onChange={e=>setRemarks(e.target.value)}
+              placeholder="Any other details, special requirements, or context for the DevOps team…"
+              rows={3}
+              style={{width:'100%',padding:'8px 10px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.5}}
+              onFocus={e=>e.target.style.borderColor=C.kangkong500}
+              onBlur={e=>e.target.style.borderColor=C.mushroom300}
+            />
+          </div>
         </div>
         <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
           {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
@@ -6991,9 +7016,10 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
 
 // ── DevopsBoard ──────────────────────────────────────────────────────────────
 const JIRA_COLS = [
-  { cat:'new',           label:'Open',        color:C.mushroom600,  bg:C.mushroom50,   border:C.mushroom200  },
-  { cat:'indeterminate', label:'In Progress',  color:C.mango600,     bg:C.mango50,      border:C.mango300     },
-  { cat:'done',          label:'Done',         color:C.kangkong600,  bg:C.kangkong50,   border:C.kangkong200  },
+  { id:'todo',        label:'To Do',          statuses:['Backlog','To Do','Open'],                color:C.mushroom600,  bg:C.mushroom50,    border:C.mushroom200  },
+  { id:'inprogress',  label:'In Progress',    statuses:['In Progress','For PR Review'],           color:C.mango600,     bg:C.mango50,       border:C.mango300     },
+  { id:'checking',    label:'For Checking',   statuses:['Ready for Checking','Ready for checking','For Checking'], color:C.blueberry500, bg:C.blueberry100,  border:C.blueberry400 },
+  { id:'done',        label:'Done',           statuses:['Done','Closed','Resolved'],              color:C.kangkong600,  bg:C.kangkong50,    border:C.kangkong200  },
 ];
 function DevopsBoard({ authUser }) {
   const [tickets,  setTickets]  = React.useState([]);
@@ -7005,7 +7031,12 @@ function DevopsBoard({ authUser }) {
     setLoading(true); setError(null);
     try {
       const res  = await fetch('/api/get-jira-tickets');
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        setError('Jira API is only available on the deployed site. Run via Vercel (or vercel dev) to test locally.');
+        return;
+      }
       if (!res.ok) { setError(data.error || 'Failed to load tickets'); return; }
       setTickets(data.tickets || []);
       setLastSync(new Date());
@@ -7037,7 +7068,7 @@ function DevopsBoard({ authUser }) {
         <div>
           <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900}}>Tool Shed</div>
           <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:1}}>
-            Jira tickets · DEV project · label: <code style={{fontFamily:DS.fonts.mono,fontSize:11,background:C.mushroom100,padding:'1px 5px',borderRadius:DS.radius.sm}}>Src-Grove</code>
+            Deployment &amp; setup requests for Tier 3 projects · Jira tickets · DEV project · label: <code style={{fontFamily:DS.fonts.mono,fontSize:11,background:C.mushroom100,padding:'1px 5px',borderRadius:DS.radius.sm}}>Src-Grove</code>
             {lastSync&&<span style={{marginLeft:8,color:C.mushroom400}}>· synced {fmtRel(lastSync.toISOString())}</span>}
           </div>
         </div>
@@ -7068,11 +7099,11 @@ function DevopsBoard({ authUser }) {
 
       {/* Kanban columns */}
       <div style={{flex:1,overflowX:'auto',overflowY:'hidden',padding:'20px 28px'}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,height:'100%',minWidth:640}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,height:'100%',minWidth:800}}>
           {JIRA_COLS.map(col => {
-            const cards = tickets.filter(t => (t.statusCategory||'new') === col.cat);
+            const cards = tickets.filter(t => col.statuses.includes(t.status));
             return (
-              <div key={col.cat} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.xl,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:DS.shadow.sm}}>
+              <div key={col.id} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.xl,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:DS.shadow.sm}}>
 
                 {/* Column header */}
                 <div style={{padding:'12px 16px',background:col.bg,borderBottom:'1px solid '+col.border,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
@@ -7094,18 +7125,24 @@ function DevopsBoard({ authUser }) {
                       onMouseOut={e=>e.currentTarget.style.boxShadow=DS.shadow.sm}
                     >
                       {/* Ticket key + Jira link */}
-                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                         <a href={t.url} target="_blank" rel="noreferrer"
                           style={{fontFamily:DS.fonts.mono,fontSize:11,fontWeight:700,color:C.blueberry500,textDecoration:'none',background:C.blueberry100,border:'1px solid '+C.blueberry400,borderRadius:DS.radius.full,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4}}>
                           <svg width={9} height={9} viewBox='0 0 20 20' fill='none'><rect x='2' y='2' width='16' height='16' rx='3' stroke='currentColor' strokeWidth='2.2'/><path d='M7 10h6M10 7l3 3-3 3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'/></svg>
                           {t.key}
                         </a>
-                        {/* Status badge */}
-                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:col.color,background:col.bg,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'2px 8px',whiteSpace:'nowrap'}}>{t.status}</span>
                       </div>
 
                       {/* Title */}
-                      <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,lineHeight:1.4,marginBottom:10}}>{t.summary}</div>
+                      <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,lineHeight:1.4,marginBottom:8}}>{t.summary}</div>
+
+                      {/* Status pill — shows exact Jira status name */}
+                      <div style={{marginBottom:10}}>
+                        <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:FF,fontSize:11,fontWeight:600,color:col.color,background:col.bg,border:'1.5px solid '+col.border,borderRadius:DS.radius.full,padding:'3px 10px'}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:col.color,flexShrink:0}}/>
+                          {t.status}
+                        </span>
+                      </div>
 
                       {/* Dates grid */}
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
@@ -7360,6 +7397,7 @@ export default function SproutAIGarden() {
           githubRepo: req.githubRepo,
           hosting: req.hosting,
           database: req.database,
+          remarks: req.remarks,
         }),
       });
       if (jiraRes.ok) {
@@ -7386,12 +7424,7 @@ export default function SproutAIGarden() {
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
     return { ok: true, jiraTicketKey };
   };
-  const handleDeleteDevopsRequest = async (id) => {
-    if (!authUser?.isAdmin) return;
-    const { error } = await supabase.from("devops_requests").delete().eq("id", id);
-    if (error) { console.error("deleteDevopsRequest:", error); return; }
-    setDevopsRequests(prev => prev.filter(r => r.id !== id));
-  };
+
 
   const handleUpdateDevopsRequest = async (id, status, notes) => {
     const { error } = await supabase.from("devops_requests").update({

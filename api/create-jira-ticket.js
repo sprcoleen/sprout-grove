@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Jira credentials not configured on server' });
   }
 
-  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, githubRepo, hosting, database } = req.body || {};
+  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, githubRepo, hosting, database, remarks } = req.body || {};
   if (!summary) {
     return res.status(400).json({ error: 'summary is required' });
   }
@@ -63,6 +63,7 @@ export default async function handler(req, res) {
               githubRepo ? `GitHub Repo: ${githubRepo}` : null,
               hosting    ? `Hosting: ${hosting}`        : null,
               database   ? `Database: ${database}`      : null,
+              remarks    ? `Additional Remarks: ${remarks}` : null,
             ].filter(Boolean).map(line => ({
               type: 'paragraph', content: [{ type: 'text', text: line }]
             })),
