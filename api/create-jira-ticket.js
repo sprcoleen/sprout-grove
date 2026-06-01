@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Jira credentials not configured on server' });
   }
 
-  const { summary, description, assigneeAccountId, labels, requestedBy } = req.body || {};
+  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, githubRepo, hosting, database, remarks } = req.body || {};
   if (!summary) {
     return res.status(400).json({ error: 'summary is required' });
   }
@@ -49,6 +49,26 @@ export default async function handler(req, res) {
           ],
         },
         issuetype: { name: 'Task' },
+        customfield_10035: {
+          type: 'doc', version: 1,
+          content: [{ type: 'paragraph', content: [{ type: 'text',
+            text: `DevOps setup requested for "${projectName || summary}" by ${requestedBy || 'a Grove user'}.`
+          }] }],
+        },
+        customfield_10036: {
+          type: 'doc', version: 1,
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'Please set up the DevOps infrastructure for this project:' }] },
+            ...[
+              githubRepo ? `GitHub Repo: ${githubRepo}` : null,
+              hosting    ? `Hosting: ${hosting}`        : null,
+              database   ? `Database: ${database}`      : null,
+              remarks    ? `Additional Remarks: ${remarks}` : null,
+            ].filter(Boolean).map(line => ({
+              type: 'paragraph', content: [{ type: 'text', text: line }]
+            })),
+          ],
+        },
         ...(assigneeAccountId && { assignee: { accountId: assigneeAccountId } }),
         ...(labels?.length  && { labels }),
       },
@@ -57,8 +77,12 @@ export default async function handler(req, res) {
 
   const body = await jiraRes.json();
   if (!jiraRes.ok) {
-    console.error('Jira error:', body);
-    return res.status(jiraRes.status).json({ error: body.errorMessages || body });
+    console.error('Jira error:', JSON.stringify(body));
+    const detail = [
+      ...(body.errorMessages || []),
+      ...Object.values(body.errors || {}),
+    ].join('; ') || `HTTP ${jiraRes.status}`;
+    return res.status(jiraRes.status).json({ error: detail });
   }
 
   // Add a comment indicating the ticket was generated from Grove

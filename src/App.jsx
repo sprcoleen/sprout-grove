@@ -1840,13 +1840,6 @@ function IcoDevops({size=20,color=C.mushroom500}) {
   );
 }
 
-function IcoTrash({size=14,color=C.tomato500}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l.8 8.5A1 1 0 0 0 4.8 13.5h6.4a1 1 0 0 0 1-.9L13 4" stroke={color} strokeWidth="1.4"/>
-    </svg>
-  );
-}
 
 
 // ── Active Filter Chip ─────────────────────────────────────────────────────────
@@ -6885,7 +6878,13 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
   const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
   const [hosting,    setHosting]    = React.useState(project.hosting    || '');
-  const [database,   setDatabase]   = React.useState(project.database   || '');
+  const [database,   setDatabase]   = React.useState(
+    project.database ||
+    (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
+    project.dataSource ||
+    ''
+  );
+  const [remarks, setRemarks] = React.useState('');
   const ticketSummary = 'Grove SRC: ' + project.name;
   const monoField = (label, value) =>
     label.padEnd(13) + (value || 'TBD');
@@ -6897,6 +6896,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
     monoField("GitHub Repo:", githubRepo),
     monoField("Hosting:",     hosting),
     monoField("Database:",    database),
+    ...(remarks.trim() ? ['', 'Additional Remarks:', remarks.trim()] : []),
   ].join('\n');
   const handleCopy = () => {
     navigator.clipboard.writeText(ticketSummary + '\n\n' + ticketDesc).then(() => {
@@ -6914,6 +6914,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       githubRepo,
       hosting,
       database,
+      remarks,
       status:       'todo',
       country:      project.country,
     });
@@ -6944,6 +6945,20 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
         <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:16}}>
           <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket info</div>
           <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
+
+          {/* Date + Creator meta */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+            {[
+              {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
+              {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
+            ].map(item=>(
+              <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
+                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
+                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+              </div>
+            ))}
+          </div>
+
           <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom700,lineHeight:1.8,marginBottom:10,whiteSpace:'pre-wrap'}}>
             {'Project: '  + project.name + '\n'}
             {'Builder: '  + project.builderEmail + '\n\n'}
@@ -6952,6 +6967,16 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
           {fieldRow("GitHub Repo:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo")}
           {fieldRow("Hosting:",     hosting,    setHosting,    "e.g. Vercel, AWS")}
           {fieldRow("Database:",    database,   setDatabase,   "e.g. Supabase, MySQL")}
+          <div style={{marginTop:10}}>
+            <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,marginBottom:5}}>Additional Remarks <span style={{color:C.mushroom400,fontSize:10}}>(optional)</span></div>
+            <textarea value={remarks} onChange={e=>setRemarks(e.target.value)}
+              placeholder="Any other details, special requirements, or context for the DevOps team…"
+              rows={3}
+              style={{width:'100%',padding:'8px 10px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.5}}
+              onFocus={e=>e.target.style.borderColor=C.kangkong500}
+              onBlur={e=>e.target.style.borderColor=C.mushroom300}
+            />
+          </div>
         </div>
         <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
           {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
@@ -6990,89 +7015,153 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
 }
 
 // ── DevopsBoard ──────────────────────────────────────────────────────────────
-const DEVOPS_COLS = [
-  {id:'todo',        label:'To Do',       color:C.mushroom600, bg:C.mushroom50, border:C.mushroom200, nextId:'in_progress', nextLabel:'Start →'},
-  {id:'in_progress', label:'In Progress', color:C.mango600,    bg:C.mango50,    border:C.mango300,   nextId:'done',        nextLabel:'Mark Done →'},
-  {id:'done',        label:'Done',        color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200, nextId:null,          nextLabel:null},
+const JIRA_COLS = [
+  { id:'todo',        label:'To Do',          statuses:['Backlog','To Do','Open'],                color:C.mushroom600,  bg:C.mushroom50,    border:C.mushroom200  },
+  { id:'inprogress',  label:'In Progress',    statuses:['In Progress','For PR Review'],           color:C.mango600,     bg:C.mango50,       border:C.mango300     },
+  { id:'checking',    label:'For Checking',   statuses:['Ready for Checking','Ready for checking','For Checking'], color:C.blueberry500, bg:C.blueberry100,  border:C.blueberry400 },
+  { id:'done',        label:'Done',           statuses:['Done','Closed','Resolved'],              color:C.kangkong600,  bg:C.kangkong50,    border:C.kangkong200  },
 ];
-function DevopsBoard({ requests, authUser, onUpdate, onDelete, onViewProject }) {
-  const [noteInput, setNoteInput] = React.useState({});
-  const [confirmDelete, setConfirmDelete] = React.useState(null);
-  const canManage = authUser?.isAdmin || authUser?.isDevops;
+function DevopsBoard({ authUser }) {
+  const [tickets,  setTickets]  = React.useState([]);
+  const [loading,  setLoading]  = React.useState(true);
+  const [error,    setError]    = React.useState(null);
+  const [lastSync, setLastSync] = React.useState(null);
+
+  const fetchTickets = async () => {
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch('/api/get-jira-tickets');
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        setError('Jira API is only available on the deployed site. Run via Vercel (or vercel dev) to test locally.');
+        return;
+      }
+      if (!res.ok) { setError(data.error || 'Failed to load tickets'); return; }
+      setTickets(data.tickets || []);
+      setLastSync(new Date());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { fetchTickets(); }, []);
+
+  const fmt = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' });
+  };
+  const fmtRel = (iso) => {
+    if (!iso) return '—';
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    return d === 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d}d ago`;
+  };
+
   return (
-    <div style={{flex:1,overflowY:'auto',background:C.mushroom50,display:'flex',flexDirection:'column',fontFamily:FF}}>
-      <div style={{padding:'20px 28px 12px',background:C.white,borderBottom:'1px solid '+C.mushroom200,display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',background:C.mushroom50,fontFamily:FF,overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{padding:'20px 28px 14px',background:C.white,borderBottom:'1px solid '+C.mushroom200,display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
         <IcoDevops size={22} color={C.carrot500}/>
         <div>
-          <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900}}>DevOps Requests</div>
-          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:1}}>Deployment & setup requests for Tier 3 projects</div>
+          <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900}}>Tool Shed</div>
+          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:1}}>
+            Deployment &amp; setup requests for Tier 3 projects · Jira tickets · DEV project · label: <code style={{fontFamily:DS.fonts.mono,fontSize:11,background:C.mushroom100,padding:'1px 5px',borderRadius:DS.radius.sm}}>Src-Grove</code>
+            {lastSync&&<span style={{marginLeft:8,color:C.mushroom400}}>· synced {fmtRel(lastSync.toISOString())}</span>}
+          </div>
         </div>
         <div style={{flex:1}}/>
-        <a href={JIRA_BOARD_URL} target="_blank" rel="noreferrer" style={{padding:'7px 14px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,color:C.blueberry500,textDecoration:'none',display:'flex',alignItems:'center',gap:5}}
-        >View in Jira ↗</a>
+        <button onClick={fetchTickets} disabled={loading}
+          style={{padding:'6px 12px',background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom600,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:5,transition:'all 0.15s'}}
+          onMouseOver={e=>{if(!loading){e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}}
+          onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.color=C.mushroom600;}}
+        >
+          <svg width={12} height={12} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M11 6A5 5 0 1 1 6 1" style={{transformOrigin:'center',animation:loading?'spin 1s linear infinite':'none'}}/>
+            <path d="M11 1v5H6"/>
+          </svg>
+          {loading ? 'Syncing…' : 'Refresh'}
+        </button>
+        <a href={JIRA_BOARD_URL} target="_blank" rel="noreferrer"
+          style={{padding:'6px 14px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.blueberry500,textDecoration:'none',display:'flex',alignItems:'center',gap:5}}>
+          View in Jira ↗
+        </a>
       </div>
-      <div style={{flex:1,overflowX:'auto',padding:24}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,minWidth:640}}>
-          {DEVOPS_COLS.map(col => {
-            const cards = requests.filter(r => r.status === col.id);
+
+      {/* Error state */}
+      {error&&(
+        <div style={{margin:'20px 28px',padding:'12px 16px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,color:C.tomato600}}>
+          ⚠ {error}
+        </div>
+      )}
+
+      {/* Kanban columns */}
+      <div style={{flex:1,overflowX:'auto',overflowY:'hidden',padding:'20px 28px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,height:'100%',minWidth:800}}>
+          {JIRA_COLS.map(col => {
+            const cards = tickets.filter(t => col.statuses.includes(t.status));
             return (
               <div key={col.id} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.xl,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:DS.shadow.sm}}>
-                <div style={{padding:'12px 16px',background:col.bg,borderBottom:'1px solid '+col.border,display:'flex',alignItems:'center',gap:8}}>
+
+                {/* Column header */}
+                <div style={{padding:'12px 16px',background:col.bg,borderBottom:'1px solid '+col.border,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
                   <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:col.color,textTransform:'uppercase',letterSpacing:0.5}}>{col.label}</span>
-                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,background:C.white,color:col.color,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'1px 7px',marginLeft:'auto'}}>{cards.length}</span>
+                  <span style={{marginLeft:'auto',fontFamily:FF,fontSize:11,fontWeight:700,background:C.white,color:col.color,border:'1px solid '+col.border,borderRadius:DS.radius.full,padding:'1px 8px'}}>{cards.length}</span>
                 </div>
-                <div style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:10,minHeight:120}}>
-                  {cards.length===0&&<div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:'italic',textAlign:'center',padding:'20px 0'}}>No requests here</div>}
-                  {cards.map(req => (
-                    <div key={req.id} style={{background:C.mushroom50,border:'1px solid '+(confirmDelete===req.id?C.tomato500:C.mushroom200),borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm,transition:'border-color 0.15s'}}>
-                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:4}}>
-                        <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{req.projectName}</div>
-                        {authUser?.isAdmin&&(
-                          confirmDelete===req.id
-                            ? <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
-                                <span style={{fontFamily:FF,fontSize:10,color:C.tomato600,fontWeight:600}}>Delete?</span>
-                                <button onClick={()=>{onDelete(req.id);setConfirmDelete(null);}}
-                                  style={{padding:'2px 8px',background:C.tomato500,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:700,color:C.white,cursor:'pointer'}}>Yes</button>
-                                <button onClick={()=>setConfirmDelete(null)}
-                                  style={{padding:'2px 8px',background:C.mushroom200,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom600,cursor:'pointer'}}>No</button>
-                              </div>
-                            : <button onClick={()=>setConfirmDelete(req.id)} title="Delete ticket"
-                                style={{background:'none',border:'none',cursor:'pointer',padding:2,borderRadius:DS.radius.sm,color:C.mushroom400,display:'flex',alignItems:'center',flexShrink:0,transition:'color 0.15s'}}
-                                onMouseOver={e=>e.currentTarget.style.color=C.tomato500}
-                                onMouseOut={e=>e.currentTarget.style.color=C.mushroom400}
-                              ><IcoTrash size={13}/></button>
-                        )}
-                      </div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:8}}>
-                        Requested by {req.requestedBy.split('@')[0]}
-                        {req.createdAt&&<span style={{color:C.mushroom400}}> · {new Date(req.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</span>}
-                      </div>
-                      {[['GitHub',req.githubRepo],['Hosting',req.hosting],['DB',req.database]].filter(([,v])=>v).map(([k,v])=>(
-                        <div key={k} style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginBottom:3,display:'flex',gap:6}}><span style={{fontWeight:700,color:C.mushroom500,minWidth:46}}>{k}</span><span style={{wordBreak:'break-all'}}>{v}</span></div>
-                      ))}
-                      {req.jiraTicketKey&&(
-                        <a href={'https://sprouthq.atlassian.net/browse/'+req.jiraTicketKey} target='_blank' rel='noreferrer'
-                          style={{display:'inline-flex',alignItems:'center',gap:5,marginTop:8,marginBottom:2,padding:'3px 9px',background:C.blueberry100,border:'1px solid '+C.blueberry400,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.blueberry500,textDecoration:'none'}}>
-                          <svg width={11} height={11} viewBox='0 0 20 20' fill='none'><rect x='2' y='2' width='16' height='16' rx='3' stroke='currentColor' strokeWidth='2'/><path d='M7 10h6M10 7l3 3-3 3' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'/></svg>
-                          {req.jiraTicketKey}
+
+                {/* Cards */}
+                <div style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:10}}>
+                  {loading&&cards.length===0&&(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,textAlign:'center',padding:'24px 0'}}>Loading…</div>
+                  )}
+                  {!loading&&cards.length===0&&(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:'italic',textAlign:'center',padding:'24px 0'}}>No tickets here</div>
+                  )}
+                  {cards.map(t => (
+                    <div key={t.key} style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm,transition:'box-shadow 0.15s'}}
+                      onMouseOver={e=>e.currentTarget.style.boxShadow=DS.shadow.md}
+                      onMouseOut={e=>e.currentTarget.style.boxShadow=DS.shadow.sm}
+                    >
+                      {/* Ticket key + Jira link */}
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                        <a href={t.url} target="_blank" rel="noreferrer"
+                          style={{fontFamily:DS.fonts.mono,fontSize:11,fontWeight:700,color:C.blueberry500,textDecoration:'none',background:C.blueberry100,border:'1px solid '+C.blueberry400,borderRadius:DS.radius.full,padding:'2px 8px',display:'inline-flex',alignItems:'center',gap:4}}>
+                          <svg width={9} height={9} viewBox='0 0 20 20' fill='none'><rect x='2' y='2' width='16' height='16' rx='3' stroke='currentColor' strokeWidth='2.2'/><path d='M7 10h6M10 7l3 3-3 3' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'/></svg>
+                          {t.key}
                         </a>
-                      )}
-                      {req.devopsNotes&&<div style={{marginTop:8,padding:'6px 8px',background:C.kangkong50,border:'1px solid '+C.kangkong100,borderRadius:DS.radius.sm,fontFamily:FF,fontSize:11,color:C.kangkong700,borderLeft:'3px solid '+C.kangkong400}}>{req.devopsNotes}</div>}
-                      <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
-                        <button onClick={()=>onViewProject&&onViewProject(req)} style={{padding:'4px 10px',background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,cursor:'pointer',color:C.mushroom600}}>View project</button>
-                        {canManage&&col.nextId&&(
-                          <button onClick={()=>onUpdate(req.id, col.nextId, req.devopsNotes)} style={{padding:'4px 10px',background:col.bg,border:'1.5px solid '+col.border,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,cursor:'pointer',color:col.color}}>{col.nextLabel}</button>
-                        )}
                       </div>
-                      {canManage&&(
-                        <div style={{display:'flex',gap:6,marginTop:8}}>
-                          <input value={noteInput[req.id]||''} onChange={e=>setNoteInput(p=>({...p,[req.id]:e.target.value}))}
-                            placeholder="Add devops note…"
-                            style={{flex:1,padding:'5px 8px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom200,fontFamily:FF,fontSize:11,color:C.mushroom700,background:C.white,outline:'none'}}
-                          />
-                          <button onClick={()=>{if(noteInput[req.id]?.trim())onUpdate(req.id,req.status,noteInput[req.id]);setNoteInput(p=>({...p,[req.id]:''}));}}
-                            style={{padding:'5px 10px',background:C.kangkong500,color:C.white,border:'none',borderRadius:DS.radius.sm,fontFamily:FF,fontSize:11,fontWeight:600,cursor:'pointer'}}
-                          >Save</button>
+
+                      {/* Title */}
+                      <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,lineHeight:1.4,marginBottom:8}}>{t.summary}</div>
+
+                      {/* Status pill — shows exact Jira status name */}
+                      <div style={{marginBottom:10}}>
+                        <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:FF,fontSize:11,fontWeight:600,color:col.color,background:col.bg,border:'1.5px solid '+col.border,borderRadius:DS.radius.full,padding:'3px 10px'}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:col.color,flexShrink:0}}/>
+                          {t.status}
+                        </span>
+                      </div>
+
+                      {/* Dates grid */}
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                        {[
+                          ['Created',     fmt(t.created)],
+                          ['Last Update',  fmtRel(t.updated)],
+                        ].map(([label,value])=>(
+                          <div key={label} style={{background:C.white,borderRadius:DS.radius.sm,padding:'5px 8px',border:'1px solid '+C.mushroom100}}>
+                            <div style={{fontFamily:FF,fontSize:9,textTransform:'uppercase',letterSpacing:0.7,color:C.mushroom400,marginBottom:1}}>{label}</div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom700}}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Assignee */}
+                      {t.assignee&&(
+                        <div style={{marginTop:8,fontFamily:FF,fontSize:11,color:C.mushroom500,display:'flex',alignItems:'center',gap:4}}>
+                          <svg width={10} height={10} viewBox="0 0 12 12" fill="none" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"><circle cx="6" cy="4" r="2.5"/><path d="M1.5 11c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg>
+                          {t.assignee}
                         </div>
                       )}
                     </div>
@@ -7302,8 +7391,13 @@ export default function SproutAIGarden() {
           summary: "Grove SRC: " + req.projectName,
           description: ticketDesc,
           assigneeAccountId: "5b30a5fb6c008d2dbf9805f0",
-          labels: ["Src=Grove"],
+          labels: ["Src-Grove"],
           requestedBy: authUser?.displayName || req.requestedBy,
+          projectName: req.projectName,
+          githubRepo: req.githubRepo,
+          hosting: req.hosting,
+          database: req.database,
+          remarks: req.remarks,
         }),
       });
       if (jiraRes.ok) {
@@ -7330,12 +7424,7 @@ export default function SproutAIGarden() {
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
     return { ok: true, jiraTicketKey };
   };
-  const handleDeleteDevopsRequest = async (id) => {
-    if (!authUser?.isAdmin) return;
-    const { error } = await supabase.from("devops_requests").delete().eq("id", id);
-    if (error) { console.error("deleteDevopsRequest:", error); return; }
-    setDevopsRequests(prev => prev.filter(r => r.id !== id));
-  };
+
 
   const handleUpdateDevopsRequest = async (id, status, notes) => {
     const { error } = await supabase.from("devops_requests").update({
@@ -8008,7 +8097,7 @@ export default function SproutAIGarden() {
           {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
           {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
-          {view==="devops"    && <DevopsBoard requests={devopsRequests} authUser={authUser} onUpdate={handleUpdateDevopsRequest} onDelete={handleDeleteDevopsRequest} onViewProject={p=>{setDetailProject(projects.find(pr=>String(pr.id)===String(p.projectId))||p);setView("project-detail");}}/>}
+          {view==="devops"    && <DevopsBoard authUser={authUser}/>}
           {view==="project-detail"&&detailProject&&(
             <ProjectDetailPage
               project={projects.find(p=>p.id===detailProject.id)||detailProject}

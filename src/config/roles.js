@@ -2,4 +2,5 @@
 // Add or remove emails to grant or revoke admin access. No Supabase changes needed.
 export const ADMIN_EMAILS = [
   "cbasis@sprout.ph",
+  "diane@sprout.ph",
 ];
