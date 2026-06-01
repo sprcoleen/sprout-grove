@@ -6599,6 +6599,7 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   const [submitting, setSubmitting] = React.useState(false);
   const [copied,     setCopied]     = React.useState(false);
+  const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
   const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
   const [hosting,    setHosting]    = React.useState(project.hosting    || '');
   const [database,   setDatabase]   = React.useState(project.database   || '');
@@ -6621,7 +6622,8 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   };
   const handleSubmit = async () => {
     setSubmitting(true);
-    await onSubmit({
+    setResult(null);
+    const res = await onSubmit({
       projectId:    project.id,
       projectName:  project.name,
       builderEmail: project.builderEmail,
@@ -6633,6 +6635,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       country:      project.country,
     });
     setSubmitting(false);
+    setResult(res || { ok: false, message: 'No response from server' });
   };
   const fieldRow = (label, value, setter, ph) => (
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
@@ -6670,11 +6673,40 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
         <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
           {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
         </button>
+        {/* Confirmation banner */}
+        {result&&(
+          result.ok
+            ? result.jiraCreated
+              ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:14}}>
+                  <IcoCheck size={16} color={C.kangkong600}/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created successfully!</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
+                      Jira ticket <strong>{result.jiraTicketKey}</strong> has been created and assigned to Coleen. The request is now logged in Grove.
+                    </div>
+                  </div>
+                </div>
+              : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.mango100,border:'1px solid '+C.mango500,borderRadius:DS.radius.lg,marginBottom:14}}>
+                  <span style={{fontSize:15,lineHeight:1}}>⚠️</span>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mango600}}>Logged in Grove — Jira ticket not created</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mango600,marginTop:2}}>
+                      The request was saved but the Jira ticket could not be created{result.jiraError ? `: ${result.jiraError}` : ''}. You can create it manually in Jira.
+                    </div>
+                  </div>
+                </div>
+            : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:14}}>
+                <span style={{fontSize:15,lineHeight:1}}>❌</span>
+                <div>
+                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Something went wrong</div>
+                  <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>{result.message||'Could not save the request. Please try again.'}</div>
+                </div>
+              </div>
+        )}
         <div style={{display:'flex',gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>Cancel</button>
-          <a href={JIRA_BOARD_URL} target='_blank' rel='noreferrer' style={{flex:1,padding:'10px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:'pointer',color:C.blueberry500,display:'flex',alignItems:'center',justifyContent:'center',gap:6,textDecoration:'none'}}>Open Jira board ↗</a>
-          <button onClick={handleSubmit} disabled={submitting} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:submitting?'not-allowed':'pointer',transition:'all 0.15s'}}>
-            {submitting ? 'Logging…' : 'Log Request in Grove'}
+          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>{result?.ok ? 'Close' : 'Cancel'}</button>
+          <button onClick={handleSubmit} disabled={submitting||result?.ok} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
+            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket'}
           </button>
         </div>
       </div>
@@ -6973,8 +7005,9 @@ export default function SproutAIGarden() {
 
   // ── DevOps request handlers ────────────────────────────────────────────────
   const handleCreateDevopsRequest = async (req) => {
-    // Try to create the Jira ticket via the server-side API route
     let jiraTicketKey = null;
+    let jiraCreated = false;
+    let jiraError = null;
     try {
       const ticketDesc = [
         "Project: "  + req.projectName,
@@ -6999,15 +7032,20 @@ export default function SproutAIGarden() {
       if (jiraRes.ok) {
         const jiraData = await jiraRes.json();
         jiraTicketKey = jiraData.key || null;
+        jiraCreated = true;
       } else {
-        console.warn("Jira ticket creation failed:", await jiraRes.json());
+        const errBody = await jiraRes.json().catch(() => ({}));
+        jiraError = errBody.error || `HTTP ${jiraRes.status}`;
+        console.warn("Jira ticket creation failed:", errBody);
       }
     } catch (e) {
-      console.warn("Jira API unreachable (local dev?):", e.message);
+      jiraError = e.message;
+      console.warn("Jira API unreachable:", e.message);
     }
     const { data, error } = await supabase.from("devops_requests").insert(fromDevopsRequest({ ...req, jiraTicketKey })).select().single();
-    if (error) { console.error("createDevopsRequest:", error); return; }
+    if (error) { console.error("createDevopsRequest:", error); return { ok: false, message: error.message }; }
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
+    return { ok: true, jiraCreated, jiraError, jiraTicketKey };
   };
   const handleDeleteDevopsRequest = async (id) => {
     if (!authUser?.isAdmin) return;
