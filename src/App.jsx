@@ -1820,6 +1820,16 @@ function IcoViewGarden({size=16, color=C.mushroom500}) {
   );
 }
 
+function IcoViewList({size=16, color=C.mushroom500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <line x1="2" y1="4"  x2="14" y2="4"  stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <line x1="2" y1="8"  x2="14" y2="8"  stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <line x1="2" y1="12" x2="14" y2="12" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function IcoDevops({size=20,color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -1936,6 +1946,8 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
   const [builderFilter, setBuilderFilter] = useState("All");
   const [countryFilter, setCountryFilter] = useState("All");
   const [tierFilter, setTierFilter] = useState("All");
+  const [sortCol, setSortCol]   = useState("created");
+  const [sortDir, setSortDir]   = useState("desc");
   const [search, setSearch] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedWish, setSelectedWish] = useState(null);
@@ -1978,7 +1990,21 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
 
   const showSeeds = (stageFilter === "All" || stageFilter === "seed") && tierFilter === "All";
 
-  const filteredAlpha = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  const filteredAlpha = [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const listSorted = [...filtered].sort((a, b) => {
+    let av, bv;
+    if (sortCol==="name")         { av=a.name||""; bv=b.name||""; }
+    else if (sortCol==="stage")   { av=STAGE_ORDER[a.stage]??99; bv=STAGE_ORDER[b.stage]??99; }
+    else if (sortCol==="tier")    { av=a.tier??99; bv=b.tier??99; }
+    else if (sortCol==="builder") { av=a.builder||""; bv=b.builder||""; }
+    else if (sortCol==="country") { av=a.country||""; bv=b.country||""; }
+    else if (sortCol==="builtFor"){ av=builtForArr(a.builtFor)[0]||""; bv=builtForArr(b.builtFor)[0]||""; }
+    else if (sortCol==="updated") { av=a.lastUpdated??999; bv=b.lastUpdated??999; }
+    else if (sortCol==="created") { av=new Date(a.createdAt||0).getTime(); bv=new Date(b.createdAt||0).getTime(); }
+    else { av=new Date(a.createdAt||0).getTime(); bv=new Date(b.createdAt||0).getTime(); }
+    const cmp = typeof av==="number" ? av-bv : av.localeCompare(bv);
+    return sortDir==="asc" ? cmp : -cmp;
+  });
   const tierCounts = [1,2,3].map(t => filteredBase.filter(p=>p.tier===t).length);
   const unclassifiedCount = filteredBase.filter(p=>p.tier===null||p.tier===undefined).length;
 
@@ -1994,6 +2020,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
 
   const VIEW_MODES = [
     {id:"directory", label:"Directory", Icon:IcoViewGrid},
+    {id:"list",      label:"List",      Icon:IcoViewList},
     {id:"board",     label:"Board",     Icon:IcoViewBoard},
   ];
 
@@ -2006,7 +2033,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
       <div style={{padding:"10px 20px",background:C.white,borderBottom:"1px solid "+C.mushroom200,display:"flex",gap:10,alignItems:"center",zIndex:20,flexShrink:0}}>
 
         {/* Search */}
-        {viewMode === "directory" && (
+        {(viewMode === "directory" || viewMode === "list") && (
           <div style={{position:"relative",flex:"1",minWidth:160,maxWidth:280}}>
             <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}>
               <IcoSearch size={14} color={C.mushroom400}/>
@@ -2197,7 +2224,19 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   </div>
 
                   {/* Name */}
-                  <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35,marginBottom:8,paddingRight:80}}>{p.name}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,paddingRight:80}}>
+                    {p.createdDaysAgo!=null&&p.createdDaysAgo<=30&&(
+                      <span title="Added in the last 30 days" style={{flexShrink:0,lineHeight:1}}>
+                        <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+                          <line x1="7" y1="13" x2="7" y2="5" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                          <path d="M7 9C7 9 4 8.5 3.5 6C3.5 6 6 6 7 9Z" fill={C.kangkong400} stroke={C.kangkong600} strokeWidth="0.7"/>
+                          <path d="M7 7C7 7 10 6.5 10.5 4C10.5 4 8 4 7 7Z" fill={C.kangkong500} stroke={C.kangkong600} strokeWidth="0.7"/>
+                          <line x1="4.5" y1="13" x2="9.5" y2="13" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                        </svg>
+                      </span>
+                    )}
+                    <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35}}>{p.name}</div>
+                  </div>
 
                   {/* Description */}
                   {p.description&&(
@@ -2283,6 +2322,214 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           deptFilter={deptFilter}
           capFilter={capFilter}
         />
+      )}
+
+      {/* ── List View ── */}
+      {viewMode === "list" && (
+        <div style={{flex:1,overflowY:"auto",padding:"20px 28px"}}>
+
+          {/* Page identity header */}
+          <div style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+              <IcoGarden size={18} color={C.kangkong600}/>
+              <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1}}>Garden</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,fontWeight:600}}>
+                {filtered.length} plant{filtered.length!==1?"s":""} across PH &amp; TH{showSeeds&&filteredWishes.length>0?` · ${filteredWishes.length} seed${filteredWishes.length!==1?"s":""}`:""}</div>
+              {(sortCol!=="created"||sortDir!=="desc")&&(
+                <button onClick={()=>{setSortCol("created");setSortDir("desc");}}
+                  style={{display:"flex",alignItems:"center",gap:4,padding:"2px 8px",background:"none",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.full,cursor:"pointer",fontFamily:FF,fontSize:11,color:C.mushroom500,transition:"all 0.15s"}}
+                  onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
+                  onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom500;}}
+                >
+                  <svg width={10} height={10} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M9 1L3 6l6 5"/></svg>
+                  Reset sort
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tier cards */}
+          {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
+            <div style={{display:"flex",gap:10,marginBottom:18}}>
+              {[
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
+              ].map(([tier,count,color,bg,border,accent,label,desc])=>{
+                const isActive = tierFilter === tier;
+                return (
+                  <div key={tier} onClick={()=>setTierFilter(isActive?"All":tier)}
+                    style={{flex:1,position:"relative",background:bg,border:`${isActive?2:1}px solid ${isActive?accent:border}`,borderRadius:DS.radius.md,padding:"12px 12px 12px 16px",overflow:"hidden",display:"flex",flexDirection:"column",minHeight:88,cursor:"pointer",transition:"all 0.15s",boxShadow:isActive?DS.shadow.sm:"none"}}
+                    onMouseOver={e=>{e.currentTarget.style.boxShadow=DS.shadow.sm;e.currentTarget.style.transform="translateY(-1px)";}}
+                    onMouseOut={e=>{e.currentTarget.style.boxShadow=isActive?DS.shadow.sm:"none";e.currentTarget.style.transform="none";}}
+                  >
+                    <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:accent,borderRadius:`${DS.radius.md} 0 0 ${DS.radius.md}`}}/>
+                    {isActive&&<div style={{position:"absolute",top:8,right:8,width:8,height:8,borderRadius:"50%",background:accent}}/>}
+                    <div style={{fontFamily:FF,fontSize:26,fontWeight:800,color,lineHeight:1,marginBottom:2}}>{count}</div>
+                    <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color,marginBottom:4}}>{tier===0?"Unclassified":`Tier ${tier} · ${label}`}</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>{desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Table */}
+          <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,overflow:"hidden",boxShadow:DS.shadow.sm}}>
+
+            {/* Sticky header */}
+            <div style={{display:"flex",alignItems:"center",height:36,padding:"0 16px",background:C.mushroom50,borderBottom:"2px solid "+C.mushroom200,position:"sticky",top:0,zIndex:2}}>
+              {[
+                ["Project",   "name",     "3 1 0",    "left"],
+                ["Stage",     "stage",    "0 0 116px","left"],
+                ["Tier",      "tier",     "0 0 96px", "left"],
+                ["Builder",   "builder",  "0 0 160px","left"],
+                ["Country",   "country",  "0 0 80px", "left"],
+                ["Built For", "builtFor", "1 1 0",    "left"],
+                ["Updated",   "updated",  "0 0 72px", "right"],
+                ["",          null,       "0 0 32px", "right"],
+              ].map(([label,col,flex,align])=>{
+                const active = sortCol===col;
+                if (!col) return <div key="action" style={{flex}}/>;
+                return (
+                  <button key={col} onClick={()=>{if(active)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortCol(col);setSortDir("asc");}}}
+                    style={{flex,minWidth:0,background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:3,justifyContent:align==="right"?"flex-end":"flex-start",paddingRight:align!=="right"?12:0,transition:"color 0.12s"}}
+                  >
+                    <span style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.9,color:active?C.kangkong600:C.mushroom400,whiteSpace:"nowrap"}}>{label}</span>
+                    <span style={{fontSize:9,color:active?C.kangkong600:C.mushroom300,lineHeight:1,flexShrink:0}}>
+                      {active ? (sortDir==="asc"?"▲":"▼") : "⇅"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Project rows */}
+            {listSorted.map((p,i)=>{
+              const sc  = STAGE_COLORS[p.stage]||STAGE_COLORS.sprout;
+              const cc  = COVER_COLORS[p.builtBy]||COVER_COLORS.default;
+              const depts = builtForArr(p.builtFor);
+              const updatedLabel = p.lastUpdated===0?"Today":p.lastUpdated===1?"Yesterday":`${p.lastUpdated}d ago`;
+              const isStale = p.lastUpdated>30;
+              const hasMore = listSorted.length-1>i||showSeeds;
+              return (
+                <div key={p.id} onClick={()=>setSelected(p)}
+                  style={{display:"flex",alignItems:"center",height:44,padding:"0 16px",borderBottom:hasMore?"1px solid "+C.mushroom100:"none",cursor:"pointer",transition:"background 0.1s",background:i%2===0?C.white:C.mushroom50+"80"}}
+                  onMouseOver={e=>e.currentTarget.style.background=C.kangkong50}
+                  onMouseOut={e=>e.currentTarget.style.background=i%2===0?C.white:C.mushroom50+"80"}
+                >
+                  {/* Name — truncated single line */}
+                  <div style={{flex:"3 1 0",minWidth:0,paddingRight:12,display:"flex",alignItems:"center",gap:6,overflow:"hidden"}}>
+                    <span title={p.createdDaysAgo!=null&&p.createdDaysAgo<=30?"Added in the last 30 days":undefined} style={{width:14,flexShrink:0,display:"inline-flex",alignItems:"center"}}>
+                      {p.createdDaysAgo!=null&&p.createdDaysAgo<=30&&(
+                        <svg width={13} height={13} viewBox="0 0 14 14" fill="none">
+                          <line x1="7" y1="13" x2="7" y2="5" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                          <path d="M7 9C7 9 4 8.5 3.5 6C3.5 6 6 6 7 9Z" fill={C.kangkong400} stroke={C.kangkong600} strokeWidth="0.7"/>
+                          <path d="M7 7C7 7 10 6.5 10.5 4C10.5 4 8 4 7 7Z" fill={C.kangkong500} stroke={C.kangkong600} strokeWidth="0.7"/>
+                          <line x1="4.5" y1="13" x2="9.5" y2="13" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                    </span>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>{p.name}</div>
+                  </div>
+                  {/* Stage */}
+                  <div style={{flex:"0 0 116px",minWidth:0,paddingRight:12}}>
+                    <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:DS.radius.full,background:sc.bg,color:sc.text,border:"0.5px solid "+sc.border,fontFamily:FF,fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>
+                      <span style={{width:5,height:5,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                      {STAGE_LABELS[p.stage]||p.stage}
+                    </span>
+                  </div>
+                  {/* Tier */}
+                  <div style={{flex:"0 0 96px",minWidth:0,paddingRight:12}}>
+                    {p.tier!=null?<TierBadge tier={p.tier}/>:<span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span>}
+                  </div>
+                  {/* Builder */}
+                  <div style={{flex:"0 0 160px",minWidth:0,display:"flex",alignItems:"center",gap:6,paddingRight:12,overflow:"hidden"}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:8,fontWeight:700,flexShrink:0}}>{getInitials(p.builder)}</div>
+                    <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.builder||"—"}</span>
+                  </div>
+                  {/* Country */}
+                  <div style={{flex:"0 0 80px",minWidth:0,paddingRight:12}}>
+                    <CountryBadge country={p.country}/>
+                  </div>
+                  {/* Built For */}
+                  <div style={{flex:"1 1 0",minWidth:0,display:"flex",gap:4,alignItems:"center",overflow:"hidden",paddingRight:12}}>
+                    {depts.length===0
+                      ? <span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span>
+                      : <>
+                          {depts.slice(0,2).map(t=>{const tc=DEPT_COLORS[t]||C.mushroom400;return(
+                            <span key={t} style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:tc+"18",color:tc,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:110,flexShrink:0}}>{t}</span>
+                          );})}
+                          {depts.length>2&&<span style={{fontFamily:FF,fontSize:10,color:C.mushroom400,flexShrink:0}}>+{depts.length-2}</span>}
+                        </>
+                    }
+                  </div>
+                  {/* Updated */}
+                  <div style={{flex:"0 0 72px",textAlign:"right",fontFamily:FF,fontSize:11,fontWeight:isStale?600:400,color:isStale?C.mango500:C.mushroom400,whiteSpace:"nowrap"}}>
+                    {updatedLabel}
+                  </div>
+                  {/* Detail link */}
+                  <div style={{flex:"0 0 32px",display:"flex",justifyContent:"flex-end"}}>
+                    <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="View details"
+                      style={{background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",padding:"3px 5px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",color:C.mushroom400,transition:"all 0.15s"}}
+                      onMouseOver={e=>{e.currentTarget.style.color=C.kangkong600;e.currentTarget.style.borderColor=C.kangkong300;}}
+                      onMouseOut={e=>{e.currentTarget.style.color=C.mushroom400;e.currentTarget.style.borderColor=C.mushroom200;}}
+                    >
+                      <svg width={11} height={11} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/>
+                        <path d="M8 1h4v4"/><line x1="12" y1="1" x2="5.5" y2="7.5"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Seeds divider */}
+            {showSeeds&&filteredWishes.length>0&&(
+              <div style={{padding:"6px 16px",background:C.mushroom50,borderTop:"1px solid "+C.mushroom200,borderBottom:"1px solid "+C.mushroom200}}>
+                <span style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400}}>Seeds · {filteredWishes.length}</span>
+              </div>
+            )}
+
+            {/* Seed rows */}
+            {showSeeds&&filteredWishes.map((w,i)=>(
+              <div key={"w"+w.id} onClick={()=>setSelectedWish(w)}
+                style={{display:"flex",alignItems:"center",height:40,padding:"0 16px",borderBottom:i<filteredWishes.length-1?"1px solid "+C.mushroom100:"none",cursor:"pointer",transition:"background 0.1s",background:"transparent",borderLeft:"3px solid "+C.mushroom300}}
+                onMouseOver={e=>e.currentTarget.style.background=C.mushroom50}
+                onMouseOut={e=>e.currentTarget.style.background="transparent"}
+              >
+                <div style={{flex:"3 1 0",minWidth:0,paddingRight:12,display:"flex",alignItems:"center",gap:6}}>
+                  <WishSeed size={11} color={C.mushroom400}/>
+                  <span style={{fontFamily:FF,fontSize:12,fontWeight:500,color:C.mushroom600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.title}</span>
+                </div>
+                <div style={{flex:"0 0 116px",minWidth:0,paddingRight:12}}><StageBadge stage="seed"/></div>
+                <div style={{flex:"0 0 96px",minWidth:0,paddingRight:12}}><span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span></div>
+                <div style={{flex:"0 0 160px",minWidth:0,paddingRight:12,fontFamily:FF,fontSize:12,color:C.mushroom500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.wisherName}</div>
+                <div style={{flex:"0 0 80px",minWidth:0,paddingRight:12}}>{w.country&&<CountryBadge country={w.country}/>}</div>
+                <div style={{flex:"1 1 0",minWidth:0,display:"flex",gap:4,overflow:"hidden",paddingRight:12}}>
+                  {builtForArr(w.builtFor).slice(0,2).map(t=>{const tc=DEPT_COLORS[t]||C.mushroom400;return(
+                    <span key={t} style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:tc+"18",color:tc,whiteSpace:"nowrap"}}>{t}</span>
+                  );})}
+                </div>
+                <div style={{flex:"0 0 72px",textAlign:"right",fontFamily:FF,fontSize:11,color:C.mushroom400,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:3}}>
+                  <svg width={10} height={10} viewBox="0 0 12 12" fill="none"><path d="M6 1 L7.5 4.5 L11 5 L8.5 7.5 L9 11 L6 9.5 L3 11 L3.5 7.5 L1 5 L4.5 4.5 Z" stroke={C.mushroom400} strokeWidth="1" fill={C.mushroom200}/></svg>
+                  {w.upvoters.length}
+                </div>
+                <div style={{flex:"0 0 32px"}}/>
+              </div>
+            ))}
+
+            {listSorted.length===0&&(!showSeeds||filteredWishes.length===0)&&(
+              <div style={{padding:"48px 24px",textAlign:"center",fontFamily:FF,fontSize:14,color:C.mushroom400}}>
+                Nothing growing here — try different filters, or be the first to plant one.
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── Board (Kanban) View ── */}
@@ -2462,6 +2709,16 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                       >
                         {/* Left accent bar */}
                         <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:dfc||C.mushroom300,borderRadius:"12px 0 0 12px"}}/>
+                        {p.createdDaysAgo!=null&&p.createdDaysAgo<=30&&(
+                          <span title="Added in the last 30 days" style={{position:"absolute",top:8,left:10,zIndex:2,lineHeight:1}}>
+                            <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+                              <line x1="7" y1="13" x2="7" y2="5" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                              <path d="M7 9C7 9 4 8.5 3.5 6C3.5 6 6 6 7 9Z" fill={C.kangkong400} stroke={C.kangkong600} strokeWidth="0.7"/>
+                              <path d="M7 7C7 7 10 6.5 10.5 4C10.5 4 8 4 7 7Z" fill={C.kangkong500} stroke={C.kangkong600} strokeWidth="0.7"/>
+                              <line x1="4.5" y1="13" x2="9.5" y2="13" stroke={C.kangkong600} strokeWidth="1" strokeLinecap="round"/>
+                            </svg>
+                          </span>
+                        )}
                         {/* Name + stale indicator */}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                           <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:C.mushroom900,flex:1,lineHeight:1.3,letterSpacing:"-0.01em"}}>
@@ -2855,6 +3112,7 @@ const GardenMapView = ({projects, filtered, wishes, selected, setSelected}) => {
   );
 };
 
+
 // ── Tier Badge ────────────────────────────────────────────────────────────────
 function TierBadge({tier, size="sm"}) {
   if (tier === null || tier === undefined) return null;
@@ -2896,7 +3154,7 @@ const FeedbackBanner = ({reviewComment, reviewedBy, reviewedAt}) => {
 };
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
-const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested}) => {
+const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail}) => {
   const [noteText,setNoteText] = useState("");
   const interestedUsers = project.interestedUsers || [];
   const isInterested    = authUser ? interestedUsers.includes(authUser.email) : false;
@@ -2975,6 +3233,21 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             </div>
           ))}
         </div>
+
+        {(project.tier===null||project.tier===undefined)&&(
+          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+            <div>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:4}}>Tier Classification</div>
+              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:1}}>Tier Unclassified</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
+            </div>
+            <button onClick={()=>onViewDetail&&onViewDetail(project)}
+              style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
+              onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
+              onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
+            >Classify now →</button>
+          </div>
+        )}
 
         {project.tier!==null&&(()=>{
           const [tierColor,tierBg,tierBorder,tierLabel] =
@@ -3422,7 +3695,17 @@ const ProjectDetailPage = ({
                     <span style={{fontFamily:FF,fontSize:12,color:tc}}>{tl}</span>
                   </>
                 ) : (
-                  <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:"italic"}}>Tier classification pending — open the Technical tab to classify</span>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",gap:10}}>
+                    <div>
+                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
+                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
+                    </div>
+                    <button onClick={()=>setDetailTab("technical")}
+                      style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
+                      onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
+                      onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
+                    >Classify now →</button>
+                  </div>
                 )}
               </div>
             );
@@ -6599,6 +6882,7 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   const [submitting, setSubmitting] = React.useState(false);
   const [copied,     setCopied]     = React.useState(false);
+  const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
   const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
   const [hosting,    setHosting]    = React.useState(project.hosting    || '');
   const [database,   setDatabase]   = React.useState(project.database   || '');
@@ -6621,7 +6905,8 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   };
   const handleSubmit = async () => {
     setSubmitting(true);
-    await onSubmit({
+    setResult(null);
+    const res = await onSubmit({
       projectId:    project.id,
       projectName:  project.name,
       builderEmail: project.builderEmail,
@@ -6633,6 +6918,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       country:      project.country,
     });
     setSubmitting(false);
+    setResult(res || { ok: false, message: 'No response from server' });
   };
   const fieldRow = (label, value, setter, ph) => (
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
@@ -6670,11 +6956,32 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
         <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
           {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
         </button>
+        {/* Confirmation banner */}
+        {result&&(
+          result.ok
+            ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:14}}>
+                <IcoCheck size={16} color={C.kangkong600}/>
+                <div>
+                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created successfully!</div>
+                  <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
+                    Jira ticket <strong>{result.jiraTicketKey}</strong> has been created and assigned to Coleen. It is now visible in the Tool Shed.
+                  </div>
+                </div>
+              </div>
+            : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:14}}>
+                <span style={{fontSize:15,lineHeight:1}}>❌</span>
+                <div>
+                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Ticket could not be created</div>
+                  <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>
+                    {result.jiraError || result.message || 'Something went wrong. Please try again.'}
+                  </div>
+                </div>
+              </div>
+        )}
         <div style={{display:'flex',gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>Cancel</button>
-          <a href={JIRA_BOARD_URL} target='_blank' rel='noreferrer' style={{flex:1,padding:'10px',background:C.blueberry100,border:'1.5px solid '+C.blueberry400,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:'pointer',color:C.blueberry500,display:'flex',alignItems:'center',justifyContent:'center',gap:6,textDecoration:'none'}}>Open Jira board ↗</a>
-          <button onClick={handleSubmit} disabled={submitting} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:submitting?'not-allowed':'pointer',transition:'all 0.15s'}}>
-            {submitting ? 'Logging…' : 'Log Request in Grove'}
+          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>{result?.ok ? 'Close' : 'Cancel'}</button>
+          <button onClick={handleSubmit} disabled={submitting||result?.ok} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
+            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket'}
           </button>
         </div>
       </div>
@@ -6868,6 +7175,8 @@ export default function SproutAIGarden() {
               if (firstName && !existing.first_name) profileUpdates.first_name = firstName;
               // Save full name once — only if display_name is still the email prefix
               if (googleFullName && existing.display_name === emailPrefix) profileUpdates.display_name = googleFullName;
+              // Sync is_admin from config/roles.js so RLS policies stay in lockstep
+              if (ADMIN_EMAILS.includes(email) && !existing.is_admin) profileUpdates.is_admin = true;
               if (Object.keys(profileUpdates).length) {
                 await supabase.from("profiles").update(profileUpdates).eq("id", session.user.id);
               }
@@ -6973,8 +7282,9 @@ export default function SproutAIGarden() {
 
   // ── DevOps request handlers ────────────────────────────────────────────────
   const handleCreateDevopsRequest = async (req) => {
-    // Try to create the Jira ticket via the server-side API route
     let jiraTicketKey = null;
+    let jiraCreated = false;
+    let jiraError = null;
     try {
       const ticketDesc = [
         "Project: "  + req.projectName,
@@ -6999,15 +7309,26 @@ export default function SproutAIGarden() {
       if (jiraRes.ok) {
         const jiraData = await jiraRes.json();
         jiraTicketKey = jiraData.key || null;
+        jiraCreated = true;
       } else {
-        console.warn("Jira ticket creation failed:", await jiraRes.json());
+        const errBody = await jiraRes.json().catch(() => ({}));
+        jiraError = errBody.error || `HTTP ${jiraRes.status}`;
+        console.warn("Jira ticket creation failed:", errBody);
       }
     } catch (e) {
-      console.warn("Jira API unreachable (local dev?):", e.message);
+      jiraError = e.message;
+      console.warn("Jira API unreachable:", e.message);
     }
+
+    // Only save to Tool Shed if the Jira ticket was successfully created
+    if (!jiraCreated) {
+      return { ok: false, jiraError };
+    }
+
     const { data, error } = await supabase.from("devops_requests").insert(fromDevopsRequest({ ...req, jiraTicketKey })).select().single();
-    if (error) { console.error("createDevopsRequest:", error); return; }
+    if (error) { console.error("createDevopsRequest:", error); return { ok: false, message: error.message }; }
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
+    return { ok: true, jiraTicketKey };
   };
   const handleDeleteDevopsRequest = async (id) => {
     if (!authUser?.isAdmin) return;
@@ -7720,6 +8041,7 @@ export default function SproutAIGarden() {
             onNeedsRework={needsRework}
             onMarkNotificationsRead={handleMarkNotificationsRead}
             onToggleInterested={handleToggleInterested}
+            onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}
           />
         )}
       </div>
