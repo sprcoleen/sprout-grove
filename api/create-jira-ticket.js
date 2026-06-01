@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Jira credentials not configured on server' });
   }
 
-  const { summary, description } = req.body || {};
+  const { summary, description, assigneeAccountId, labels, requestedBy } = req.body || {};
   if (!summary) {
     return res.status(400).json({ error: 'summary is required' });
   }
@@ -41,6 +41,8 @@ export default async function handler(req, res) {
           ],
         },
         issuetype: { name: 'Task' },
+        ...(assigneeAccountId && { assignee: { accountId: assigneeAccountId } }),
+        ...(labels?.length  && { labels }),
       },
     }),
   });
@@ -49,6 +51,37 @@ export default async function handler(req, res) {
   if (!jiraRes.ok) {
     console.error('Jira error:', body);
     return res.status(jiraRes.status).json({ error: body.errorMessages || body });
+  }
+
+  // Add a comment indicating the ticket was generated from Grove
+  try {
+    const requesterLabel = requestedBy || 'a Grove user';
+    await fetch(`https://${JIRA_HOST}/rest/api/3/issue/${body.key}/comment`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        body: {
+          type: 'doc',
+          version: 1,
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: '🌱 This ticket was automatically generated from ' },
+                { type: 'text', text: 'Grove', marks: [{ type: 'strong' }] },
+                { type: 'text', text: ` by ${requesterLabel}.` },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+  } catch (commentErr) {
+    console.warn('Could not post Grove comment:', commentErr.message);
   }
 
   return res.status(200).json({ key: body.key, id: body.id });

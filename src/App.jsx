@@ -1823,12 +1823,17 @@ function IcoViewGarden({size=16, color=C.mushroom500}) {
 function IcoDevops({size=20,color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      {/* Wrench open-end jaw */}
       <path d="M3.5 6a3.5 3.5 0 0 1 6.2-2.2l.8.8 1.4-1.4-.8-.8a5.5 5.5 0 1 0 1.4 5.6l-1.9-.5a3.5 3.5 0 0 1-7.1-1.5z" stroke={color} strokeWidth="1.4" fill="none"/>
-      {/* Wrench handle */}
       <path d="M10.5 9.5 L17.5 16.5" stroke={color} strokeWidth="2.2"/>
-      {/* Handle tip */}
       <path d="M16 15 L18 17" stroke={color} strokeWidth="1.5"/>
+    </svg>
+  );
+}
+
+function IcoTrash({size=14,color=C.tomato500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l.8 8.5A1 1 0 0 0 4.8 13.5h6.4a1 1 0 0 0 1-.9L13 4" stroke={color} strokeWidth="1.4"/>
     </svg>
   );
 }
@@ -6597,7 +6602,7 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
   const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
   const [hosting,    setHosting]    = React.useState(project.hosting    || '');
   const [database,   setDatabase]   = React.useState(project.database   || '');
-  const ticketSummary = 'DevOps Setup Request: ' + project.name;
+  const ticketSummary = 'Grove SRC: ' + project.name;
   const monoField = (label, value) =>
     label.padEnd(13) + (value || 'TBD');
   const ticketDesc = [
@@ -6683,8 +6688,9 @@ const DEVOPS_COLS = [
   {id:'in_progress', label:'In Progress', color:C.mango600,    bg:C.mango50,    border:C.mango300,   nextId:'done',        nextLabel:'Mark Done →'},
   {id:'done',        label:'Done',        color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200, nextId:null,          nextLabel:null},
 ];
-function DevopsBoard({ requests, authUser, onUpdate, onViewProject }) {
+function DevopsBoard({ requests, authUser, onUpdate, onDelete, onViewProject }) {
   const [noteInput, setNoteInput] = React.useState({});
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
   const canManage = authUser?.isAdmin || authUser?.isDevops;
   return (
     <div style={{flex:1,overflowY:'auto',background:C.mushroom50,display:'flex',flexDirection:'column',fontFamily:FF}}>
@@ -6711,8 +6717,25 @@ function DevopsBoard({ requests, authUser, onUpdate, onViewProject }) {
                 <div style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:10,minHeight:120}}>
                   {cards.length===0&&<div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,fontStyle:'italic',textAlign:'center',padding:'20px 0'}}>No requests here</div>}
                   {cards.map(req => (
-                    <div key={req.id} style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm}}>
-                      <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:4}}>{req.projectName}</div>
+                    <div key={req.id} style={{background:C.mushroom50,border:'1px solid '+(confirmDelete===req.id?C.tomato500:C.mushroom200),borderRadius:DS.radius.lg,padding:'12px 14px',boxShadow:DS.shadow.sm,transition:'border-color 0.15s'}}>
+                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,marginBottom:4}}>
+                        <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{req.projectName}</div>
+                        {authUser?.isAdmin&&(
+                          confirmDelete===req.id
+                            ? <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
+                                <span style={{fontFamily:FF,fontSize:10,color:C.tomato600,fontWeight:600}}>Delete?</span>
+                                <button onClick={()=>{onDelete(req.id);setConfirmDelete(null);}}
+                                  style={{padding:'2px 8px',background:C.tomato500,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:700,color:C.white,cursor:'pointer'}}>Yes</button>
+                                <button onClick={()=>setConfirmDelete(null)}
+                                  style={{padding:'2px 8px',background:C.mushroom200,border:'none',borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom600,cursor:'pointer'}}>No</button>
+                              </div>
+                            : <button onClick={()=>setConfirmDelete(req.id)} title="Delete ticket"
+                                style={{background:'none',border:'none',cursor:'pointer',padding:2,borderRadius:DS.radius.sm,color:C.mushroom400,display:'flex',alignItems:'center',flexShrink:0,transition:'color 0.15s'}}
+                                onMouseOver={e=>e.currentTarget.style.color=C.tomato500}
+                                onMouseOut={e=>e.currentTarget.style.color=C.mushroom400}
+                              ><IcoTrash size={13}/></button>
+                        )}
+                      </div>
                       <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:8}}>
                         Requested by {req.requestedBy.split('@')[0]}
                         {req.createdAt&&<span style={{color:C.mushroom400}}> · {new Date(req.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</span>}
@@ -6965,7 +6988,13 @@ export default function SproutAIGarden() {
       const jiraRes = await fetch("/api/create-jira-ticket", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: "DevOps Setup Request: " + req.projectName, description: ticketDesc }),
+        body: JSON.stringify({
+          summary: "Grove SRC: " + req.projectName,
+          description: ticketDesc,
+          assigneeAccountId: "5b30a5fb6c008d2dbf9805f0",
+          labels: ["Src=Grove"],
+          requestedBy: authUser?.displayName || req.requestedBy,
+        }),
       });
       if (jiraRes.ok) {
         const jiraData = await jiraRes.json();
@@ -6980,6 +7009,13 @@ export default function SproutAIGarden() {
     if (error) { console.error("createDevopsRequest:", error); return; }
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
   };
+  const handleDeleteDevopsRequest = async (id) => {
+    if (!authUser?.isAdmin) return;
+    const { error } = await supabase.from("devops_requests").delete().eq("id", id);
+    if (error) { console.error("deleteDevopsRequest:", error); return; }
+    setDevopsRequests(prev => prev.filter(r => r.id !== id));
+  };
+
   const handleUpdateDevopsRequest = async (id, status, notes) => {
     const { error } = await supabase.from("devops_requests").update({
       status, devops_notes: notes, updated_at: new Date().toISOString()
@@ -7522,7 +7558,7 @@ export default function SproutAIGarden() {
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
-    {id:"devops",    label:"Tool Shed",Icon:IcoDevops},
+    ...(authUser?.isAdmin ? [{id:"devops", label:"Tool Shed", Icon:IcoDevops, wip:true}] : []),
   ];
 
   const tod = getTimeOfDayStyle();
@@ -7563,6 +7599,7 @@ export default function SproutAIGarden() {
               }}>
                 <NavIcon size={16} color={active?C.kangkong600:C.mushroom500}/>
                 {t.label}
+                {t.wip&&<span style={{fontFamily:FF,fontSize:9,fontWeight:700,letterSpacing:0.3,color:C.mango600,background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.full,padding:"1px 6px",lineHeight:1.4}}>In Progress</span>}
               </button>
             );
           })}
@@ -7650,7 +7687,7 @@ export default function SproutAIGarden() {
           {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
           {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
-          {view==="devops"    && <DevopsBoard requests={devopsRequests} authUser={authUser} onUpdate={handleUpdateDevopsRequest} onViewProject={p=>{setDetailProject(projects.find(pr=>String(pr.id)===String(p.projectId))||p);setView("project-detail");}}/>}
+          {view==="devops"    && <DevopsBoard requests={devopsRequests} authUser={authUser} onUpdate={handleUpdateDevopsRequest} onDelete={handleDeleteDevopsRequest} onViewProject={p=>{setDetailProject(projects.find(pr=>String(pr.id)===String(p.projectId))||p);setView("project-detail");}}/>}
           {view==="project-detail"&&detailProject&&(
             <ProjectDetailPage
               project={projects.find(p=>p.id===detailProject.id)||detailProject}
