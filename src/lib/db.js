@@ -37,6 +37,9 @@ export const toProject = (row) => ({
   usesExternalApis:  row.uses_external_apis  ?? null,
   requiresDeployment:row.requires_deployment ?? null,
   tier:              row.tier                ?? null,
+  githubRepo:      row.github_repo     || '',
+  hosting:         row.hosting         || '',
+  database:        row.database        || '',
   prototypeLink:   row.prototype_link  || null,
   deckLink:        row.deck_link       || null,
   reviewStatus:    row.review_status   || null,
@@ -74,6 +77,9 @@ export const fromProject = (proj) => ({
   uses_external_apis:  proj.usesExternalApis  ?? null,
   requires_deployment: proj.requiresDeployment ?? null,
   tier:                proj.tier               ?? null,
+  github_repo:      proj.githubRepo     || '',
+  hosting:          proj.hosting        || '',
+  database:         proj.database       || '',
   prototype_link:   proj.prototypeLink  ?? null,
   deck_link:        proj.deckLink       ?? null,
   last_updated:     new Date().toISOString(),
@@ -157,4 +163,43 @@ export const loadNotifications = async () => {
     .order('created_at', { ascending: false })
   if (error) { console.error('loadNotifications:', error); return [] }
   return data
+}
+
+export const toDevopsRequest = (row) => ({
+  id:           row.id,
+  projectId:    row.project_id,
+  projectName:  row.project_name,
+  builderEmail: row.builder_email,
+  requestedBy:  row.requested_by,
+  githubRepo:   row.github_repo  || '',
+  hosting:      row.hosting      || '',
+  database:     row.database     || '',
+  status:         row.status           || 'todo',
+  devopsNotes:    row.devops_notes     || '',
+  country:        row.country          || '',
+  jiraTicketKey:  row.jira_ticket_key  || null,
+  createdAt:      row.created_at       || null,
+  updatedAt:      row.updated_at       || null,
+})
+
+export const fromDevopsRequest = (req) => ({
+  project_id:    String(req.projectId),
+  project_name:  req.projectName,
+  builder_email: req.builderEmail,
+  requested_by:  req.requestedBy,
+  github_repo:   req.githubRepo  || null,
+  hosting:       req.hosting     || null,
+  database:      req.database    || null,
+  status:           req.status         || 'todo',
+  devops_notes:     req.devopsNotes    || null,
+  country:          req.country        || null,
+  jira_ticket_key:  req.jiraTicketKey  || null,
+  updated_at:       new Date().toISOString(),
+})
+
+export const loadDevopsRequests = async () => {
+  const { data, error } = await supabase
+    .from('devops_requests').select('*').order('created_at', { ascending: false })
+  if (error) { console.error('loadDevopsRequests:', error); return [] }
+  return data.map(toDevopsRequest)
 }
