@@ -49,13 +49,25 @@ export default async function handler(req, res) {
           ],
         },
         issuetype: { name: 'Task' },
-        customfield_10035: `DevOps setup requested for "${projectName || summary}" by ${requestedBy || 'a Grove user'}.`,
-        customfield_10036: [
-          `Please set up the DevOps infrastructure for this project:`,
-          githubRepo  ? `- GitHub Repo: ${githubRepo}` : '',
-          hosting     ? `- Hosting: ${hosting}`       : '',
-          database    ? `- Database: ${database}`     : '',
-        ].filter(Boolean).join('\n'),
+        customfield_10035: {
+          type: 'doc', version: 1,
+          content: [{ type: 'paragraph', content: [{ type: 'text',
+            text: `DevOps setup requested for "${projectName || summary}" by ${requestedBy || 'a Grove user'}.`
+          }] }],
+        },
+        customfield_10036: {
+          type: 'doc', version: 1,
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'Please set up the DevOps infrastructure for this project:' }] },
+            ...[
+              githubRepo ? `GitHub Repo: ${githubRepo}` : null,
+              hosting    ? `Hosting: ${hosting}`        : null,
+              database   ? `Database: ${database}`      : null,
+            ].filter(Boolean).map(line => ({
+              type: 'paragraph', content: [{ type: 'text', text: line }]
+            })),
+          ],
+        },
         ...(assigneeAccountId && { assignee: { accountId: assigneeAccountId } }),
         ...(labels?.length  && { labels }),
       },
