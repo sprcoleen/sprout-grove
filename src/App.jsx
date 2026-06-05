@@ -2217,7 +2217,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   </div>
 
                   {/* Name */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,paddingRight:80}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,paddingRight:80}}>
                     {p.createdDaysAgo!=null&&p.createdDaysAgo<=30&&(
                       <span title="Added in the last 30 days" style={{flexShrink:0,lineHeight:1}}>
                         <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
@@ -2230,6 +2230,8 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     )}
                     <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35}}>{p.name}</div>
                   </div>
+                  {/* Security badges */}
+                  <div style={{marginBottom:8}}><SecurityBadges project={p}/></div>
 
                   {/* Description */}
                   {p.description&&(
@@ -2719,7 +2721,8 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                           </div>
                           {wilting&&<IcoStale size={13} color={C.mango500}/>}
                         </div>
-                        {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:p.description?4:8}}><TierBadge tier={p.tier}/></div>}
+                        {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:4}}><TierBadge tier={p.tier}/></div>}
+                        <div style={{marginBottom:p.description?4:8}}><SecurityBadges project={p}/></div>
                         {/* Description teaser */}
                         {p.description&&(
                           <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
@@ -3106,6 +3109,26 @@ const GardenMapView = ({projects, filtered, wishes, selected, setSelected}) => {
 };
 
 
+// ── Security Badges ───────────────────────────────────────────────────────────
+function SecurityBadges({project, size="sm"}) {
+  const badges = [];
+  if (project.requiresAuth)      badges.push({label:"🔐 Auth",     bg:C.blueberry100, color:C.blueberry500, border:C.blueberry400});
+  if (project.hasSensitiveData)  badges.push({label:"⚠ Sensitive", bg:"#fef3f2",      color:"#b91c1c",      border:"#fca5a5"});
+  if (project.sendsToExternalAI && project.hasSensitiveData)
+                                  badges.push({label:"🔒 AI+Data",  bg:"#faf5ff",      color:"#6d28d9",      border:"#c4b5fd"});
+  if (project.externalAccess && project.requiresAuth === false)
+                                  badges.push({label:"⚠ No Auth",  bg:C.mango100,     color:C.mango600,     border:C.mango500});
+  if (!badges.length) return null;
+  const fs = size === "lg" ? 11 : 9;
+  return (
+    <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+      {badges.map(b=>(
+        <span key={b.label} style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:b.color,background:b.bg,border:`1px solid ${b.border}`,borderRadius:DS.radius.full,padding:"1px 6px",whiteSpace:"nowrap"}}>{b.label}</span>
+      ))}
+    </div>
+  );
+}
+
 // ── Tier Badge ────────────────────────────────────────────────────────────────
 function TierBadge({tier, size="sm"}) {
   if (tier === null || tier === undefined) return null;
@@ -3267,6 +3290,26 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             </div>
           );
         })()}
+
+        {/* Security & Data summary */}
+        {[project.requiresAuth, project.externalAccess, project.hasSensitiveData, project.sendsToExternalAI, project.storesUserInputs].some(v=>v!==null)&&(
+          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg}}>
+            <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Security &amp; Data</div>
+            {[
+              {q:"Requires auth / login?",          v:project.requiresAuth},
+              {q:"Accessible outside Sprout?",      v:project.externalAccess},
+              {q:"Handles sensitive data?",         v:project.hasSensitiveData},
+              {q:"Sends data to external AI?",      v:project.sendsToExternalAI},
+              {q:"Stores user inputs?",             v:project.storesUserInputs},
+            ].filter(r=>r.v!==null).map((r,i,arr)=>(
+              <div key={r.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<arr.length-1?"1px solid "+C.mushroom200:"none"}}>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom600}}>{r.q}</span>
+                <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:r.v===true?C.kangkong600:C.mushroom500}}>{r.v===true?"Yes":"No"}</span>
+              </div>
+            ))}
+            <div style={{marginTop:8}}><SecurityBadges project={project} size="lg"/></div>
+          </div>
+        )}
 
         {project.collaboratorEmails?.length>0&&(
           <div style={{marginBottom:16}}>
@@ -3532,6 +3575,11 @@ const ProjectDetailPage = ({
   const [cIsUiOnly,           setCIsUiOnly]           = useState(project.isUiOnly           ?? null);
   const [cUsesExternal,       setCUsesExternal]       = useState(project.usesExternalApis   ?? null);
   const [cRequiresDeployment, setCRequiresDeployment] = useState(project.requiresDeployment ?? null);
+  const [cRequiresAuth,       setCRequiresAuth]       = useState(project.requiresAuth       ?? null);
+  const [cExternalAccess,     setCExternalAccess]     = useState(project.externalAccess     ?? null);
+  const [cHasSensitiveData,   setCHasSensitiveData]   = useState(project.hasSensitiveData   ?? null);
+  const [cSendsToExternalAI,  setCendsToExternalAI]  = useState(project.sendsToExternalAI  ?? null);
+  const [cStoresUserInputs,   setCStoresUserInputs]   = useState(project.storesUserInputs   ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -3595,17 +3643,38 @@ const ProjectDetailPage = ({
     setCIsUiOnly(project.isUiOnly           ?? null);
     setCUsesExternal(project.usesExternalApis   ?? null);
     setCRequiresDeployment(project.requiresDeployment ?? null);
-  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment]);
+    setCRequiresAuth(project.requiresAuth       ?? null);
+    setCExternalAccess(project.externalAccess   ?? null);
+    setCHasSensitiveData(project.hasSensitiveData ?? null);
+    setCendsToExternalAI(project.sendsToExternalAI ?? null);
+    setCStoresUserInputs(project.storesUserInputs  ?? null);
+  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment,
+      project.requiresAuth, project.externalAccess, project.hasSensitiveData,
+      project.sendsToExternalAI, project.storesUserInputs]);
 
   const computedTier =
-    cIsUiOnly === true            ? 1 :
-    cUsesExternal === true        ? 3 :
-    cRequiresDeployment === true  ? 2 :
-    cRequiresDeployment === false ? 1 : null;
+    cIsUiOnly === true                                         ? 1 :
+    cUsesExternal === true                                     ? 3 :
+    (cRequiresAuth === true && cHasSensitiveData === true)     ? 2 :
+    cRequiresDeployment === true                               ? 2 :
+    cRequiresDeployment === false                              ? 1 : null;
+
+  const securityFlags = {
+    authRequired:  cRequiresAuth === true,
+    sensitiveData: cHasSensitiveData === true,
+    noAuthRisk:    cExternalAccess === true && cRequiresAuth === false,
+    aiDataRisk:    cSendsToExternalAI === true && cHasSensitiveData === true,
+    storesInputs:  cStoresUserInputs === true,
+  };
 
   const classIsDirty = cIsUiOnly !== (project.isUiOnly ?? null)
     || cUsesExternal !== (project.usesExternalApis ?? null)
-    || cRequiresDeployment !== (project.requiresDeployment ?? null);
+    || cRequiresDeployment !== (project.requiresDeployment ?? null)
+    || cRequiresAuth !== (project.requiresAuth ?? null)
+    || cExternalAccess !== (project.externalAccess ?? null)
+    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
+    || cSendsToExternalAI !== (project.sendsToExternalAI ?? null)
+    || cStoresUserInputs !== (project.storesUserInputs ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
@@ -3616,6 +3685,9 @@ const ProjectDetailPage = ({
     await onSaveClassification?.(project.id, {
       isUiOnly: cIsUiOnly, usesExternalApis: cUsesExternal,
       requiresDeployment: cRequiresDeployment, tier: computedTier,
+      requiresAuth: cRequiresAuth, externalAccess: cExternalAccess,
+      hasSensitiveData: cHasSensitiveData, sendsToExternalAI: cSendsToExternalAI,
+      storesUserInputs: cStoresUserInputs,
     });
     setClassSaving(false);
   };
@@ -3889,9 +3961,42 @@ const ProjectDetailPage = ({
                           <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
                         </div>
                       )}
+
+                      {/* ── Security & Data section ── */}
+                      <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:4}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:12}}>Security &amp; Data</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                          {[
+                            {q:"Does this project require user login or authentication?", val:cRequiresAuth, set:setCRequiresAuth},
+                            {q:"Is this project accessible outside the Sprout internal network / VPN?", val:cExternalAccess, set:setCExternalAccess},
+                            {q:"Does it handle or process sensitive data? (PII, payroll, HR records, health data)", val:cHasSensitiveData, set:setCHasSensitiveData},
+                            {q:"Does it send employee or company data to external AI models? (OpenAI, Claude, Gemini, etc.)", val:cSendsToExternalAI, set:setCendsToExternalAI},
+                            {q:"Does it store or log user inputs / outputs persistently?", val:cStoresUserInputs, set:setCStoresUserInputs},
+                          ].map(({q,val,set})=>(
+                            <div key={q}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>{q}</div>
+                              <YesNo value={val} onYes={()=>set(true)} onNo={()=>set(false)}/>
+                            </div>
+                          ))}
+                          {/* Security flag warnings */}
+                          {securityFlags.noAuthRisk&&(
+                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                              <span style={{fontSize:14}}>⚠️</span>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                            </div>
+                          )}
+                          {securityFlags.aiDataRisk&&(
+                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:"#faf5ff",border:"1px solid #9f7aea",borderRadius:DS.radius.md}}>
+                              <span style={{fontSize:14}}>🔒</span>
+                              <div style={{fontFamily:FF,fontSize:11,color:"#553c9a",fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch.</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {classIsDirty&&(
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);}}
+                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);setCRequiresAuth(project.requiresAuth??null);setCExternalAccess(project.externalAccess??null);setCHasSensitiveData(project.hasSensitiveData??null);setCendsToExternalAI(project.sendsToExternalAI??null);setCStoresUserInputs(project.storesUserInputs??null);}}
                             style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
                           <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
                             style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
@@ -7587,7 +7692,7 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier}) => {
+  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier, requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
@@ -7595,10 +7700,14 @@ export default function SproutAIGarden() {
     const { error } = await supabase.from("projects").update({
       is_ui_only: isUiOnly, uses_external_apis: usesExternalApis,
       requires_deployment: requiresDeployment, tier, last_updated: now,
+      requires_auth: requiresAuth, external_access: externalAccess,
+      has_sensitive_data: hasSensitiveData, sends_to_external_ai: sendsToExternalAI,
+      stores_user_inputs: storesUserInputs,
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0}
+      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0,
+              requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}
       : p
     ));
   };
