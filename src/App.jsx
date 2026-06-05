@@ -3667,7 +3667,7 @@ const ProjectDetailPage = ({
   const computedTier =
     cIsUiOnly === true                                         ? 1 :
     cUsesExternal === true                                     ? 3 :
-    (cRequiresAuth === true && cHasSensitiveData === true)     ? 2 :
+    (cRequiresAuth === true && cHasSensitiveData === true)     ? 3 :
     cRequiresDeployment === true                               ? 2 :
     cRequiresDeployment === false                              ? 1 : null;
 
@@ -3998,9 +3998,9 @@ const ProjectDetailPage = ({
                             </div>
                           )}
                           {securityFlags.aiDataRisk&&(
-                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:"#faf5ff",border:"1px solid #9f7aea",borderRadius:DS.radius.md}}>
+                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
                               <span style={{fontSize:14}}>🔒</span>
-                              <div style={{fontFamily:FF,fontSize:11,color:"#553c9a",fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch.</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
                             </div>
                           )}
                         </div>
@@ -7333,15 +7333,15 @@ function GuideView() {
       color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
       desc:"Deployed for Sprout employees. Requires proper infrastructure, access control, and data handling review.",
       examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
-      triggers:["Requires deployment", "Requires user auth AND handles sensitive data", "Accessible to Sprout employees"],
+      triggers:["Requires deployment", "Accessible to Sprout employees"],
       coord: "Coordinate with Raffy (DevOps) before shipping.",
     },
     {
       num:3, label:"External App",
       color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
-      desc:"Faces customers, external partners, or anyone outside Sprout. Highest scrutiny and coordination required.",
-      examples:"Client portals, public-facing AI features, partner integrations",
-      triggers:["Uses external APIs / third-party services", "Customer-facing or external access"],
+      desc:"Faces customers, external partners, or anyone outside Sprout — OR requires user authentication AND handles sensitive data. Highest scrutiny and coordination required.",
+      examples:"Client portals, public-facing AI features, partner integrations, projects with auth + sensitive data",
+      triggers:["Uses external APIs / third-party services", "Customer-facing or external access", "Requires user auth AND handles sensitive data"],
       coord: "Coordinate with Belle or Coleen before shipping.",
     },
   ];
@@ -7498,7 +7498,7 @@ function GuideView() {
               {[
                 {q:"Requires user login / authentication?",          flag:"🔐 Auth Required",      note:"Needs proper auth implementation."},
                 {q:"Accessible outside the Sprout network / VPN?",   flag:"⚠ External Access",     note:"Exposed endpoints need extra scrutiny."},
-                {q:"Handles sensitive data? (PII, payroll, HR…)",    flag:"⚠ Sensitive Data",      note:"Auth + Sensitive Data → auto-classifies as Tier 2."},
+                {q:"Handles sensitive data? (PII, payroll, HR…)",    flag:"⚠ Sensitive Data",      note:"Auth + Sensitive Data → auto-classifies as Tier 3."},
                 {q:"Sends data to external AI models?",              flag:"🔒 AI + Data risk",      note:"Sensitive data + external AI → DPO/privacy review required."},
                 {q:"Stores or logs user inputs persistently?",        flag:"📦 Data Retention",     note:"Review data retention policy with Raffy."},
               ].map((r,i,arr)=>(
@@ -7513,7 +7513,7 @@ function GuideView() {
             </div>
             <div style={{marginTop:16,padding:"12px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
               <strong style={{fontFamily:FF,fontSize:12,color:C.mango700}}>⚠ Auto-escalation rule:</strong>
-              <span style={{fontFamily:FF,fontSize:12,color:C.mango700}}> If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 2</strong> regardless of other answers.</span>
+              <span style={{fontFamily:FF,fontSize:12,color:C.mango700}}> If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 3</strong> regardless of other answers. Coordinate with Belle or Coleen before shipping.</span>
             </div>
           </Card>
         </Section>
