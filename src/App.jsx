@@ -1820,6 +1820,18 @@ function IcoViewGarden({size=16, color=C.mushroom500}) {
   );
 }
 
+function IcoGuide({size=16, color=C.mushroom500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="1.5" width="10" height="13" rx="1.5" stroke={color} strokeWidth="1.2" fill={color} fillOpacity="0.08"/>
+      <path d="M12 1.5 C13.1 1.5 14 2.4 14 3.5 V13.5 C14 14.6 13.1 15.5 12 15.5" stroke={color} strokeWidth="1.2"/>
+      <line x1="4.5" y1="5" x2="9.5" y2="5"  stroke={color} strokeWidth="1"/>
+      <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={color} strokeWidth="1"/>
+      <line x1="4.5" y1="10" x2="7.5" y2="10" stroke={color} strokeWidth="1"/>
+    </svg>
+  );
+}
+
 function IcoViewList({size=16, color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -2217,7 +2229,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   </div>
 
                   {/* Name */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,paddingRight:80}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,paddingRight:80}}>
                     {p.createdDaysAgo!=null&&p.createdDaysAgo<=30&&(
                       <span title="Added in the last 30 days" style={{flexShrink:0,lineHeight:1}}>
                         <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
@@ -2230,6 +2242,8 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     )}
                     <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35}}>{p.name}</div>
                   </div>
+                  {/* Security badges */}
+                  <div style={{marginBottom:8}}><SecurityBadges project={p}/></div>
 
                   {/* Description */}
                   {p.description&&(
@@ -2719,7 +2733,8 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                           </div>
                           {wilting&&<IcoStale size={13} color={C.mango500}/>}
                         </div>
-                        {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:p.description?4:8}}><TierBadge tier={p.tier}/></div>}
+                        {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:4}}><TierBadge tier={p.tier}/></div>}
+                        <div style={{marginBottom:p.description?4:8}}><SecurityBadges project={p}/></div>
                         {/* Description teaser */}
                         {p.description&&(
                           <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:8,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
@@ -3106,6 +3121,26 @@ const GardenMapView = ({projects, filtered, wishes, selected, setSelected}) => {
 };
 
 
+// ── Security Badges ───────────────────────────────────────────────────────────
+function SecurityBadges({project, size="sm"}) {
+  const badges = [];
+  if (project.requiresAuth)      badges.push({label:"🔐 Auth",     bg:C.blueberry100, color:C.blueberry500, border:C.blueberry400});
+  if (project.hasSensitiveData)  badges.push({label:"⚠ Sensitive", bg:"#fef3f2",      color:"#b91c1c",      border:"#fca5a5"});
+  if (project.sendsToExternalAI && project.hasSensitiveData)
+                                  badges.push({label:"🔒 AI+Data",  bg:"#faf5ff",      color:"#6d28d9",      border:"#c4b5fd"});
+  if (project.externalAccess && project.requiresAuth === false)
+                                  badges.push({label:"⚠ No Auth",  bg:C.mango100,     color:C.mango600,     border:C.mango500});
+  if (!badges.length) return null;
+  const fs = size === "lg" ? 11 : 9;
+  return (
+    <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+      {badges.map(b=>(
+        <span key={b.label} style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:b.color,background:b.bg,border:`1px solid ${b.border}`,borderRadius:DS.radius.full,padding:"1px 6px",whiteSpace:"nowrap"}}>{b.label}</span>
+      ))}
+    </div>
+  );
+}
+
 // ── Tier Badge ────────────────────────────────────────────────────────────────
 function TierBadge({tier, size="sm"}) {
   if (tier === null || tier === undefined) return null;
@@ -3267,6 +3302,26 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             </div>
           );
         })()}
+
+        {/* Security & Data summary */}
+        {[project.requiresAuth, project.externalAccess, project.hasSensitiveData, project.sendsToExternalAI, project.storesUserInputs].some(v=>v!==null)&&(
+          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg}}>
+            <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Security &amp; Data</div>
+            {[
+              {q:"Requires auth / login?",          v:project.requiresAuth},
+              {q:"Accessible outside Sprout?",      v:project.externalAccess},
+              {q:"Handles sensitive data?",         v:project.hasSensitiveData},
+              {q:"Sends data to external AI?",      v:project.sendsToExternalAI},
+              {q:"Stores user inputs?",             v:project.storesUserInputs},
+            ].filter(r=>r.v!==null).map((r,i,arr)=>(
+              <div key={r.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<arr.length-1?"1px solid "+C.mushroom200:"none"}}>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom600}}>{r.q}</span>
+                <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:r.v===true?C.kangkong600:C.mushroom500}}>{r.v===true?"Yes":"No"}</span>
+              </div>
+            ))}
+            <div style={{marginTop:8}}><SecurityBadges project={project} size="lg"/></div>
+          </div>
+        )}
 
         {project.collaboratorEmails?.length>0&&(
           <div style={{marginBottom:16}}>
@@ -3532,6 +3587,11 @@ const ProjectDetailPage = ({
   const [cIsUiOnly,           setCIsUiOnly]           = useState(project.isUiOnly           ?? null);
   const [cUsesExternal,       setCUsesExternal]       = useState(project.usesExternalApis   ?? null);
   const [cRequiresDeployment, setCRequiresDeployment] = useState(project.requiresDeployment ?? null);
+  const [cRequiresAuth,       setCRequiresAuth]       = useState(project.requiresAuth       ?? null);
+  const [cExternalAccess,     setCExternalAccess]     = useState(project.externalAccess     ?? null);
+  const [cHasSensitiveData,   setCHasSensitiveData]   = useState(project.hasSensitiveData   ?? null);
+  const [cSendsToExternalAI,  setCendsToExternalAI]  = useState(project.sendsToExternalAI  ?? null);
+  const [cStoresUserInputs,   setCStoresUserInputs]   = useState(project.storesUserInputs   ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -3595,17 +3655,38 @@ const ProjectDetailPage = ({
     setCIsUiOnly(project.isUiOnly           ?? null);
     setCUsesExternal(project.usesExternalApis   ?? null);
     setCRequiresDeployment(project.requiresDeployment ?? null);
-  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment]);
+    setCRequiresAuth(project.requiresAuth       ?? null);
+    setCExternalAccess(project.externalAccess   ?? null);
+    setCHasSensitiveData(project.hasSensitiveData ?? null);
+    setCendsToExternalAI(project.sendsToExternalAI ?? null);
+    setCStoresUserInputs(project.storesUserInputs  ?? null);
+  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment,
+      project.requiresAuth, project.externalAccess, project.hasSensitiveData,
+      project.sendsToExternalAI, project.storesUserInputs]);
 
   const computedTier =
-    cIsUiOnly === true            ? 1 :
-    cUsesExternal === true        ? 3 :
-    cRequiresDeployment === true  ? 2 :
-    cRequiresDeployment === false ? 1 : null;
+    cIsUiOnly === true                                         ? 1 :
+    cUsesExternal === true                                     ? 3 :
+    (cRequiresAuth === true && cHasSensitiveData === true)     ? 2 :
+    cRequiresDeployment === true                               ? 2 :
+    cRequiresDeployment === false                              ? 1 : null;
+
+  const securityFlags = {
+    authRequired:  cRequiresAuth === true,
+    sensitiveData: cHasSensitiveData === true,
+    noAuthRisk:    cExternalAccess === true && cRequiresAuth === false,
+    aiDataRisk:    cSendsToExternalAI === true && cHasSensitiveData === true,
+    storesInputs:  cStoresUserInputs === true,
+  };
 
   const classIsDirty = cIsUiOnly !== (project.isUiOnly ?? null)
     || cUsesExternal !== (project.usesExternalApis ?? null)
-    || cRequiresDeployment !== (project.requiresDeployment ?? null);
+    || cRequiresDeployment !== (project.requiresDeployment ?? null)
+    || cRequiresAuth !== (project.requiresAuth ?? null)
+    || cExternalAccess !== (project.externalAccess ?? null)
+    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
+    || cSendsToExternalAI !== (project.sendsToExternalAI ?? null)
+    || cStoresUserInputs !== (project.storesUserInputs ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
@@ -3616,6 +3697,9 @@ const ProjectDetailPage = ({
     await onSaveClassification?.(project.id, {
       isUiOnly: cIsUiOnly, usesExternalApis: cUsesExternal,
       requiresDeployment: cRequiresDeployment, tier: computedTier,
+      requiresAuth: cRequiresAuth, externalAccess: cExternalAccess,
+      hasSensitiveData: cHasSensitiveData, sendsToExternalAI: cSendsToExternalAI,
+      storesUserInputs: cStoresUserInputs,
     });
     setClassSaving(false);
   };
@@ -3889,9 +3973,42 @@ const ProjectDetailPage = ({
                           <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
                         </div>
                       )}
+
+                      {/* ── Security & Data section ── */}
+                      <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:4}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:12}}>Security &amp; Data</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                          {[
+                            {q:"Does this project require user login or authentication?", val:cRequiresAuth, set:setCRequiresAuth},
+                            {q:"Is this project accessible outside the Sprout internal network / VPN?", val:cExternalAccess, set:setCExternalAccess},
+                            {q:"Does it handle or process sensitive data? (PII, payroll, HR records, health data)", val:cHasSensitiveData, set:setCHasSensitiveData},
+                            {q:"Does it send employee or company data to external AI models? (OpenAI, Claude, Gemini, etc.)", val:cSendsToExternalAI, set:setCendsToExternalAI},
+                            {q:"Does it store or log user inputs / outputs persistently?", val:cStoresUserInputs, set:setCStoresUserInputs},
+                          ].map(({q,val,set})=>(
+                            <div key={q}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>{q}</div>
+                              <YesNo value={val} onYes={()=>set(true)} onNo={()=>set(false)}/>
+                            </div>
+                          ))}
+                          {/* Security flag warnings */}
+                          {securityFlags.noAuthRisk&&(
+                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                              <span style={{fontSize:14}}>⚠️</span>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                            </div>
+                          )}
+                          {securityFlags.aiDataRisk&&(
+                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:"#faf5ff",border:"1px solid #9f7aea",borderRadius:DS.radius.md}}>
+                              <span style={{fontSize:14}}>🔒</span>
+                              <div style={{fontFamily:FF,fontSize:11,color:"#553c9a",fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch.</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {classIsDirty&&(
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);}}
+                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);setCRequiresAuth(project.requiresAuth??null);setCExternalAccess(project.externalAccess??null);setCHasSensitiveData(project.hasSensitiveData??null);setCendsToExternalAI(project.sendsToExternalAI??null);setCStoresUserInputs(project.storesUserInputs??null);}}
                             style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
                           <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
                             style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
@@ -7176,6 +7293,282 @@ function DevopsBoard({ authUser }) {
   );
 }
 
+// ── Grove Guide / Wiki ────────────────────────────────────────────────────────
+function GuideView() {
+  const Section = ({title, icon, children}) => (
+    <div style={{marginBottom:36}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
+        <div style={{fontFamily:FF,fontSize:20,fontWeight:800,color:C.mushroom900}}>{title}</div>
+      </div>
+      {children}
+    </div>
+  );
+  const Card = ({children, bg=C.white, border=C.mushroom200, style={}}) => (
+    <div style={{background:bg,border:"1px solid "+border,borderRadius:DS.radius.xl,padding:"20px 24px",boxShadow:DS.shadow.sm,...style}}>{children}</div>
+  );
+  const Label = ({children}) => (
+    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.9,color:C.mushroom400,marginBottom:4}}>{children}</div>
+  );
+
+  const stages = [
+    {key:"seedling", emoji:"🌱", label:"Seedling", desc:"You're actively building. Prototype + deck required to advance.", color:STAGE_COLORS.seedling},
+    {key:"nursery",  emoji:"🪴", label:"Nursery",  desc:"Under leadership review. Gathering feedback before scaling.", color:STAGE_COLORS.nursery},
+    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Approved and shipping. Full speed ahead.",                   color:STAGE_COLORS.sprout},
+    {key:"bloom",    emoji:"🌸", label:"Bloom",    desc:"Real users, real feedback. Measuring impact.",              color:STAGE_COLORS.bloom},
+    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Live, loved, and making a lasting impact at Sprout.",       color:STAGE_COLORS.thriving},
+  ];
+
+  const tiers = [
+    {
+      num:1, label:"Markup / Simple Logic",
+      color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300, accent:C.mushroom400,
+      desc:"Prompt engineering, scripts, one-pagers, or simple automation with no backend and no external users.",
+      examples:"ChatGPT prompt library, email templates, simple data scripts",
+      triggers:["UI-only or static content", "No backend logic", "No external user access"],
+      coord: null,
+    },
+    {
+      num:2, label:"Internal App",
+      color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
+      desc:"Deployed for Sprout employees. Requires proper infrastructure, access control, and data handling review.",
+      examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
+      triggers:["Requires deployment", "Requires user auth AND handles sensitive data", "Accessible to Sprout employees"],
+      coord: "Coordinate with Raffy (DevOps) before shipping.",
+    },
+    {
+      num:3, label:"External App",
+      color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
+      desc:"Faces customers, external partners, or anyone outside Sprout. Highest scrutiny and coordination required.",
+      examples:"Client portals, public-facing AI features, partner integrations",
+      triggers:["Uses external APIs / third-party services", "Customer-facing or external access"],
+      coord: "Coordinate with Belle or Coleen before shipping.",
+    },
+  ];
+
+  return (
+    <div style={{flex:1,overflowY:"auto",background:C.mushroom50,fontFamily:FF}}>
+      {/* Hero */}
+      <div style={{background:"linear-gradient(135deg,"+C.kangkong700+" 0%,"+C.kangkong500+" 100%)",padding:"40px 48px 36px",color:C.white}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+          <GroveLogo/>
+          <div>
+            <div style={{fontFamily:FF,fontSize:28,fontWeight:800,lineHeight:1}}>Grove</div>
+            <div style={{fontFamily:FF,fontSize:13,opacity:0.8,marginTop:2}}>by Sprout · Philippines &amp; Thailand</div>
+          </div>
+        </div>
+        <div style={{fontFamily:FF,fontSize:16,opacity:0.9,maxWidth:600,lineHeight:1.6}}>
+          Grove is Sprout's internal AI project tracker — a shared garden where ideas take root, get built, and grow into products that make Sprout better.
+        </div>
+      </div>
+
+      <div style={{padding:"36px 48px",maxWidth:960,margin:"0 auto"}}>
+
+        {/* What is Grove */}
+        <Section title="What is Grove?" icon="🌿">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+            {[
+              {icon:"💡",title:"Capture Ideas",     body:"Submit seed ideas to the Wishlist so nothing gets lost. Teammates upvote the ones they want built."},
+              {icon:"🔨",title:"Track Projects",     body:"Document real AI initiatives as they're being built — who's building, what stage it's in, and what it does."},
+              {icon:"📊",title:"Stay Coordinated",   body:"Classify projects by tier so DevOps, security, and leadership know when to get involved."},
+            ].map(item=>(
+              <Card key={item.title}>
+                <div style={{fontSize:28,marginBottom:8}}>{item.icon}</div>
+                <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,marginBottom:6}}>{item.title}</div>
+                <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>{item.body}</div>
+              </Card>
+            ))}
+          </div>
+        </Section>
+
+        {/* Who can access */}
+        <Section title="Who can use Grove?" icon="👥">
+          <Card>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+              {[
+                {flag:"PH", domain:"@sprout.ph",          label:"Philippines office"},
+                {flag:"TH", domain:"@sproutsolutions.io",  label:"Thailand office"},
+              ].map(r=>(
+                <div key={r.flag} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:C.mushroom50,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200}}>
+                  <CountryBadge country={r.flag} size="lg"/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900}}>{r.label}</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500}}>{r.domain}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:14,fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>
+              Sign in with your Sprout Google account. Your country is automatically set from your email domain and cannot be changed.
+            </div>
+          </Card>
+        </Section>
+
+        {/* Process Flow */}
+        <Section title="How it works — User Process Flow" icon="🗺️">
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {step:"1", color:C.kangkong500, bg:C.kangkong50, border:C.kangkong200,
+                title:"Submit a Seed 🌰",
+                body:"Have an AI idea? Post it to the Wishlist. Add a title and explain the problem it solves. Anyone can upvote seeds they want to see built."},
+              {step:"2", color:C.mango600, bg:C.mango50, border:C.mango300,
+                title:"Claim a Seed 🔨",
+                body:"Ready to build someone's idea? Claim it. This moves the seed to your name — only one person can claim a seed at a time."},
+              {step:"3", color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400,
+                title:"Add a Plant 🌱",
+                body:"If you're already building something, add it directly to the Garden. Fill in what it does, who it's for, and what tools you're using."},
+              {step:"4", color:"#805ad5", bg:"#faf5ff", border:"#9f7aea",
+                title:"Classify your project 🏷️",
+                body:"Go to the Technical tab and answer the classification questions. This determines your Tier (1–3) and flags any security or data concerns that need coordination."},
+              {step:"5", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
+                title:"Progress through stages 🚀",
+                body:"Move your project from Seedling → Nursery → Sprout → Bloom → Thriving as it grows. Each stage reflects where you are in the build journey."},
+            ].map((s,i)=>(
+              <div key={s.step} style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+                <div style={{width:32,height:32,borderRadius:"50%",background:s.bg,border:"2px solid "+s.border,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:14,fontWeight:800,color:s.color,flexShrink:0,marginTop:2}}>{s.step}</div>
+                <div style={{flex:1,background:s.bg,border:"1px solid "+s.border,borderRadius:DS.radius.lg,padding:"14px 18px"}}>
+                  <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,marginBottom:4}}>{s.title}</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>{s.body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* Stages */}
+        <Section title="Project Stages" icon="📈">
+          <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
+            {stages.map((s,i)=>(
+              <div key={s.key} style={{flex:1,position:"relative",background:s.color.bg,border:"1px solid "+s.color.border,borderRadius:DS.radius.lg,padding:"14px 14px 14px 14px",display:"flex",flexDirection:"column"}}>
+                {i<stages.length-1&&(
+                  <div style={{position:"absolute",right:-12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.mushroom400,zIndex:1}}>›</div>
+                )}
+                <div style={{fontSize:22,marginBottom:6}}>{s.emoji}</div>
+                <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:s.color.text,marginBottom:4}}>{s.label}</div>
+                <div style={{fontFamily:FF,fontSize:11,color:s.color.text,opacity:0.8,lineHeight:1.5}}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:12,padding:"10px 14px",background:C.mushroom100,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600}}>
+            💡 <strong>Seedling → Nursery</strong> requires a prototype link and deck. Stage changes are one step at a time for builders; admins can skip stages.
+          </div>
+        </Section>
+
+        {/* Tiers */}
+        <Section title="Tier Classification" icon="🏷️">
+          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:20}}>
+            Every project needs to be classified by tier. This determines who needs to be involved before you ship and what level of review is required. Answer the questions in the <strong>Technical tab</strong> of your project — the tier is computed automatically.
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {tiers.map(t=>(
+              <div key={t.num} style={{position:"relative",background:t.bg,border:"1px solid "+t.border,borderRadius:DS.radius.xl,padding:"20px 20px 20px 24px",overflow:"hidden"}}>
+                <div style={{position:"absolute",left:0,top:0,bottom:0,width:5,background:t.accent,borderRadius:DS.radius.xl+" 0 0 "+DS.radius.xl}}/>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:260}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <span style={{fontFamily:FF,fontSize:15,fontWeight:800,color:t.color,background:C.white,border:"2px solid "+t.border,borderRadius:DS.radius.full,padding:"2px 12px"}}>Tier {t.num}</span>
+                      <span style={{fontFamily:FF,fontSize:14,fontWeight:700,color:t.color}}>{t.label}</span>
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:13,color:C.mushroom700,lineHeight:1.6,marginBottom:8}}>{t.desc}</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500}}><strong>Examples:</strong> {t.examples}</div>
+                    {t.coord&&<div style={{marginTop:8,padding:"6px 10px",background:C.white,border:"1px solid "+t.border,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:t.color,fontWeight:600}}>⚑ {t.coord}</div>}
+                  </div>
+                  <div style={{minWidth:200}}>
+                    <Label>Triggered when</Label>
+                    {t.triggers.map(tr=>(
+                      <div key={tr} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:4}}>
+                        <span style={{color:t.color,fontWeight:700,flexShrink:0}}>✓</span>
+                        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{tr}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* Security & Data */}
+        <Section title="Security &amp; Data Classification" icon="🔐">
+          <Card>
+            <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
+              Every project also answers 5 security questions (in the Technical tab). These determine whether additional review is needed before launch.
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[
+                {q:"Requires user login / authentication?",          flag:"🔐 Auth Required",      note:"Needs proper auth implementation."},
+                {q:"Accessible outside the Sprout network / VPN?",   flag:"⚠ External Access",     note:"Exposed endpoints need extra scrutiny."},
+                {q:"Handles sensitive data? (PII, payroll, HR…)",    flag:"⚠ Sensitive Data",      note:"Auth + Sensitive Data → auto-classifies as Tier 2."},
+                {q:"Sends data to external AI models?",              flag:"🔒 AI + Data risk",      note:"Sensitive data + external AI → DPO/privacy review required."},
+                {q:"Stores or logs user inputs persistently?",        flag:"📦 Data Retention",     note:"Review data retention policy with Raffy."},
+              ].map((r,i,arr)=>(
+                <div key={r.q} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 12px",background:C.mushroom50,borderRadius:DS.radius.md,border:"1px solid "+C.mushroom200}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom800,marginBottom:2}}>{r.q}</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{r.note}</div>
+                  </div>
+                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.blueberry500,background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.full,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{r.flag}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:16,padding:"12px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+              <strong style={{fontFamily:FF,fontSize:12,color:C.mango700}}>⚠ Auto-escalation rule:</strong>
+              <span style={{fontFamily:FF,fontSize:12,color:C.mango700}}> If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 2</strong> regardless of other answers.</span>
+            </div>
+          </Card>
+        </Section>
+
+        {/* Roles */}
+        <Section title="Roles &amp; Permissions" icon="👤">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            {[
+              {role:"Employee", icon:"🌱", color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200,
+                can:["Submit seed ideas to the Wishlist","Upvote any seed","Claim an unclaimed seed","Add a project to the Garden","Edit and move your own projects","Change stage (adjacent stages only)"]},
+              {role:"Admin (🌿 Gardener)", icon:"🌿", color:"#805ad5", bg:"#faf5ff", border:"#c4b5fd",
+                can:["Everything an employee can do","Edit any project or seed","Delete any project or seed","Skip stages in any direction","Access the Tool Shed (DevOps requests)","Moderate duplicates and manage records"]},
+            ].map(r=>(
+              <Card key={r.role} bg={r.bg} border={r.border}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:22}}>{r.icon}</span>
+                  <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:r.color}}>{r.role}</div>
+                </div>
+                {r.can.map(c=>(
+                  <div key={c} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:5}}>
+                    <span style={{color:r.color,fontWeight:700,flexShrink:0,fontSize:12}}>✓</span>
+                    <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{c}</span>
+                  </div>
+                ))}
+              </Card>
+            ))}
+          </div>
+        </Section>
+
+        {/* Quick Tips */}
+        <Section title="Quick Tips" icon="💡">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {[
+              {tip:"Always classify your project",  body:"Go to the Technical tab and answer the tier + security questions. Unclassified projects show up in the Unclassified count."},
+              {tip:"Seeds are never deleted",         body:"Fulfilled wishes stay visible — they become part of the project's story. Just mark them fulfilled when you build them."},
+              {tip:"Coordinate early for Tier 2+",   body:"If your project is Tier 2 or 3, loop in Raffy (DevOps) or Belle/Coleen before you ship — use the Tool Shed to log the request."},
+              {tip:"Country is immutable",            body:"Your country (PH or TH) is set from your email domain at first login and can never be changed. Projects inherit this from their builder."},
+            ].map(t=>(
+              <Card key={t.tip}>
+                <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:4}}>💡 {t.tip}</div>
+                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom600,lineHeight:1.6}}>{t.body}</div>
+              </Card>
+            ))}
+          </div>
+        </Section>
+
+        {/* Footer */}
+        <div style={{textAlign:"center",padding:"20px 0 40px",fontFamily:FF,fontSize:12,color:C.mushroom400}}>
+          Grove by Sprout · Philippines &amp; Thailand · Questions? Reach out to your Grove admin.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SproutAIGarden() {
   const [projects, setProjects] = useState([]);
   const [wishes, setWishes]     = useState([]);
@@ -7587,7 +7980,7 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier}) => {
+  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier, requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
@@ -7595,10 +7988,14 @@ export default function SproutAIGarden() {
     const { error } = await supabase.from("projects").update({
       is_ui_only: isUiOnly, uses_external_apis: usesExternalApis,
       requires_deployment: requiresDeployment, tier, last_updated: now,
+      requires_auth: requiresAuth, external_access: externalAccess,
+      has_sensitive_data: hasSensitiveData, sends_to_external_ai: sendsToExternalAI,
+      stores_user_inputs: storesUserInputs,
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0}
+      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0,
+              requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}
       : p
     ));
   };
@@ -7969,6 +8366,7 @@ export default function SproutAIGarden() {
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
     ...(authUser?.isAdmin ? [{id:"devops", label:"Tool Shed", Icon:IcoDevops, wip:true}] : []),
+    {id:"guide",     label:"Guide",     Icon:IcoGuide},
   ];
 
   const tod = getTimeOfDayStyle();
@@ -8098,6 +8496,7 @@ export default function SproutAIGarden() {
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
           {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
+          {view==="guide"     && <GuideView/>}
           {view==="project-detail"&&detailProject&&(
             <ProjectDetailPage
               project={projects.find(p=>p.id===detailProject.id)||detailProject}

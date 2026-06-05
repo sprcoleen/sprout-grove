@@ -51,6 +51,11 @@ export const toProject = (row) => ({
   lastUpdatedAt:   row.last_updated  || null,
   createdAt:       row.created_at    || null,
   createdDaysAgo:  row.created_at ? daysAgo(row.created_at) : null,
+  requiresAuth:        row.requires_auth        ?? null,
+  externalAccess:      row.external_access      ?? null,
+  hasSensitiveData:    row.has_sensitive_data   ?? null,
+  sendsToExternalAI:   row.sends_to_external_ai ?? null,
+  storesUserInputs:    row.stores_user_inputs   ?? null,
 })
 
 export const fromProject = (proj) => ({
@@ -79,6 +84,11 @@ export const fromProject = (proj) => ({
   uses_external_apis:  proj.usesExternalApis  ?? null,
   requires_deployment: proj.requiresDeployment ?? null,
   tier:                proj.tier               ?? null,
+  requires_auth:        proj.requiresAuth        ?? null,
+  external_access:      proj.externalAccess      ?? null,
+  has_sensitive_data:   proj.hasSensitiveData    ?? null,
+  sends_to_external_ai: proj.sendsToExternalAI   ?? null,
+  stores_user_inputs:   proj.storesUserInputs    ?? null,
   github_repo:      proj.githubRepo     || '',
   hosting:          proj.hosting        || '',
   database:         proj.database       || '',
