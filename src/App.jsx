@@ -2265,9 +2265,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,marginBottom:18}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -2449,9 +2449,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,marginBottom:18}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -2633,9 +2633,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,padding:"12px 20px 0",flexShrink:0}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -3247,7 +3247,7 @@ function SecurityBadges({project, size="sm"}) {
 function TierBadge({tier, size="sm"}) {
   if (tier === null || tier === undefined) return null;
   const [color, bg, border, label] =
-    tier === 1 ? [C.mushroom700, C.mushroom100, C.mushroom300, "Markup"] :
+    tier === 1 ? [C.mushroom700, C.mushroom100, C.mushroom300, "Static"] :
     tier === 2 ? [C.blueberry500, C.blueberry100, C.blueberry400, "Internal"] :
                  [C.carrot500,   C.carrot100,   C.carrot500,   "External"];
   const fs = size === "lg" ? 12 : 10;
@@ -3294,7 +3294,7 @@ function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onRelease
   const isAdmin   = authUser?.isAdmin;
   const rrs       = project.releaseReviewStatus;
   const nextStage = project.stage === "sprout" ? "Bloom" : "Thriving";
-  const tierLabel = project.tier === 3 ? "Tier 3 — Full sign-off required" : "Tier 2 — RM acknowledgment required";
+  const tierLabel = project.tier === 3 ? "Tier 3 — Full sign-off required (Raffy + Belle/Coleen)" : "Tier 2 — Coordinate with Raffy before shipping";
 
   // Only show this banner at the gated stages
   if (project.stage !== "sprout" && project.stage !== "bloom") return null;
@@ -3527,9 +3527,9 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
 
         {project.tier!==null&&(()=>{
           const [tierColor,tierBg,tierBorder,tierLabel] =
-            project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
+            project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
             project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                             [C.carrot500,  C.carrot100,  C.carrot500,  "External App"];
+                             [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing"];
           return (
             <div style={{marginBottom:16,padding:"12px 14px",background:tierBg,border:`1px solid ${tierBorder}`,borderRadius:DS.radius.lg}}>
               <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Tier Classification</div>
@@ -3878,14 +3878,19 @@ const ProjectDetailPage = ({
 
 
   // Classification edit state
-  const [cIsUiOnly,           setCIsUiOnly]           = useState(project.isUiOnly           ?? null);
-  const [cUsesExternal,       setCUsesExternal]       = useState(project.usesExternalApis   ?? null);
-  const [cRequiresDeployment, setCRequiresDeployment] = useState(project.requiresDeployment ?? null);
-  const [cRequiresAuth,       setCRequiresAuth]       = useState(project.requiresAuth       ?? null);
-  const [cExternalAccess,     setCExternalAccess]     = useState(project.externalAccess     ?? null);
-  const [cHasSensitiveData,   setCHasSensitiveData]   = useState(project.hasSensitiveData   ?? null);
-  const [cSendsToExternalAI,  setCendsToExternalAI]  = useState(project.sendsToExternalAI  ?? null);
-  const [cStoresUserInputs,   setCStoresUserInputs]   = useState(project.storesUserInputs   ?? null);
+  const [cHasBackend,       setCHasBackend]       = useState(project.hasBackend       ?? null);
+  const [cTargetUsers,      setCTargetUsers]      = useState(project.targetUsers      ?? null);
+  const [cLiveUrl,          setCLiveUrl]          = useState(project.demoLink         || '');
+  const [cHasVersionCtrl,   setCHasVersionCtrl]   = useState(project.githubRepo ? true : null);
+  const [cRepoUrl,          setCRepoUrl]          = useState(project.githubRepo       || '');
+  const [cHostingPlatform,  setCHostingPlatform]  = useState(project.hosting          || '');
+  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth     ?? null);
+  const [cAuthType,         setCAuthType]         = useState(project.authType         || '');
+  const [cHasDatabase,      setCHasDatabase]      = useState(project.hasDatabase      ?? null);
+  const [cDbPlatform,       setCDbPlatform]       = useState(project.database         || '');
+  const [cConnectsSproutDb, setCConnectsSproutDb] = useState(project.connectsSproutDb ?? null);
+  const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
+  const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -3946,41 +3951,50 @@ const ProjectDetailPage = ({
 
   // Sync classification state when project data changes after a save
   useEffect(() => {
-    setCIsUiOnly(project.isUiOnly           ?? null);
-    setCUsesExternal(project.usesExternalApis   ?? null);
-    setCRequiresDeployment(project.requiresDeployment ?? null);
+    setCHasBackend(project.hasBackend           ?? null);
+    setCTargetUsers(project.targetUsers          ?? null);
+    setCLiveUrl(project.demoLink                || '');
+    setCHasVersionCtrl(project.githubRepo ? true : null);
+    setCRepoUrl(project.githubRepo              || '');
+    setCHostingPlatform(project.hosting         || '');
     setCRequiresAuth(project.requiresAuth       ?? null);
-    setCExternalAccess(project.externalAccess   ?? null);
-    setCHasSensitiveData(project.hasSensitiveData ?? null);
-    setCendsToExternalAI(project.sendsToExternalAI ?? null);
-    setCStoresUserInputs(project.storesUserInputs  ?? null);
-  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment,
-      project.requiresAuth, project.externalAccess, project.hasSensitiveData,
-      project.sendsToExternalAI, project.storesUserInputs]);
+    setCAuthType(project.authType               || '');
+    setCHasDatabase(project.hasDatabase         ?? null);
+    setCDbPlatform(project.database             || '');
+    setCConnectsSproutDb(project.connectsSproutDb ?? null);
+    setCDataSensitivity(project.dataSensitivity || '');
+    setCendsToExtAI(project.sendsToExternalAI   ?? null);
+  }, [project.id, project.hasBackend, project.targetUsers, project.demoLink,
+      project.githubRepo, project.hosting, project.requiresAuth, project.authType,
+      project.hasDatabase, project.database, project.connectsSproutDb,
+      project.dataSensitivity, project.sendsToExternalAI]);
 
   const computedTier =
-    cIsUiOnly === true                                         ? 1 :
-    cUsesExternal === true                                     ? 3 :
-    (cRequiresAuth === true && cHasSensitiveData === true)     ? 3 :
-    cRequiresDeployment === true                               ? 2 :
-    cRequiresDeployment === false                              ? 1 : null;
+    cHasBackend === null || cTargetUsers === null ? null :
+    cHasBackend === false && cTargetUsers === 'internal' ? 1 :
+    cHasBackend === true  && cTargetUsers !== 'internal' ? 3 :
+    2;
 
+  const SENSITIVE_LEVELS = ['Sensitive (PII, HR, payroll)', 'Highly sensitive (health, financial)'];
   const securityFlags = {
-    authRequired:  cRequiresAuth === true,
-    sensitiveData: cHasSensitiveData === true,
-    noAuthRisk:    cExternalAccess === true && cRequiresAuth === false,
-    aiDataRisk:    cSendsToExternalAI === true && cHasSensitiveData === true,
-    storesInputs:  cStoresUserInputs === true,
+    aiDataRisk: cSendsToExtAI === true && SENSITIVE_LEVELS.includes(cDataSensitivity),
+    noAuthRisk: cTargetUsers !== 'internal' && cRequiresAuth === false && cRequiresAuth !== null,
   };
 
-  const classIsDirty = cIsUiOnly !== (project.isUiOnly ?? null)
-    || cUsesExternal !== (project.usesExternalApis ?? null)
-    || cRequiresDeployment !== (project.requiresDeployment ?? null)
-    || cRequiresAuth !== (project.requiresAuth ?? null)
-    || cExternalAccess !== (project.externalAccess ?? null)
-    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
-    || cSendsToExternalAI !== (project.sendsToExternalAI ?? null)
-    || cStoresUserInputs !== (project.storesUserInputs ?? null);
+  const classIsDirty =
+    cHasBackend      !== (project.hasBackend       ?? null)
+    || cTargetUsers  !== (project.targetUsers      ?? null)
+    || cLiveUrl      !== (project.demoLink         || '')
+    || cHasVersionCtrl !== (project.githubRepo ? true : null)
+    || cRepoUrl      !== (project.githubRepo       || '')
+    || cHostingPlatform !== (project.hosting       || '')
+    || cRequiresAuth !== (project.requiresAuth     ?? null)
+    || cAuthType     !== (project.authType         || '')
+    || cHasDatabase  !== (project.hasDatabase      ?? null)
+    || cDbPlatform   !== (project.database         || '')
+    || cConnectsSproutDb !== (project.connectsSproutDb ?? null)
+    || cDataSensitivity !== (project.dataSensitivity || '')
+    || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
@@ -3989,11 +4003,15 @@ const ProjectDetailPage = ({
     if (!canEdit) return;
     setClassSaving(true);
     await onSaveClassification?.(project.id, {
-      isUiOnly: cIsUiOnly, usesExternalApis: cUsesExternal,
-      requiresDeployment: cRequiresDeployment, tier: computedTier,
-      requiresAuth: cRequiresAuth, externalAccess: cExternalAccess,
-      hasSensitiveData: cHasSensitiveData, sendsToExternalAI: cSendsToExternalAI,
-      storesUserInputs: cStoresUserInputs,
+      hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
+      demoLink: cLiveUrl,
+      githubRepo: cHasVersionCtrl ? cRepoUrl : '',
+      hosting: cHostingPlatform,
+      requiresAuth: cRequiresAuth, authType: cAuthType,
+      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : '',
+      connectsSproutDb: cConnectsSproutDb,
+      dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
+      hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
     });
     setClassSaving(false);
   };
@@ -4054,9 +4072,9 @@ const ProjectDetailPage = ({
           {/* Tier indicator */}
           {(()=>{
             const [tc,tbg,tbr,tl] =
-              project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Markup / Simple Logic"]
+              project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Static / Internal"]
              :project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]
-             :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]
+             :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]
                                :[C.mushroom400,C.mushroom50,C.mushroom200,null];
             return (
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:DS.radius.lg,marginBottom:16,background:tbg,border:"1px solid "+tbr}}>
@@ -4227,40 +4245,51 @@ const ProjectDetailPage = ({
                     ))}
                   </div>
                 );
+                const TU = ({val,label}) => {
+                  const active = cTargetUsers===val;
+                  return (
+                    <button onClick={()=>setCTargetUsers(val)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,textAlign:"center",
+                        border:`2px solid ${active?C.kangkong400:C.mushroom200}`,
+                        background:active?C.kangkong50:C.white,
+                        fontFamily:FF,fontSize:13,fontWeight:active?700:400,
+                        color:active?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
+                      onMouseOver={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
+                      onMouseOut={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
+                    >{label}</button>
+                  );
+                };
+                const inputStyle = {width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"};
+                const selectStyle = (hasVal) => ({...inputStyle, color:hasVal?C.mushroom800:C.mushroom400});
+                const subBlock = {marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200,display:"flex",flexDirection:"column",gap:10};
                 const [tc,tb,tbr,tl]=
-                  computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Markup / Simple Logic"]:
+                  computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                   computedTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                  computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]:
+                  computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                 return (
                   <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                     <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification</div>
                     <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                      {/* Q1 — backend */}
                       <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Is this project UI-only or static content — no backend logic?</div>
-                        <YesNo value={cIsUiOnly}
-                          onYes={()=>{setCIsUiOnly(true);setCUsesExternal(null);setCRequiresDeployment(null);}}
-                          onNo={()=>{setCIsUiOnly(false);setCUsesExternal(null);setCRequiresDeployment(null);}}
-                        />
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
+                        <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
                       </div>
-                      {cIsUiOnly===false&&(
-                        <div>
-                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it use external APIs or third-party services outside Sprout?</div>
-                          <YesNo value={cUsesExternal}
-                            onYes={()=>{setCUsesExternal(true);setCRequiresDeployment(null);}}
-                            onNo={()=>{setCUsesExternal(false);setCRequiresDeployment(null);}}
-                          />
+
+                      {/* Q2 — target users */}
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <TU val="internal" label="Internal only"/>
+                          <TU val="external" label="External only"/>
+                          <TU val="both"     label="Both"/>
                         </div>
-                      )}
-                      {cIsUiOnly===false&&cUsesExternal===false&&(
-                        <div>
-                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it require deployment infrastructure (Vercel, Azure, or similar)?</div>
-                          <YesNo value={cRequiresDeployment}
-                            onYes={()=>setCRequiresDeployment(true)}
-                            onNo={()=>setCRequiresDeployment(false)}
-                          />
-                        </div>
-                      )}
+                      </div>
+
+                      {/* Tier result pill */}
                       {computedTier!==null&&(
                         <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
                           <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
@@ -4268,41 +4297,156 @@ const ProjectDetailPage = ({
                         </div>
                       )}
 
-                      {/* ── Security & Data section ── */}
-                      <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:4}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:12}}>Security &amp; Data</div>
-                        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                          {[
-                            {q:"Does this project require user login or authentication?", val:cRequiresAuth, set:setCRequiresAuth},
-                            {q:"Is this project accessible outside the Sprout internal network / VPN?", val:cExternalAccess, set:setCExternalAccess},
-                            {q:"Does it handle or process sensitive data? (PII, payroll, HR records, health data)", val:cHasSensitiveData, set:setCHasSensitiveData},
-                            {q:"Does it send employee or company data to external AI models? (OpenAI, Claude, Gemini, etc.)", val:cSendsToExternalAI, set:setCendsToExternalAI},
-                            {q:"Does it store or log user inputs / outputs persistently?", val:cStoresUserInputs, set:setCStoresUserInputs},
-                          ].map(({q,val,set})=>(
-                            <div key={q}>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>{q}</div>
-                              <YesNo value={val} onYes={()=>set(true)} onNo={()=>set(false)}/>
+                      {/* ── Per-tier checklist ── */}
+                      {computedTier!==null&&(
+                        <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
+                          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project details</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                            {/* URL — all tiers */}
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
+                                Live URL{computedTier===1&&<span style={{fontWeight:400,color:C.mushroom400}}> (optional)</span>}
+                              </div>
+                              <input type="text" value={cLiveUrl} onChange={e=>setCLiveUrl(e.target.value)}
+                                placeholder="https://…" style={inputStyle}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                              />
                             </div>
-                          ))}
-                          {/* Security flag warnings */}
-                          {securityFlags.noAuthRisk&&(
-                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                              <span style={{fontSize:14}}>⚠️</span>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+
+                            {/* Hosting — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting platform</div>
+                                <select value={cHostingPlatform} onChange={e=>setCHostingPlatform(e.target.value)} style={selectStyle(!!cHostingPlatform)}>
+                                  <option value="">Select platform…</option>
+                                  {["Vercel","Azure","AWS","Google Cloud","Internal server","Other"].map(o=><option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Version control — all tiers */}
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Does this project have a code repository?</div>
+                              <YesNo value={cHasVersionCtrl}
+                                onYes={()=>setCHasVersionCtrl(true)}
+                                onNo={()=>{setCHasVersionCtrl(false);setCRepoUrl('');}}
+                              />
+                              {cHasVersionCtrl===true&&(
+                                <div style={{marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200}}>
+                                  <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                                    placeholder="github.com/org/repo" style={inputStyle}
+                                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                                  />
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {securityFlags.aiDataRisk&&(
-                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                              <span style={{fontSize:14}}>🔒</span>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                            </div>
-                          )}
+
+                            {/* Auth — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user authentication?</div>
+                                <YesNo value={cRequiresAuth}
+                                  onYes={()=>setCRequiresAuth(true)}
+                                  onNo={()=>{setCRequiresAuth(false);setCAuthType('');}}
+                                />
+                                {cRequiresAuth===true&&(
+                                  <div style={subBlock}>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Auth type</div>
+                                      <select value={cAuthType} onChange={e=>setCAuthType(e.target.value)} style={selectStyle(!!cAuthType)}>
+                                        <option value="">Select…</option>
+                                        {["Sprout SSO / Google","Email + password","API key","Other"].map(o=><option key={o}>{o}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Database — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project use a database?</div>
+                                <YesNo value={cHasDatabase}
+                                  onYes={()=>setCHasDatabase(true)}
+                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform('');setCConnectsSproutDb(null);}}
+                                />
+                                {cHasDatabase===true&&(
+                                  <div style={subBlock}>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database platform</div>
+                                      <select value={cDbPlatform} onChange={e=>setCDbPlatform(e.target.value)} style={selectStyle(!!cDbPlatform)}>
+                                        <option value="">Select…</option>
+                                        {["Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL","Other"].map(o=><option key={o}>{o}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it connect to or pull from the Sprout DB?</div>
+                                      <YesNo value={cConnectsSproutDb}
+                                        onYes={()=>setCConnectsSproutDb(true)}
+                                        onNo={()=>setCConnectsSproutDb(false)}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Data & Security — T3 only */}
+                            {computedTier===3&&(
+                              <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
+                                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
+                                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                                  <div>
+                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
+                                    <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
+                                      <option value="">Select…</option>
+                                      {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
+                                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
+                                    <YesNo value={cSendsToExtAI}
+                                      onYes={()=>setCendsToExtAI(true)}
+                                      onNo={()=>setCendsToExtAI(false)}
+                                    />
+                                  </div>
+                                  {securityFlags.aiDataRisk&&(
+                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
+                                      <span style={{fontSize:14}}>🔒</span>
+                                      <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
+                                    </div>
+                                  )}
+                                  {securityFlags.noAuthRisk&&(
+                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                                      <span style={{fontSize:14}}>⚠️</span>
+                                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {classIsDirty&&(
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);setCRequiresAuth(project.requiresAuth??null);setCExternalAccess(project.externalAccess??null);setCHasSensitiveData(project.hasSensitiveData??null);setCendsToExternalAI(project.sendsToExternalAI??null);setCStoresUserInputs(project.storesUserInputs??null);}}
+                          <button onClick={()=>{
+                            setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                            setCLiveUrl(project.demoLink||'');setCHasVersionCtrl(project.githubRepo?true:null);
+                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(project.hosting||'');
+                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(project.authType||'');
+                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(project.database||'');
+                            setCConnectsSproutDb(project.connectsSproutDb??null);
+                            setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
+                          }}
                             style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
                           <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
                             style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
@@ -4314,21 +4458,7 @@ const ProjectDetailPage = ({
                 );
               })()}
 
-              {computedTier===3&&<>
-              {/* ── Section: Technical Details ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:6}}>Technical Details</div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:14,display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                  Only visible for Tier 3 — External App projects
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <ModalField label="GitHub repo" k="githubRepo" ph="github.com/org/repo" form={editForm} onChange={setEF}/>
-                  <ModalField label="Hosting" k="hosting" ph="e.g. Free Vercel, Azure, None" form={editForm} onChange={setEF}/>
-                </div>
-                <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={editForm} onChange={setEF}/>
-              </div>
-              {/* ── Request DevOps Setup button ── */}
+              {computedTier>=2&&(
               <button onClick={()=>setShowDevopsModal(true)} style={{
                 width:"100%",padding:"11px",background:C.carrot500,color:C.white,
                 border:"none",borderRadius:DS.radius.lg,cursor:"pointer",
@@ -4341,7 +4471,7 @@ const ProjectDetailPage = ({
                 <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Request DevOps Setup
               </button>
-              </>}
+              )}
               </>}
 
               {/* Save / Cancel */}
@@ -4485,7 +4615,7 @@ const ProjectDetailPage = ({
                     <div style={sTitle}>Technical Details</div>
                     <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:12,display:"flex",alignItems:"center",gap:5}}>
                       <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                      Only visible for Tier 3 — External App projects
+                      Only visible for Tier 3 — External-Facing projects
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div>
@@ -4511,9 +4641,9 @@ const ProjectDetailPage = ({
                   {/* Tier classification */}
                   {project.tier&&(()=>{
                     const [tc,tb,tbr,tl]=
-                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Markup / Simple Logic"]:
+                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                       project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]:
+                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                        [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                     return(
                       <div style={sCard}>
@@ -5648,7 +5778,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
             {plantTier!==null&&(
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:plantTier===1?C.mushroom50:plantTier===2?C.blueberry100:C.carrot100,border:`1px solid ${plantTier===1?C.mushroom300:plantTier===2?C.blueberry400:C.carrot500}`}}>
                 <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:plantTier===1?C.mushroom700:plantTier===2?C.blueberry500:C.carrot500}}>Tier {plantTier}</span>
-                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Markup / Simple Logic":plantTier===2?"Internal App (Kindly coordinate with Raffy)":"External App (Kindly coordinate with Belle or Coleen)"}</span>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Static / Internal":plantTier===2?"Internal App — coordinate with Raffy":"External-Facing — coordinate with Belle or Coleen"}</span>
               </div>
             )}
           </div>
@@ -6695,9 +6825,9 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               {/* Resolved tier badge */}
               {editingTier!==null&&(()=>{
                 const [tierColor,tierBg,tierBorder,tierLabel] =
-                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
-                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App (Kindly coordinate with Raffy)"]:
-                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External App (Kindly coordinate with Belle or Coleen)"];
+                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
+                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App — coordinate with Raffy"]:
+                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing — coordinate with Belle or Coleen"];
                 return (
                   <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:tierBg,border:`1px solid ${tierBorder}`}}>
                     <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {editingTier}</span>
@@ -8070,27 +8200,27 @@ function GuideView() {
 
   const tiers = [
     {
-      num:1, label:"Markup / Simple Logic",
+      num:1, label:"Static / Internal",
       color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300, accent:C.mushroom400,
-      desc:"Prompt engineering, scripts, one-pagers, or simple automation with no backend and no external users.",
-      examples:"ChatGPT prompt library, email templates, simple data scripts",
-      triggers:["UI-only or static content", "No backend logic", "No external user access"],
+      desc:"No backend logic, internal use only. Scripts, static pages, prompt templates, or simple one-off tools.",
+      examples:"Prompt libraries, static dashboards, email templates, simple scripts",
+      triggers:["No backend or server-side logic", "Used by Sprout employees only"],
       coord: null,
     },
     {
       num:2, label:"Internal App",
       color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
-      desc:"Deployed for Sprout employees. Requires proper infrastructure, access control, and data handling review.",
+      desc:"Has backend logic, deployed for Sprout employees only. Requires infrastructure, access control, and data handling review.",
       examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
-      triggers:["Requires deployment", "Accessible to Sprout employees"],
+      triggers:["Has backend / server-side logic", "Internal Sprout users only"],
       coord: "Coordinate with Raffy (DevOps) before shipping.",
     },
     {
-      num:3, label:"External App",
+      num:3, label:"External-Facing",
       color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
-      desc:"Faces customers, external partners, or anyone outside Sprout — OR requires user authentication AND handles sensitive data. Highest scrutiny and coordination required.",
-      examples:"Client portals, public-facing AI features, partner integrations, projects with auth + sensitive data",
-      triggers:["Uses external APIs / third-party services", "Customer-facing or external access", "Requires user auth AND handles sensitive data"],
+      desc:"Accessible to customers, partners, or the public — regardless of whether it has a backend. Highest scrutiny and coordination required.",
+      examples:"Client portals, public-facing AI features, partner integrations, customer tools",
+      triggers:["Accessible to external users, customers, or partners", "Both internal and external users"],
       coord: "Coordinate with Belle or Coleen before shipping.",
     },
   ];
@@ -8748,22 +8878,24 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier, requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}) => {
+  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, demoLink, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
     const now = new Date().toISOString();
     const { error } = await supabase.from("projects").update({
-      is_ui_only: isUiOnly, uses_external_apis: usesExternalApis,
-      requires_deployment: requiresDeployment, tier, last_updated: now,
-      requires_auth: requiresAuth, external_access: externalAccess,
-      has_sensitive_data: hasSensitiveData, sends_to_external_ai: sendsToExternalAI,
-      stores_user_inputs: storesUserInputs,
+      has_backend: hasBackend, target_users: targetUsers, tier, last_updated: now,
+      demo_link: demoLink, github_repo: githubRepo, hosting,
+      requires_auth: requiresAuth, auth_type: authType,
+      has_database: hasDatabase, database, connects_sprout_db: connectsSproutDb,
+      data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
+      has_sensitive_data: hasSensitiveData,
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0,
-              requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}
+      ? {...p, hasBackend, targetUsers, tier, demoLink, githubRepo, hosting,
+              requiresAuth, authType, hasDatabase, database, connectsSproutDb,
+              dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p
     ));
   };
