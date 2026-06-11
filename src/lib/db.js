@@ -56,6 +56,11 @@ export const toProject = (row) => ({
   hasSensitiveData:    row.has_sensitive_data   ?? null,
   sendsToExternalAI:   row.sends_to_external_ai ?? null,
   storesUserInputs:    row.stores_user_inputs   ?? null,
+  releaseReviewStatus:  row.release_review_status  || null,
+  releaseReviewComment: row.release_review_comment || null,
+  releaseReviewedBy:    row.release_reviewed_by    || null,
+  releaseReviewedAt:    row.release_reviewed_at    || null,
+  releaseSubmittedAt:   row.release_submitted_at   || null,
 })
 
 export const fromProject = (proj) => ({
@@ -89,6 +94,11 @@ export const fromProject = (proj) => ({
   has_sensitive_data:   proj.hasSensitiveData    ?? null,
   sends_to_external_ai: proj.sendsToExternalAI   ?? null,
   stores_user_inputs:   proj.storesUserInputs    ?? null,
+  release_review_status:  proj.releaseReviewStatus  ?? null,
+  release_review_comment: proj.releaseReviewComment ?? null,
+  release_reviewed_by:    proj.releaseReviewedBy    ?? null,
+  release_reviewed_at:    proj.releaseReviewedAt    ?? null,
+  release_submitted_at:   proj.releaseSubmittedAt   ?? null,
   github_repo:      proj.githubRepo     || '',
   hosting:          proj.hosting        || '',
   database:         proj.database       || '',
