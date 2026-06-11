@@ -9246,7 +9246,6 @@ export default function SproutAIGarden() {
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
     {id:"devops", label:"Tool Shed", Icon:IcoDevops},
-    ...(authUser?.isAdmin ? [{id:"admin",  label:"Admin",    Icon:IcoAdmin, badge: deleteRequests.filter(r=>r.status==="pending").length||null}] : []),
     {id:"guide",     label:"Guide",     Icon:IcoGuide},
   ];
 
@@ -9357,6 +9356,18 @@ export default function SproutAIGarden() {
                     <span style={{fontSize:15}}>{item.icon}</span>{item.label}
                   </button>
                 ))}
+                {authUser?.isAdmin&&(
+                  <button onClick={()=>{setView("admin");setProfileOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,color:C.mushroom700,textAlign:"left",transition:"background 0.1s"}}
+                    onMouseOver={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseOut={e=>e.currentTarget.style.background="none"}
+                  >
+                    <IcoAdmin size={15} color={C.mushroom600}/>
+                    <span style={{flex:1}}>Admin</span>
+                    {deleteRequests.filter(r=>r.status==="pending").length>0&&(
+                      <span style={{fontFamily:FF,fontSize:9,fontWeight:800,color:C.white,background:C.tomato500,borderRadius:DS.radius.full,padding:"1px 6px",lineHeight:1.4}}>{deleteRequests.filter(r=>r.status==="pending").length}</span>
+                    )}
+                  </button>
+                )}
                 <div style={{borderTop:"1px solid "+C.mushroom100}}>
                   <button onClick={()=>{handleLogout();setProfileOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,color:C.tomato500,textAlign:"left",transition:"background 0.1s"}}
                     onMouseOver={e=>e.currentTarget.style.background=C.tomato100}
