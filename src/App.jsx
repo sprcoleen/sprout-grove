@@ -9175,7 +9175,7 @@ export default function SproutAIGarden() {
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
-    ...(authUser?.isAdmin ? [{id:"devops", label:"Tool Shed", Icon:IcoDevops, wip:true}] : []),
+    {id:"devops", label:"Tool Shed", Icon:IcoDevops},
     ...(authUser?.isAdmin ? [{id:"admin",  label:"Admin",    Icon:IcoAdmin, badge: deleteRequests.filter(r=>r.status==="pending").length||null}] : []),
     {id:"guide",     label:"Guide",     Icon:IcoGuide},
   ];
