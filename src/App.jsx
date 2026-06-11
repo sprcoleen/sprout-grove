@@ -6181,6 +6181,11 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     githubRepo:         "",
     hosting:            "",
     database:           "",
+    requiresAuth:       null,
+    externalAccess:     null,
+    hasSensitiveData:   null,
+    sendsToExternalAI:  null,
+    storesUserInputs:   null,
   });
 
   // AI / story states
@@ -6232,7 +6237,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
   const doAdd = () => {
     onAdd({
       ...form,
-      problemSpace: "",
+      problemSpace: form.problem || "",
       capability: "",
       id:Date.now(), lastUpdated:0, notes:[],
       zx:35+Math.random()*25, zy:35+Math.random()*25,
@@ -6530,8 +6535,57 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             </div>
         </>
 
-        {/* ── Section 5: Technical Details ── */}
-        <>
+        {/* ── Section 5: Security & Data ── */}
+        {editingTier!==null&&(
+          <>
+            <SectionHeader title="Security & Data"/>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6,padding:"8px 10px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md}}>
+                Required before advancing to Bloom. Answer now to avoid being blocked later.
+              </div>
+              {[
+                {q:"Does this project require user login or authentication?",                k:"requiresAuth"},
+                {q:"Is this project accessible outside the Sprout internal network / VPN?",  k:"externalAccess"},
+                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)",   k:"hasSensitiveData"},
+                {q:"Does it send employee or company data to external AI models?",            k:"sendsToExternalAI"},
+                {q:"Does it store or log user inputs / outputs persistently?",               k:"storesUserInputs"},
+              ].map(({q,k})=>(
+                <div key={k}>
+                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                      <button key={String(opt.v)} type="button"
+                        onClick={()=>setField(k,opt.v)}
+                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",
+                          border:`2px solid ${form[k]===opt.v?C.kangkong400:C.mushroom200}`,
+                          background:form[k]===opt.v?C.kangkong50:C.white,
+                          fontFamily:FF,fontSize:13,fontWeight:form[k]===opt.v?700:400,
+                          color:form[k]===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {form.externalAccess===true&&form.requiresAuth===false&&(
+                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                  <span style={{fontSize:14}}>⚠️</span>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                </div>
+              )}
+              {form.sendsToExternalAI===true&&form.hasSensitiveData===true&&(
+                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
+                  <span style={{fontSize:14}}>🔒</span>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Section 6: Technical Details (Tier 3 only) ── */}
+        {editingTier===3&&(
+          <>
             <SectionHeader title="Technical Details"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -6540,7 +6594,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               </div>
               <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={form} onChange={setField}/>
             </div>
-        </>
+          </>
+        )}
 
         {/* AI Duplicate Check result */}
         {aiOverlapChecked&&(
