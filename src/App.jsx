@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabase";
 import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
+import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
 
 // ── Sprout Design System Tokens ───────────────────────────────────────────────
 const DS = {
@@ -123,6 +124,31 @@ const STAGE_DESC = {
 };
 const STAGE_FLORA = STAGE_DESC;
 const STAGE_ORDER = {seedling:0,nursery:1,sprout:2,bloom:3,thriving:4};
+
+// ── Release Gate — checks if a project can advance past sprout or bloom ────────
+// Returns { blocked, reason, message }
+function getStageGate(project) {
+  const { tier, stage, requiresAuth, externalAccess, hasSensitiveData,
+          sendsToExternalAI, storesUserInputs, releaseReviewStatus } = project;
+  const securityComplete = [requiresAuth, externalAccess, hasSensitiveData,
+                            sendsToExternalAI, storesUserInputs]
+                           .every(v => v !== null && v !== undefined);
+  if (stage === "sprout") {
+    if (!securityComplete)
+      return { blocked:true, reason:"classification", message:"Complete Security & Data Classification (Technical tab) before going live." };
+    if (tier === null || tier === undefined)
+      return { blocked:true, reason:"unclassified", message:"Tier is unclassified — answer the Technical tab questions to determine your tier." };
+    if ((tier === 2 || tier === 3) && releaseReviewStatus !== "approved")
+      return { blocked:true, reason:"review", message: tier===3
+        ? "Full Release Manager sign-off is required before going live."
+        : "Release Manager acknowledgment is required before going live." };
+  }
+  if (stage === "bloom") {
+    if ((tier === 2 || tier === 3) && releaseReviewStatus !== "approved")
+      return { blocked:true, reason:"review", message:"Release Manager final approval is required before reaching Thriving." };
+  }
+  return { blocked:false };
+}
 
 const STAGE_COLORS = {
   seedling: {bg:C.mushroom100,     text:C.mushroom600,      border:C.mushroom300,    dot:C.mushroom400},
@@ -1066,7 +1092,7 @@ function getDashboardSubline(projects, wishes) {
 }
 
 // ── Overview Dashboard ────────────────────────────────────────────────────────
-const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist }) => {
+const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject }) => {
   // ── Animation state ─────────────────────────────────────────────────────────
   const [counts, setCounts]       = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
   const [barsReady, setBarsReady] = useState(false);
@@ -1611,12 +1637,41 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                   { label:"Total plants", value:projects.length },
                   { label:"Pipeline health", value:healthPct + "%" },
                   { label:"Nursery queue", value:nurseryQueue.length },
-                ].map(({ label, value }) => (
+                  { label:"Pending release reviews", value:projects.filter(p=>p.releaseReviewStatus==="pending").length, highlight: projects.filter(p=>p.releaseReviewStatus==="pending").length > 0 },
+                  { label:"Unclassified projects", value:projects.filter(p=>p.tier===null||p.tier===undefined).length },
+                ].map(({ label, value, highlight }) => (
                   <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:`0.5px solid ${C.mushroom100}` }}>
                     <span style={{ fontSize:11, color:C.mushroom600 }}>{label}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color:C.mushroom900 }}>{value}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color: highlight ? "#7c3aed" : C.mushroom900 }}>{value}</span>
                   </div>
                 ))}
+                {/* ── Pending Release Reviews queue ── */}
+                {(() => {
+                  const pending = projects.filter(p=>p.releaseReviewStatus==="pending");
+                  if (pending.length === 0) return null;
+                  return (
+                    <div style={{ marginTop:10 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:"#6d28d9", marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
+                        🛡️ Pending Release Reviews
+                        <span style={{ background:"#7c3aed", color:"#fff", borderRadius:DS.radius.full, padding:"0px 6px", fontSize:9, fontWeight:800 }}>{pending.length}</span>
+                      </div>
+                      {pending.slice(0,4).map((p, i) => (
+                        <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff}
+                          onClick={() => onOpenProject?.(p)}
+                          style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(pending.length,4)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
+                        >
+                          <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
+                            <span style={{ fontSize:9, fontWeight:600, background:"#ede9fe", color:"#6d28d9", border:"0.5px solid #c4b5fd", borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>
+                              {STAGE_LABELS[p.stage]} →
+                            </span>
+                            <span style={{ fontSize:11, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
+                          </div>
+                          <span style={{ fontSize:9, fontWeight:600, background:p.tier===3?C.carrot100:C.blueberry100, color:p.tier===3?C.carrot500:C.blueberry500, border:`0.5px solid ${p.tier===3?C.carrot500:C.blueberry400}`, borderRadius:DS.radius.full, padding:"1px 6px", flexShrink:0, marginLeft:6 }}>T{p.tier}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {stalePlants.length > 0 && (
                   <div style={{ marginTop:10 }}>
                     <div style={{ fontSize:10, fontWeight:600, color:C.mushroom400, marginBottom:6 }}>Stale plants (&gt;30d)</div>
@@ -3181,8 +3236,154 @@ const FeedbackBanner = ({reviewComment, reviewedBy, reviewedAt}) => {
   );
 };
 
+// ── Release Gate Banner — shown in side panel + detail page ──────────────────
+function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onReleaseReviewAction, compact=false }) {
+  const [reviewInput, setReviewInput]   = useState("");
+  const [reviewAction, setReviewAction] = useState(null); // "rejected" | "changes_requested"
+  const [submitting, setSubmitting]     = useState(false);
+
+  const gate = getStageGate(project);
+  const isBuilder = authUser?.email === project.builderEmail;
+  const isAdmin   = authUser?.isAdmin;
+  const rrs       = project.releaseReviewStatus;
+  const nextStage = project.stage === "sprout" ? "Bloom" : "Thriving";
+  const tierLabel = project.tier === 3 ? "Tier 3 — Full sign-off required" : "Tier 2 — RM acknowledgment required";
+
+  // Only show this banner at the gated stages
+  if (project.stage !== "sprout" && project.stage !== "bloom") return null;
+  if (project.stage === "bloom" && (project.tier !== 2 && project.tier !== 3)) return null;
+  if (project.stage === "sprout" && gate.reason !== "review" && gate.reason !== "classification" && gate.reason !== "unclassified" && !gate.blocked && !isAdmin) return null;
+
+  const p = compact ? "10px 12px" : "14px 16px";
+  const fs = compact ? 12 : 13;
+
+  const submit = async () => {
+    setSubmitting(true);
+    await onSubmitReleaseReview?.(project);
+    setSubmitting(false);
+  };
+  const act = async (action) => {
+    if ((action === "rejected" || action === "changes_requested") && !reviewInput.trim()) return;
+    setSubmitting(true);
+    await onReleaseReviewAction?.(project, action, reviewInput.trim() || null);
+    setReviewInput(""); setReviewAction(null); setSubmitting(false);
+  };
+
+  // ── Classification incomplete banner ──
+  if (gate.blocked && gate.reason === "classification") return (
+    <div style={{background:"#faf5ff",border:"1px solid #c4b5fd",borderRadius:DS.radius.lg,padding:p,marginBottom:compact?10:16}}>
+      <div style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:"#6d28d9",marginBottom:4}}>🔒 Security Classification Required</div>
+      <div style={{fontFamily:FF,fontSize:fs-1,color:C.mushroom600,lineHeight:1.5}}>{gate.message}</div>
+    </div>
+  );
+
+  // ── Unclassified tier banner ──
+  if (gate.blocked && gate.reason === "unclassified") return (
+    <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg,padding:p,marginBottom:compact?10:16}}>
+      <div style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:C.mango700,marginBottom:4}}>⚠️ Tier Unclassified</div>
+      <div style={{fontFamily:FF,fontSize:fs-1,color:C.mushroom600,lineHeight:1.5}}>{gate.message}</div>
+    </div>
+  );
+
+  // ── Review gate: Tier 1 or no gate ──
+  if (!gate.blocked && project.tier === 1) return (
+    <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.lg,padding:p,marginBottom:compact?10:16}}>
+      <div style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:C.kangkong600,marginBottom:4}}>✅ Stage Gate Clear</div>
+      <div style={{fontFamily:FF,fontSize:fs-1,color:C.mushroom600}}>Tier 1 — no release review needed. You can advance to {nextStage}.</div>
+    </div>
+  );
+
+  // ── Review gate: status states ──
+  const canSubmit = isBuilder || isAdmin;
+
+  return (
+    <div style={{background:"#faf5ff",border:"1px solid #c4b5fd",borderRadius:DS.radius.lg,padding:p,marginBottom:compact?10:16}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:8}}>
+        <div style={{fontFamily:FF,fontSize:fs,fontWeight:700,color:"#6d28d9"}}>🛡️ Release Gate — {nextStage}</div>
+        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:"#6d28d9",background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:DS.radius.full,padding:"2px 8px",whiteSpace:"nowrap"}}>{tierLabel}</span>
+      </div>
+
+      {/* Pending */}
+      {rrs === "pending" && (
+        <div style={{background:"#ede9fe",borderRadius:DS.radius.md,padding:"8px 10px",fontFamily:FF,fontSize:fs-1,color:"#6d28d9"}}>
+          ⏳ Review submitted — waiting for Release Manager approval.
+          {project.releaseSubmittedAt && <span style={{color:"#7c3aed",marginLeft:4}}>({new Date(project.releaseSubmittedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric"})})</span>}
+        </div>
+      )}
+
+      {/* Approved */}
+      {rrs === "approved" && (
+        <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,padding:"8px 10px",fontFamily:FF,fontSize:fs-1,color:C.kangkong600}}>
+          ✅ Approved by {project.releaseReviewedBy} — you can now advance to {nextStage}.
+        </div>
+      )}
+
+      {/* Rejected */}
+      {rrs === "rejected" && (
+        <div style={{marginBottom:8}}>
+          <div style={{background:C.tomato100,border:"1px solid "+C.tomato500,borderRadius:DS.radius.md,padding:"8px 10px",fontFamily:FF,fontSize:fs-1,color:C.tomato600,marginBottom:8}}>
+            ❌ Rejected by {project.releaseReviewedBy}: <em>"{project.releaseReviewComment}"</em>
+          </div>
+          {canSubmit && <button onClick={submit} disabled={submitting} style={{width:"100%",padding:"7px",background:"#7c3aed",color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:"pointer"}}>
+            {submitting ? "Submitting…" : "Re-submit for Review"}
+          </button>}
+        </div>
+      )}
+
+      {/* Changes requested */}
+      {rrs === "changes_requested" && (
+        <div style={{marginBottom:8}}>
+          <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.md,padding:"8px 10px",fontFamily:FF,fontSize:fs-1,color:C.mango700,marginBottom:8}}>
+            🔁 Changes requested by {project.releaseReviewedBy}: <em>"{project.releaseReviewComment}"</em>
+          </div>
+          {canSubmit && <button onClick={submit} disabled={submitting} style={{width:"100%",padding:"7px",background:"#7c3aed",color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:"pointer"}}>
+            {submitting ? "Submitting…" : "Re-submit for Review"}
+          </button>}
+        </div>
+      )}
+
+      {/* No review yet — submit button */}
+      {!rrs && canSubmit && (
+        <button onClick={submit} disabled={submitting} style={{width:"100%",padding:"8px",background:"#7c3aed",color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+          {submitting ? "Submitting…" : `Submit for Release Review →`}
+        </button>
+      )}
+
+      {/* Admin decision zone — shown when pending */}
+      {rrs === "pending" && isAdmin && (
+        <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #c4b5fd"}}>
+          <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:"#6d28d9",marginBottom:8,textTransform:"uppercase",letterSpacing:0.8}}>Release Manager Decision</div>
+          {!reviewAction ? (
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>act("approved")} style={{flex:1,padding:"7px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:"pointer"}}>✅ Approve</button>
+              <button onClick={()=>setReviewAction("changes_requested")} style={{flex:1,padding:"7px",background:C.white,color:C.mango600,border:"1.5px solid "+C.mango400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:"pointer"}}>🔁 Changes</button>
+              <button onClick={()=>setReviewAction("rejected")} style={{flex:1,padding:"7px",background:C.white,color:C.tomato600,border:"1.5px solid "+C.tomato500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:"pointer"}}>❌ Reject</button>
+            </div>
+          ) : (
+            <div>
+              <textarea value={reviewInput} onChange={e=>setReviewInput(e.target.value)}
+                placeholder={reviewAction==="rejected" ? "Reason for rejection (required)" : "What needs to change? (required)"}
+                rows={3}
+                style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid #c4b5fd",fontFamily:FF,fontSize:fs-1,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",marginBottom:8,boxSizing:"border-box"}}
+              />
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{setReviewAction(null);setReviewInput("");}} style={{flex:1,padding:"7px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
+                <button disabled={!reviewInput.trim()||submitting} onClick={()=>act(reviewAction)}
+                  style={{flex:1,padding:"7px",background:reviewInput.trim()?"#7c3aed":C.mushroom200,color:reviewInput.trim()?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:fs-1,fontWeight:600,cursor:reviewInput.trim()?"pointer":"not-allowed"}}>
+                  {submitting ? "Saving…" : "Send Decision"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Detail Panel ──────────────────────────────────────────────────────────────
-const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail}) => {
+const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction}) => {
   const [noteText,setNoteText] = useState("");
   const interestedUsers = project.interestedUsers || [];
   const isInterested    = authUser ? interestedUsers.includes(authUser.email) : false;
@@ -3467,6 +3668,36 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
           </div>
         )}
 
+        {/* ── Release Gate: Sprout → Bloom and Bloom → Thriving ─────────────── */}
+        {(project.stage==="sprout"||project.stage==="bloom") && (
+          <div style={{marginBottom:16}}>
+            <ReleaseGateBanner
+              project={project}
+              authUser={authUser}
+              onSubmitReleaseReview={onSubmitReleaseReview}
+              onReleaseReviewAction={onReleaseReviewAction}
+              compact={true}
+            />
+            {/* Stage advance button — only when gate is clear and user can edit */}
+            {(authUser?.email===project.builderEmail||authUser?.isAdmin) && (() => {
+              const gate = getStageGate(project);
+              if (authUser?.isAdmin || !gate.blocked) {
+                const stagesArr = ["seedling","nursery","sprout","bloom","thriving"];
+                const nextStageName = stagesArr[STAGE_ORDER[project.stage]+1];
+                const nextLabel = nextStageName ? STAGE_LABELS[nextStageName] : null;
+                if (!nextLabel) return null;
+                return (
+                  <button onClick={()=>onMoveStage?.(project,1)}
+                    style={{width:"100%",padding:"8px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                    Move to {nextLabel} →
+                  </button>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
+
         {project.lastUpdated>30&&(
           <div style={{background:C.mango100,border:"1px solid #f6d98a",borderRadius:DS.radius.md,padding:"10px 14px",marginBottom:16,fontFamily:FF,fontSize:12,color:C.mango600,display:"flex",gap:8,alignItems:"flex-start"}}>
             <IcoStale size={14} color={C.mango500}/>
@@ -3574,6 +3805,7 @@ const ProjectDetailPage = ({
   onSubmitToNursery, onWithdrawFromNursery,
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
+  onMoveStage, onSubmitReleaseReview, onReleaseReviewAction,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -4336,6 +4568,36 @@ const ProjectDetailPage = ({
               {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
                 <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{width:"100%",padding:"8px",marginTop:14,background:"transparent",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}>Withdraw Submission</button>
               )}
+            </div>
+          )}
+
+          {/* ── Release Gate: Sprout → Bloom and Bloom → Thriving ─────────────── */}
+          {(project.stage==="sprout"||project.stage==="bloom")&&(
+            <div style={{marginBottom:24}}>
+              <ReleaseGateBanner
+                project={project}
+                authUser={authUser}
+                onSubmitReleaseReview={onSubmitReleaseReview}
+                onReleaseReviewAction={onReleaseReviewAction}
+                compact={false}
+              />
+              {/* Stage advance button — only when gate cleared */}
+              {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(()=>{
+                const gate = getStageGate(project);
+                if (authUser?.isAdmin||!gate.blocked) {
+                  const stagesArr=["seedling","nursery","sprout","bloom","thriving"];
+                  const nextStageName=stagesArr[STAGE_ORDER[project.stage]+1];
+                  const nextLabel=nextStageName?STAGE_LABELS[nextStageName]:null;
+                  if (!nextLabel) return null;
+                  return (
+                    <button onClick={()=>onMoveStage?.(project,1)}
+                      style={{width:"100%",padding:"10px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                      Move to {nextLabel} →
+                    </button>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
 
@@ -7295,6 +7557,33 @@ function DevopsBoard({ authUser }) {
 
 // ── Grove Guide / Wiki ────────────────────────────────────────────────────────
 function GuideView() {
+  const [guidePage, setGuidePage] = useState("overview"); // "overview" | "process-flow"
+
+  const guidePages = [
+    { id: "overview",      label: "Grove Overview",              icon: "🌿" },
+    { id: "process-flow",  label: "Stage Gate & Review Process", icon: "🛡️" },
+  ];
+
+  if (guidePage === "process-flow") {
+    return (
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Sub-nav */}
+        <div style={{background:C.white,borderBottom:"1px solid "+C.mushroom200,padding:"10px 48px",display:"flex",gap:6,alignItems:"center"}}>
+          {guidePages.map(p => (
+            <button key={p.id} onClick={()=>setGuidePage(p.id)}
+              style={{display:"flex",alignItems:"center",gap:6,padding:"6px 16px",borderRadius:DS.radius.full,border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:guidePage===p.id?700:500,
+                background:guidePage===p.id?C.mushroom900:C.mushroom100,
+                color:guidePage===p.id?C.white:C.mushroom600,
+                transition:"all 0.15s"}}>
+              <span>{p.icon}</span>{p.label}
+            </button>
+          ))}
+        </div>
+        <ProcessFlowGuide C={C} FF={FF} DS={DS}/>
+      </div>
+    );
+  }
+
   const Section = ({title, icon, children}) => (
     <div style={{marginBottom:36}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -7347,7 +7636,21 @@ function GuideView() {
   ];
 
   return (
-    <div style={{flex:1,overflowY:"auto",background:C.mushroom50,fontFamily:FF}}>
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Sub-nav */}
+      <div style={{background:C.white,borderBottom:"1px solid "+C.mushroom200,padding:"10px 48px",display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+        {guidePages.map(p => (
+          <button key={p.id} onClick={()=>setGuidePage(p.id)}
+            style={{display:"flex",alignItems:"center",gap:6,padding:"6px 16px",borderRadius:DS.radius.full,border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:guidePage===p.id?700:500,
+              background:guidePage===p.id?C.mushroom900:C.mushroom100,
+              color:guidePage===p.id?C.white:C.mushroom600,
+              transition:"all 0.15s"}}>
+            <span>{p.icon}</span>{p.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{flex:1,overflowY:"auto",background:C.mushroom50,fontFamily:FF}}>
       {/* Hero */}
       <div style={{background:"linear-gradient(135deg,"+C.kangkong700+" 0%,"+C.kangkong500+" 100%)",padding:"40px 48px 36px",color:C.white}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
@@ -7565,6 +7868,7 @@ function GuideView() {
           Grove by Sprout · Philippines &amp; Thailand · Questions? Reach out to your Grove admin.
         </div>
       </div>
+      </div>{/* end overflowY scroll wrapper */}
     </div>
   );
 }
@@ -7590,6 +7894,7 @@ export default function SproutAIGarden() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
+  const [gateToast, setGateToast] = useState(null); // { message, reason } | null
 
   // ── Auth state ────────────────────────────────────────────────────────────
   const [authUser, setAuthUser]     = useState(null);
@@ -8034,14 +8339,82 @@ export default function SproutAIGarden() {
       if (Math.abs(nextOrder - curOrder) > 1) return;
     }
 
+    // ── Stage Gate check (non-admins only) ───────────────────────────────────
+    if (!authUser.isAdmin) {
+      const gate = getStageGate(project);
+      if (gate.blocked) {
+        setGateToast({ message: gate.message, reason: gate.reason });
+        setTimeout(() => setGateToast(null), 5000);
+        return;
+      }
+    }
+
+    // After advancing past a gate, reset release review status
+    const resetReleaseReview = project.releaseReviewStatus === "approved" &&
+      (project.stage === "sprout" || project.stage === "bloom");
+
     const newMilestones = [...project.milestones, STAGE_LABELS[next] + " — " + new Date().toLocaleDateString("en-PH", {month:"short", year:"numeric"})];
     setProjects(prev => prev.map(p => p.id === project.id
-      ? {...p, stage: next, lastUpdated: 0, milestones: newMilestones}
+      ? {...p, stage: next, lastUpdated: 0, milestones: newMilestones,
+          ...(resetReleaseReview ? {releaseReviewStatus: null} : {})}
       : p
     ));
-    supabase.from("projects").update({ stage: next, milestones: newMilestones, last_updated: new Date().toISOString() }).eq("id", project.id)
+    const dbUpdate = { stage: next, milestones: newMilestones, last_updated: new Date().toISOString(),
+      ...(resetReleaseReview ? {release_review_status: null} : {}) };
+    supabase.from("projects").update(dbUpdate).eq("id", project.id)
       .then(({ error }) => { if (error) console.error("handleMoveStage:", error); });
     logActivity("stage_moved", project.name, { project_id: String(project.id), from_stage: project.stage, to_stage: next });
+  };
+
+  // ── Release Review handlers ────────────────────────────────────────────────
+  const handleSubmitReleaseReview = async (project) => {
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("projects").update({
+      release_review_status: "pending",
+      release_submitted_at:  now,
+      release_review_comment: null,
+    }).eq("id", project.id);
+    if (error) { console.error("submitReleaseReview:", error); return; }
+    setProjects(prev => prev.map(p => p.id === project.id
+      ? {...p, releaseReviewStatus:"pending", releaseSubmittedAt:now, releaseReviewComment:null}
+      : p
+    ));
+    // Auto-create Jira ticket for Tier 3
+    if (project.tier === 3) {
+      try {
+        await fetch("/api/create-jira-ticket", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            summary: `Grove SRC: [Release Review] ${project.name}`,
+            description: `Release review requested for "${project.name}" (${project.stage} → ${project.stage==="sprout"?"bloom":"thriving"}).`,
+            requestedBy: authUser?.displayName || authUser?.email,
+            projectName: project.name,
+            labels: ["Src-Grove"],
+            assigneeAccountId: "5b30a5fb6c008d2dbf9805f0",
+          }),
+        });
+      } catch(e) { console.warn("Jira ticket for release review failed:", e.message); }
+    }
+    logActivity("release_review_submitted", project.name, { project_id: String(project.id), stage: project.stage });
+  };
+
+  const handleReleaseReviewAction = async (project, action, comment) => {
+    if (!authUser?.isAdmin) return;
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("projects").update({
+      release_review_status:  action,
+      release_review_comment: comment || null,
+      release_reviewed_by:    authUser.email,
+      release_reviewed_at:    now,
+    }).eq("id", project.id);
+    if (error) { console.error("releaseReviewAction:", error); return; }
+    setProjects(prev => prev.map(p => p.id === project.id
+      ? {...p, releaseReviewStatus: action, releaseReviewComment: comment,
+          releaseReviewedBy: authUser.email, releaseReviewedAt: now}
+      : p
+    ));
+    logActivity("release_review_actioned", project.name, { project_id: String(project.id), action });
   };
 
   // ── Nursery flow mutations ─────────────────────────────────────────────────
@@ -8492,7 +8865,7 @@ export default function SproutAIGarden() {
       {/* ── Main content + Detail Panel ── */}
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")}/>}
+          {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
           {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
@@ -8514,6 +8887,9 @@ export default function SproutAIGarden() {
               onToggleInterested={handleToggleInterested}
               onSaveClassification={handleSaveClassification}
               onCreateDevopsRequest={handleCreateDevopsRequest}
+              onMoveStage={handleMoveStage}
+              onSubmitReleaseReview={handleSubmitReleaseReview}
+              onReleaseReviewAction={handleReleaseReviewAction}
             />
           )}
         </div>
@@ -8530,7 +8906,19 @@ export default function SproutAIGarden() {
             onMarkNotificationsRead={handleMarkNotificationsRead}
             onToggleInterested={handleToggleInterested}
             onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}
+            onMoveStage={handleMoveStage}
+            onSubmitReleaseReview={handleSubmitReleaseReview}
+            onReleaseReviewAction={handleReleaseReviewAction}
           />
+        )}
+
+        {/* ── Gate Toast ── */}
+        {gateToast && (
+          <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"#3b2d6e",color:"#fff",borderRadius:DS.radius.xl,padding:"12px 20px",fontFamily:FF,fontSize:13,fontWeight:500,boxShadow:DS.shadow.xl,zIndex:9999,display:"flex",alignItems:"center",gap:12,maxWidth:480}}>
+            <span style={{fontSize:18}}>🛡️</span>
+            <span>{gateToast.message}</span>
+            <button onClick={()=>setGateToast(null)} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",borderRadius:DS.radius.md,padding:"3px 8px",cursor:"pointer",fontFamily:FF,fontSize:12}}>✕</button>
+          </div>
         )}
       </div>
 
