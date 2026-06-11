@@ -55,7 +55,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     {
       num: "2", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
       title: "Security & Data Classification",
-      body: "Go to the Technical tab and answer all 5 security questions. This step is mandatory — a project is blocked from advancing past Sprout until all questions are answered.",
+      body: "Go to the Technical tab and answer all 5 security questions. This step is mandatory — a project at the Sprout stage is blocked from advancing to Bloom until all 5 questions are answered and a tier is assigned.",
       tag: { label: "MANDATORY GATE", color: C.carrot500, bg: C.carrot100 },
     },
     {
@@ -67,7 +67,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     {
       num: "4", color: C.mango600, bg: C.mango50, border: C.mango300,
       title: "Stage Advancement (with Gate Checks)",
-      body: "As you build, move your project through stages. Each transition is checked — Tier 1 moves freely after classification; Tier 2 and 3 need Release Manager approval at key transitions. See the gate table below.",
+      body: "As you build, move your project through stages using the stage buttons on the project page. Gates are enforced at Sprout → Bloom and Bloom → Thriving. Tier 1 moves freely once classified; Tier 2 and 3 need RM approval. A blocked move shows a purple notification at the bottom of the screen.",
       tag: { label: "GATES ENFORCED", color: C.mango600, bg: C.mango50 },
     },
     {
@@ -93,25 +93,19 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     { q: "Does it store user inputs in a database?",                   risk: "Data retention policy applies",                                       escalate: false },
   ];
 
-  // ── Stage gate rules ──────────────────────────────────────────────────────────
+  // ── Stage gate rules — reflects actual DB stage names ────────────────────────
   const gateRows = [
     {
-      from: "🌱 Sprout", to: "🌿 Growing",
-      t1: "✅ Security classification complete",
-      t2: "✅ Security classification complete",
-      t3: "✅ Security classification complete",
+      from: "🌿 Sprout", to: "🌸 Bloom",
+      t1: "✅ Security classification complete + tier assigned",
+      t2: "✅ Classification + RM acknowledgment required",
+      t3: "✅ Classification + full RM sign-off required",
     },
     {
-      from: "🌿 Growing", to: "🌸 Blooming",
+      from: "🌸 Bloom", to: "🌳 Thriving",
       t1: "✅ No additional gate",
-      t2: "🔍 Release Manager acknowledgment",
-      t3: "🔐 RM full sign-off + Jira DevOps ticket",
-    },
-    {
-      from: "🌸 Blooming", to: "🌳 Thriving",
-      t1: "✅ No additional gate",
-      t2: "🔍 Release Manager final approval",
-      t3: "🔐 RM final approval + compliance checklist + DevOps confirmed",
+      t2: "🔍 RM final approval required",
+      t3: "🔐 RM final approval required",
     },
   ];
 
@@ -160,6 +154,10 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         <div style={{ fontFamily: FF, fontSize: 14, opacity: 0.9, maxWidth: 680, lineHeight: 1.7 }}>
           Every AI or internal tool built at Sprout must pass through this process before going live.
           It ensures all projects are classified, reviewed, and safe — regardless of whether they were built by Product Engineering.
+        </div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, background: "rgba(72,187,120,0.2)", border: "1px solid rgba(72,187,120,0.5)", borderRadius: DS.radius.full, padding: "4px 12px" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#68d391", display: "inline-block" }} />
+          <span style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, color: "#c6f6d5" }}>Live in Grove — June 2026</span>
         </div>
         {/* Quick jump links */}
         <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
@@ -316,7 +314,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         {/* ── Stage Gates ── */}
         <Section id="stage-gates" title="Stage Gate Rules" icon="🚦">
           <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 16 }}>
-            Every stage transition is checked by Grove before it is allowed. The gates differ by tier — the higher the risk, the more approvals are needed.
+            Two gate checkpoints are enforced by Grove: <strong>Sprout → Bloom</strong> (going live) and <strong>Bloom → Thriving</strong> (production-ready). Earlier transitions (Seedling → Nursery → Sprout) follow the separate nursery prototype review process.
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
@@ -355,13 +353,14 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             <Card bg={C.kangkong50} border={C.kangkong200}>
               <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 800, color: C.kangkong600, marginBottom: 14 }}>🌱 Builder Steps</div>
               {[
-                "Click Submit for Release Review on the project page",
-                "System sets review_status = pending",
-                "For Tier 3: Grove auto-creates a Jira ticket (label: Src-Grove, assigned to Release Manager)",
-                "Wait for the review outcome",
-                "If Rejected: read the comment, fix the issue, re-submit",
+                "Open your project page — the Release Gate Banner appears automatically on Sprout or Bloom stage projects (Tier 2 & 3)",
+                "Click Submit for Release Review on the banner",
+                "System sets release_review_status = pending",
+                "For Tier 3: Grove auto-creates a Jira ticket (label: Src-Grove) assigned to the Release Manager",
+                "Wait for the review outcome — the banner updates in real time",
+                "If Rejected: read the comment, fix the issue, re-submit via the banner",
                 "If Changes Requested: update the record as instructed, re-submit",
-                "If Approved: stage advancement is now unlocked — proceed",
+                "If Approved: stage advancement button is now unlocked — proceed",
               ].map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.kangkong500, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FF, fontSize: 10, fontWeight: 800, color: C.white, flexShrink: 0, marginTop: 1 }}>
@@ -376,9 +375,9 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             <Card bg="#faf5ff" border="#c4b5fd">
               <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 800, color: "#805ad5", marginBottom: 14 }}>🔍 Release Manager Steps</div>
               {[
-                "Open Grove and navigate to the Governance Dashboard (admin-only)",
-                "View the queue of projects with review_status = pending",
-                "Open each project and review: security classification, data sources, tier, description",
+                "Open Grove and go to the Overview view — the Garden Health section (admin-only) shows Pending Release Reviews",
+                "Click any pending project in the queue to open its detail panel",
+                "Review: security classification, data sources, tier, description, and Technical tab answers",
                 "Take one of three actions:",
               ].map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
@@ -403,7 +402,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
                 </div>
               ))}
               <div style={{ marginTop: 10, padding: "8px 10px", background: C.mushroom50, borderRadius: DS.radius.md }}>
-                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500 }}>System records: reviewed_by, reviewed_at, and review_comment on the project record.</div>
+                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500 }}>System records: <code>release_reviewed_by</code>, <code>release_reviewed_at</code>, and <code>release_review_comment</code> on the project. Approval resets when the project advances to the next stage.</div>
               </div>
             </Card>
           </div>
