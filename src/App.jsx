@@ -8915,8 +8915,13 @@ export default function SproutAIGarden() {
   const handleApproveDeleteRequest = async (req) => {
     if (!authUser?.isAdmin) return;
     const table = req.entityType === 'project' ? 'projects' : 'wishes';
-    const { error: delErr } = await supabase.from(table).delete().eq('id', req.entityId);
-    if (delErr) { console.error('approveDelete:', delErr); return; }
+    const { error: delErr, count } = await supabase.from(table).delete({ count: 'exact' }).eq('id', req.entityId);
+    if (delErr || count === 0) {
+      const msg = delErr?.message || 'Row not deleted — Supabase RLS may have blocked it. Ensure your profile has is_gardener = true in the Supabase dashboard.';
+      console.error('approveDelete failed:', msg);
+      alert('Deletion failed: ' + msg);
+      return;
+    }
     const now = new Date().toISOString();
     await supabase.from('delete_requests').update({ status: 'approved', reviewed_by: authUser.email, reviewed_at: now }).eq('id', req.id);
     if (req.entityType === 'project') setProjects(prev => prev.filter(p => String(p.id) !== req.entityId));
