@@ -225,3 +225,25 @@ export const loadDevopsRequests = async () => {
   if (error) { console.error('loadDevopsRequests:', error); return [] }
   return data.map(toDevopsRequest)
 }
+
+// ── Delete Requests ───────────────────────────────────────────────────────────
+
+export const toDeleteRequest = (row) => ({
+  id:          row.id,
+  entityType:  row.entity_type,
+  entityId:    row.entity_id,
+  entityName:  row.entity_name,
+  requestedBy: row.requested_by,
+  reason:      row.reason,
+  status:      row.status,
+  reviewedBy:  row.reviewed_by  || null,
+  reviewedAt:  row.reviewed_at  || null,
+  createdAt:   row.created_at,
+})
+
+export const loadDeleteRequests = async () => {
+  const { data, error } = await supabase
+    .from('delete_requests').select('*').order('created_at', { ascending: false })
+  if (error) { console.error('loadDeleteRequests:', error); return [] }
+  return data.map(toDeleteRequest)
+}
