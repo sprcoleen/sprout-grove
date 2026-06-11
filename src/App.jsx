@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
-import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo } from "./lib/db";
+import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo, loadDeleteRequests, toDeleteRequest } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
 import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
@@ -1887,6 +1887,27 @@ function IcoGuide({size=16, color=C.mushroom500}) {
   );
 }
 
+function IcoAdmin({size=16, color=C.mushroom500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5 L13.5 4 V8 C13.5 11 10.5 13.5 8 14.5 C5.5 13.5 2.5 11 2.5 8 V4 Z" stroke={color} strokeWidth="1.2" fill={color} fillOpacity="0.1"/>
+      <path d="M5.5 8 L7 9.5 L10.5 6" stroke={color} strokeWidth="1.3"/>
+    </svg>
+  );
+}
+
+function IcoTrash({size=16, color=C.tomato500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 4h10" stroke={color} strokeWidth="1.4"/>
+      <path d="M6 4V3h4v1" stroke={color} strokeWidth="1.2"/>
+      <path d="M5 4l.75 9h4.5L11 4" stroke={color} strokeWidth="1.3"/>
+      <line x1="6.5" y1="7" x2="6.5" y2="11" stroke={color} strokeWidth="1.1"/>
+      <line x1="9.5" y1="7" x2="9.5" y2="11" stroke={color} strokeWidth="1.1"/>
+    </svg>
+  );
+}
+
 function IcoViewList({size=16, color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -1998,7 +2019,7 @@ function WishDetailPanel({wish, onClose, onClaim, onEdit, authUser}) {
 
 
 // ── Unified Garden Hub (Directory + Garden + Board) ───────────────────────────
-const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveStage, onWishClaim, onUnclaimSeed, onUpdateWish, onViewDetail, initialViewMode="directory", initialStageFilter="All"}) => {
+const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveStage, onWishClaim, onUnclaimSeed, onUpdateWish, onViewDetail, initialViewMode="directory", initialStageFilter="All", pendingDeleteIds}) => {
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [deptFilter, setDeptFilter] = useState("All");
   const [capFilter, setCapFilter] = useState("All");
@@ -2268,9 +2289,10 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               const sc  = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
               const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
               const dc  = builtForColor(p.builtFor);
+              const isPendingDelete = !!pendingDeleteIds?.has(String(p.id));
               return (
                 <div key={p.id} onClick={()=>setSelected(p)}
-                  style={{position:"relative",background:C.white,borderRadius:DS.radius.xl,border:"1px solid "+C.mushroom200,padding:16,cursor:"pointer",transition:"all 0.15s"}}
+                  style={{position:"relative",background:C.white,borderRadius:DS.radius.xl,border:"1px solid "+(isPendingDelete?"#fca5a5":C.mushroom200),padding:16,cursor:"pointer",transition:"all 0.15s"}}
                   onMouseOver={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=DS.shadow.lg;e.currentTarget.style.borderColor=C.mushroom300;}}
                   onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=C.mushroom200;}}
                 >
@@ -2298,7 +2320,15 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35}}>{p.name}</div>
                   </div>
                   {/* Security badges */}
-                  <div style={{marginBottom:8}}><SecurityBadges project={p}/></div>
+                  <div style={{marginBottom:isPendingDelete?4:8}}><SecurityBadges project={p}/></div>
+
+                  {/* Pending deletion indicator */}
+                  {isPendingDelete&&(
+                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:8}}>
+                      <IcoTrash size={11} color={C.tomato500}/>
+                      <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                    </div>
+                  )}
 
                   {/* Description */}
                   {p.description&&(
@@ -2650,13 +2680,20 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   )}
                   {seedCol.map(w=>{
                     const deptColor = builtForColor(w.builtFor);
+                    const isWishPendingDelete = !!pendingDeleteIds?.has(String(w.id));
                     return (
                       <div key={w.id} onClick={()=>setSelectedWish(w)}
-                        style={{background:C.mushroom50,borderRadius:DS.radius.lg,padding:"11px 13px",marginBottom:8,border:"1.5px dashed "+(w.readyForReview?C.mango500:w.claimedBy?C.wintermelon400:C.mushroom300),cursor:"pointer",transition:"all 0.15s"}}
+                        style={{background:C.mushroom50,borderRadius:DS.radius.lg,padding:"11px 13px",marginBottom:8,border:"1.5px dashed "+(isWishPendingDelete?"#fca5a5":w.readyForReview?C.mango500:w.claimedBy?C.wintermelon400:C.mushroom300),cursor:"pointer",transition:"all 0.15s"}}
                         onMouseOver={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.boxShadow=DS.shadow.md;}}
                         onMouseOut={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.boxShadow="none";}}
                       >
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom800,lineHeight:1.3,marginBottom:6}}>{w.title}</div>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom800,lineHeight:1.3,marginBottom:isWishPendingDelete?4:6}}>{w.title}</div>
+                        {isWishPendingDelete&&(
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6}}>
+                            <IcoTrash size={10} color={C.tomato500}/>
+                            <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                          </div>
+                        )}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:builtForArr(w.builtFor).length>0?6:0}}>
                           <span style={{fontFamily:FF,fontSize:10,color:C.mushroom400}}>{w.upvoters.length} votes</span>
                           {w.readyForReview
@@ -2752,6 +2789,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
                     const wilting = p.lastUpdated>30;
                     const readyForNursery = stage==="seedling"&&p.prototypeLink&&p.deckLink;
+                    const isPendingDelete = !!pendingDeleteIds?.has(String(p.id));
                     return (
                       <div key={p.id}
                         draggable
@@ -2761,13 +2799,13 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                         style={{
                           background: dragProjectId===p.id ? sc.bg : C.white,
                           borderRadius:DS.radius.xl,padding:"14px 14px 12px 18px",marginBottom:8,
-                          border:"1px solid "+(readyForNursery?C.mango300:C.mushroom200),
+                          border:"1px solid "+(isPendingDelete?"#fca5a5":readyForNursery?C.mango300:C.mushroom200),
                           cursor:"grab",transition:"all 0.15s",
                           opacity:dragProjectId===p.id?0.5:1,
                           position:"relative",overflow:"hidden",
                         }}
                         onMouseOver={e=>{if(dragProjectId!==p.id){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=DS.shadow.lg;e.currentTarget.style.borderColor=C.mushroom300;}const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="1";}}
-                        onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=readyForNursery?C.mango300:C.mushroom200;const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="0";}}
+                        onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=isPendingDelete?"#fca5a5":readyForNursery?C.mango300:C.mushroom200;const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="0";}}
                       >
                         {/* Left accent bar */}
                         <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:dfc||C.mushroom300,borderRadius:"12px 0 0 12px"}}/>
@@ -2782,12 +2820,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                           </span>
                         )}
                         {/* Name + stale indicator */}
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isPendingDelete?2:4}}>
                           <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:C.mushroom900,flex:1,lineHeight:1.3,letterSpacing:"-0.01em"}}>
                             {p.name}
                           </div>
                           {wilting&&<IcoStale size={13} color={C.mango500}/>}
                         </div>
+                        {isPendingDelete&&(
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                            <IcoTrash size={10} color={C.tomato500}/>
+                            <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                          </div>
+                        )}
                         {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:4}}><TierBadge tier={p.tier}/></div>}
                         <div style={{marginBottom:p.description?4:8}}><SecurityBadges project={p}/></div>
                         {/* Description teaser */}
@@ -3383,7 +3427,7 @@ function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onRelease
 }
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
-const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction}) => {
+const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction,onRequestDeletion}) => {
   const [noteText,setNoteText] = useState("");
   const interestedUsers = project.interestedUsers || [];
   const isInterested    = authUser ? interestedUsers.includes(authUser.email) : false;
@@ -3793,6 +3837,21 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             <button onClick={()=>{onNote(project.id,noteText);setNoteText("");}} style={{padding:"7px 14px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,cursor:"pointer",fontFamily:FF,fontSize:12,fontWeight:600}}>+</button>
           </div>
         </div>
+
+        {/* Danger zone — Request Deletion */}
+        {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
+          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
+            <button
+              onClick={()=>onRequestDeletion(project,"project")}
+              title="Request deletion of this project"
+              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+              <IcoTrash size={13} color={C.tomato500}/>
+            </button>
+            <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3805,7 +3864,7 @@ const ProjectDetailPage = ({
   onSubmitToNursery, onWithdrawFromNursery,
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
-  onMoveStage, onSubmitReleaseReview, onReleaseReviewAction,
+  onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -4700,6 +4759,21 @@ const ProjectDetailPage = ({
       onClose={()=>setShowDevopsModal(false)}
       onSubmit={async (req)=>{await onCreateDevopsRequest?.(req);setShowDevopsModal(false);}}
     />}
+
+    {/* Danger zone — Request Deletion (bottom of full detail page) */}
+    {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
+      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent",display:"flex",alignItems:"center",gap:8}}>
+        <button
+          onClick={()=>onRequestDeletion(project,"project")}
+          title="Request deletion of this project"
+          onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+          onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+          style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+          <IcoTrash size={13} color={C.tomato500}/>
+        </button>
+        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
+      </div>
+    )}
     </>
   );
 };
@@ -4707,7 +4781,7 @@ const ProjectDetailPage = ({
 // ── Add Project Modal ─────────────────────────────────────────────────────────
 
 // ── Wishlist View ─────────────────────────────────────────────────────────────
-function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUnclaimSeed, onUpdateWish}) {
+function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUnclaimSeed, onUpdateWish, onRequestDeletion, pendingDeleteIds}) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sort, setSort] = useState("upvotes");
   const [claimingWish, setClaimingWish] = useState(null);
@@ -4803,10 +4877,11 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
           const demandBg     = fulfilled ? C.white : votes >= 10 ? C.mango100 : votes >= 5 ? C.mango50  : C.white;
           const demandBorder = fulfilled ? C.kangkong200 : votes >= 10 ? C.mango500 : votes >= 5 ? C.mango300 : C.mushroom200;
           const demandCount  = votes >= 10 ? C.mango600 : votes >= 5 ? C.mango500 : votes > 0 ? C.mushroom500 : C.mushroom300;
+          const isWishPendingDelete = !!pendingDeleteIds?.has(String(wish.id));
           return (
             <div key={wish.id} style={{
               background:demandBg,borderRadius:DS.radius.xl,
-              border:"1.5px solid "+demandBorder,
+              border:"1.5px solid "+(isWishPendingDelete?"#fca5a5":demandBorder),
               padding:"20px 22px",
               boxShadow:DS.shadow.sm,
               position:"relative",overflow:"hidden",
@@ -4827,7 +4902,7 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
               )}
 
               {/* Top row */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:isWishPendingDelete?6:10}}>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.4}}>
                     {wish.title}
@@ -4838,6 +4913,14 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
                   <div style={{fontFamily:FF,fontSize:9,fontWeight:600,color:C.mushroom400,marginTop:2,textTransform:"uppercase",letterSpacing:0.5,lineHeight:1.2}}>need<br/>this</div>
                 </div>
               </div>
+
+              {/* Pending deletion indicator */}
+              {isWishPendingDelete&&(
+                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:10}}>
+                  <IcoTrash size={11} color={C.tomato500}/>
+                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                </div>
+              )}
 
               {/* Why */}
               <p style={{fontFamily:FF,fontSize:12,color:C.mushroom600,lineHeight:1.6,marginBottom:14}}>
@@ -4956,6 +5039,30 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
                   </div>
                 )}
               </div>
+
+              {/* Danger zone — Request Deletion */}
+              {(authUser?.email===wish.wisherEmail||authUser?.isAdmin)&&onRequestDeletion&&(
+                <div style={{marginTop:10,paddingTop:8,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
+                  {wish.fulfilledBy ? (
+                    <button disabled title="Cannot delete — seed was fulfilled"
+                      style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"not-allowed",opacity:0.35,flexShrink:0}}>
+                      <IcoTrash size={12} color={C.mushroom400}/>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e=>{e.stopPropagation();onRequestDeletion(wish,"wish");}}
+                      title="Request deletion of this seed"
+                      onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+                      onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+                      style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+                      <IcoTrash size={12} color={C.tomato500}/>
+                    </button>
+                  )}
+                  <span style={{fontFamily:FF,fontSize:11,color:wish.fulfilledBy?C.mushroom300:C.mushroom400}}>
+                    {wish.fulfilledBy ? "Cannot delete — seed was fulfilled" : "Request deletion"}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -6158,6 +6265,69 @@ function CollaboratorInput({selected, onChange, selfEmail}) {
 }
 
 // ── Add Project Modal (with AI Summarizer + Duplicate Detector) ───────────────
+// ── Request Deletion Modal ─────────────────────────────────────────────────────
+const RequestDeletionModal = ({ entity, entityType, onClose, onSubmit }) => {
+  const [reason, setReason] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const name = entity.name || entity.title;
+  const isFulfilled = entityType === "wish" && entity.fulfilledBy;
+
+  const handleSubmit = async () => {
+    if (!reason.trim() || submitting) return;
+    setSubmitting(true);
+    await onSubmit(entity, entityType, reason.trim());
+    setSubmitting(false);
+    onClose();
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:60,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(32,30,24,0.6)",backdropFilter:"blur(6px)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,padding:28,maxWidth:440,width:"92%",boxShadow:DS.shadow.xl,border:"1px solid "+C.mushroom200}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+          <div>
+            <div style={{fontFamily:FF,fontSize:16,fontWeight:700,color:C.tomato600,display:"flex",alignItems:"center",gap:8}}>
+              <svg width={18} height={18} viewBox="0 0 18 18" fill="none"><path d="M3 15L9 3L15 15H3Z" stroke={C.tomato500} strokeWidth="1.5" strokeLinejoin="round" fill={C.tomato100}/><line x1="9" y1="8" x2="9" y2="11" stroke={C.tomato600} strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="13" r="0.8" fill={C.tomato600}/></svg>
+              Request Deletion
+            </div>
+            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>
+              {isFulfilled
+                ? "Fulfilled wishes cannot be deleted — they are part of Grove's history."
+                : <>This will send a deletion request to the admin team. <strong>{name}</strong> stays visible until approved.</>
+              }
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,flexShrink:0}}><IcoClose size={16} color={C.mushroom400}/></button>
+        </div>
+
+        {isFulfilled ? (
+          <button onClick={onClose} style={{width:"100%",padding:"10px",background:C.mushroom100,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,color:C.mushroom600,cursor:"pointer",fontWeight:600}}>OK, got it</button>
+        ) : (
+          <>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Reason for deletion *</label>
+              <textarea
+                rows={3}
+                value={reason}
+                onChange={e=>setReason(e.target.value)}
+                placeholder="Why should this entry be removed from Grove?"
+                style={{width:"100%",padding:"9px 11px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.6}}
+                onFocus={e=>e.target.style.borderColor=C.tomato400}
+                onBlur={e=>e.target.style.borderColor=C.mushroom300}
+              />
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={onClose} style={{flex:1,padding:"10px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,fontWeight:600}}>Cancel</button>
+              <button onClick={handleSubmit} disabled={!reason.trim()||submitting} style={{flex:2,padding:"10px",background:!reason.trim()?C.mushroom200:C.tomato500,color:!reason.trim()?C.mushroom400:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:reason.trim()?"pointer":"not-allowed",transition:"all 0.15s"}}>
+                {submitting ? "Submitting…" : "Submit Request"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}) => {
   const DEPTS = ["All Teams", ...Object.keys(DEPT_ZONES).sort()];
   const [form, setForm] = useState({
@@ -6181,6 +6351,11 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     githubRepo:         "",
     hosting:            "",
     database:           "",
+    requiresAuth:       null,
+    externalAccess:     null,
+    hasSensitiveData:   null,
+    sendsToExternalAI:  null,
+    storesUserInputs:   null,
   });
 
   // AI / story states
@@ -6232,7 +6407,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
   const doAdd = () => {
     onAdd({
       ...form,
-      problemSpace: "",
+      problemSpace: form.problem || "",
       capability: "",
       id:Date.now(), lastUpdated:0, notes:[],
       zx:35+Math.random()*25, zy:35+Math.random()*25,
@@ -6530,8 +6705,57 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             </div>
         </>
 
-        {/* ── Section 5: Technical Details ── */}
-        <>
+        {/* ── Section 5: Security & Data ── */}
+        {editingTier!==null&&(
+          <>
+            <SectionHeader title="Security & Data"/>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6,padding:"8px 10px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md}}>
+                Required before advancing to Bloom. Answer now to avoid being blocked later.
+              </div>
+              {[
+                {q:"Does this project require user login or authentication?",                k:"requiresAuth"},
+                {q:"Is this project accessible outside the Sprout internal network / VPN?",  k:"externalAccess"},
+                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)",   k:"hasSensitiveData"},
+                {q:"Does it send employee or company data to external AI models?",            k:"sendsToExternalAI"},
+                {q:"Does it store or log user inputs / outputs persistently?",               k:"storesUserInputs"},
+              ].map(({q,k})=>(
+                <div key={k}>
+                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                      <button key={String(opt.v)} type="button"
+                        onClick={()=>setField(k,opt.v)}
+                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",
+                          border:`2px solid ${form[k]===opt.v?C.kangkong400:C.mushroom200}`,
+                          background:form[k]===opt.v?C.kangkong50:C.white,
+                          fontFamily:FF,fontSize:13,fontWeight:form[k]===opt.v?700:400,
+                          color:form[k]===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {form.externalAccess===true&&form.requiresAuth===false&&(
+                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                  <span style={{fontSize:14}}>⚠️</span>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                </div>
+              )}
+              {form.sendsToExternalAI===true&&form.hasSensitiveData===true&&(
+                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
+                  <span style={{fontSize:14}}>🔒</span>
+                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Section 6: Technical Details (Tier 3 only) ── */}
+        {editingTier===3&&(
+          <>
             <SectionHeader title="Technical Details"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -6540,7 +6764,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               </div>
               <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={form} onChange={setField}/>
             </div>
-        </>
+          </>
+        )}
 
         {/* AI Duplicate Check result */}
         {aiOverlapChecked&&(
@@ -7555,6 +7780,238 @@ function DevopsBoard({ authUser }) {
   );
 }
 
+// ── Admin / RTE Dashboard ─────────────────────────────────────────────────────
+function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove, onDeny, onOpenProject }) {
+  const [auditFilter, setAuditFilter] = React.useState("all"); // "all" | "unclassified" | "pending_review" | "flagged"
+  const [activeTab, setActiveTab] = React.useState("deletions"); // "deletions" | "audit"
+
+  const pendingDels   = deleteRequests.filter(r => r.status === "pending");
+  const resolvedDels  = deleteRequests.filter(r => r.status !== "pending");
+  const unclassified  = projects.filter(p => p.tier === null || p.tier === undefined);
+  const pendingReview = projects.filter(p => p.releaseReviewStatus === "pending");
+  const flagged       = projects.filter(p =>
+    (p.externalAccess === true && p.requiresAuth === false) ||
+    (p.sendsToExternalAI === true && p.hasSensitiveData === true)
+  );
+
+  const auditList = auditFilter === "unclassified"  ? unclassified
+                  : auditFilter === "pending_review" ? pendingReview
+                  : auditFilter === "flagged"        ? flagged
+                  : projects;
+
+  const securityComplete = (p) =>
+    [p.requiresAuth, p.externalAccess, p.hasSensitiveData, p.sendsToExternalAI, p.storesUserInputs]
+      .every(v => v !== null && v !== undefined);
+
+  const TABS = [
+    { id: "deletions", label: `Deletion Requests${pendingDels.length ? ` (${pendingDels.length})` : ""}` },
+    { id: "audit",     label: "Garden Audit" },
+  ];
+
+  const statusPill = (status) => {
+    const map = {
+      pending:  { bg: C.mango100,     color: C.mango600,     label: "Pending" },
+      approved: { bg: C.kangkong50,   color: C.kangkong700,  label: "Approved" },
+      denied:   { bg: C.mushroom100,  color: C.mushroom600,  label: "Denied" },
+    };
+    const s = map[status] || map.pending;
+    return <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,background:s.bg,color:s.color}}>{s.label}</span>;
+  };
+
+  return (
+    <div style={{flex:1,overflow:"auto",padding:"28px 32px",background:"transparent",position:"relative",zIndex:1}}>
+
+      {/* Header */}
+      <div style={{marginBottom:24}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+          <IcoAdmin size={28} color={"#805ad5"}/>
+          <div>
+            <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1.1}}>Admin Dashboard</div>
+            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Release Manager · RTE view · {authUser?.displayName}</div>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
+          {[
+            { label:"Pending deletions",   value:pendingDels.length,   bg:"#fef2f2",  border:"#fca5a5",  color:"#991b1b" },
+            { label:"Pending RM reviews",  value:pendingReview.length, bg:"#faf5ff",  border:"#c4b5fd",  color:"#6d28d9" },
+            { label:"Unclassified",        value:unclassified.length,  bg:C.mango50,  border:C.mango300, color:C.mango700 },
+            { label:"Security flags",      value:flagged.length,       bg:C.carrot100,border:C.carrot500,color:C.carrot500 },
+            { label:"Total projects",      value:projects.length,      bg:C.mushroom50,border:C.mushroom200,color:C.mushroom700 },
+            { label:"Total seeds",         value:wishes.length,        bg:C.kangkong50,border:C.kangkong200,color:C.kangkong700 },
+          ].map(s => (
+            <div key={s.label} style={{padding:"10px 14px",background:s.bg,border:"1px solid "+s.border,borderRadius:DS.radius.lg,minWidth:110}}>
+              <div style={{fontFamily:FF,fontSize:20,fontWeight:800,color:s.color,lineHeight:1}}>{s.value}</div>
+              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,color:s.color,marginTop:3,lineHeight:1.3}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tab bar */}
+        <div style={{display:"flex",gap:2,background:C.mushroom100,borderRadius:DS.radius.lg,padding:3,alignSelf:"flex-start",width:"fit-content"}}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+              padding:"7px 18px",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,borderRadius:DS.radius.md,transition:"all 0.15s",
+              background:activeTab===t.id?C.white:"transparent",
+              color:activeTab===t.id?C.mushroom900:C.mushroom500,
+              boxShadow:activeTab===t.id?DS.shadow.sm:"none",
+            }}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Deletion Requests Tab ── */}
+      {activeTab === "deletions" && (
+        <div>
+          {pendingDels.length === 0 && resolvedDels.length === 0 && (
+            <div style={{textAlign:"center",padding:"48px 24px",color:C.mushroom400,fontFamily:FF,fontSize:14}}>
+              No deletion requests yet.
+            </div>
+          )}
+
+          {pendingDels.length > 0 && (
+            <div style={{marginBottom:28}}>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10}}>Pending Approval</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {pendingDels.map(req => (
+                  <div key={req.id} style={{background:C.white,border:"1.5px solid #fca5a5",borderRadius:DS.radius.xl,padding:"16px 20px",boxShadow:DS.shadow.sm}}>
+                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                      <div style={{flex:1,minWidth:200}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:DS.radius.full,background:req.entityType==="project"?C.blueberry100:C.kangkong50,color:req.entityType==="project"?C.blueberry500:C.kangkong700,border:"1px solid "+(req.entityType==="project"?C.blueberry400:C.kangkong200)}}>{req.entityType==="project"?"Project":"Seed"}</span>
+                          <span style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{req.entityName}</span>
+                        </div>
+                        <div style={{fontFamily:FF,fontSize:12,color:C.mushroom600,marginBottom:4}}>
+                          <strong>Reason:</strong> {req.reason}
+                        </div>
+                        <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>
+                          Requested by {req.requestedBy} · {req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+                        {req.entityType === "project" && (
+                          <button onClick={()=>{const p=projects.find(pr=>String(pr.id)===req.entityId);if(p)onOpenProject(p);}}
+                            style={{fontFamily:FF,fontSize:11,color:C.blueberry500,background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.md,padding:"5px 10px",cursor:"pointer",fontWeight:600}}>
+                            View
+                          </button>
+                        )}
+                        <button onClick={()=>onDeny(req)}
+                          style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom600,background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s"}}>
+                          Deny
+                        </button>
+                        <button onClick={()=>onApprove(req)}
+                          style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.white,background:C.tomato500,border:"none",borderRadius:DS.radius.md,padding:"7px 14px",cursor:"pointer",transition:"all 0.15s"}}>
+                          Approve &amp; Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {resolvedDels.length > 0 && (
+            <div>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:10}}>Recently Resolved</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {resolvedDels.slice(0,10).map(req => (
+                  <div key={req.id} style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                    <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:DS.radius.full,background:req.entityType==="project"?C.blueberry100:C.kangkong50,color:req.entityType==="project"?C.blueberry500:C.kangkong700,border:"1px solid "+(req.entityType==="project"?C.blueberry400:C.kangkong200)}}>{req.entityType==="project"?"Project":"Seed"}</span>
+                    <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom700,flex:1}}>{req.entityName}</span>
+                    {statusPill(req.status)}
+                    <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>by {req.reviewedBy || req.requestedBy}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Garden Audit Tab ── */}
+      {activeTab === "audit" && (
+        <div>
+          {/* Filter chips */}
+          <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+            {[
+              {k:"all",         label:`All (${projects.length})`},
+              {k:"unclassified",label:`Unclassified (${unclassified.length})`,  active: unclassified.length > 0},
+              {k:"pending_review",label:`Pending RM Review (${pendingReview.length})`, active: pendingReview.length > 0},
+              {k:"flagged",     label:`Security Flags (${flagged.length})`,     active: flagged.length > 0},
+            ].map(f => (
+              <button key={f.k} onClick={()=>setAuditFilter(f.k)} style={{
+                padding:"5px 12px",borderRadius:DS.radius.full,cursor:"pointer",
+                fontFamily:FF,fontSize:12,fontWeight:600,border:"1px solid",transition:"all 0.15s",
+                background:auditFilter===f.k?C.kangkong500:"transparent",
+                color:auditFilter===f.k?C.white:(f.active?C.carrot500:C.mushroom500),
+                borderColor:auditFilter===f.k?C.kangkong500:(f.active?C.carrot500:C.mushroom300),
+              }}>{f.label}</button>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontFamily:FF,fontSize:12}}>
+              <thead>
+                <tr style={{background:C.mushroom100}}>
+                  {["Project","Team","Stage","Tier","Classified","RM Review","Flags","Builder"].map(h => (
+                    <th key={h} style={{padding:"9px 12px",textAlign:"left",fontWeight:700,color:C.mushroom600,borderBottom:"2px solid "+C.mushroom200,whiteSpace:"nowrap",fontSize:11}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {auditList.length === 0 && (
+                  <tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match this filter.</td></tr>
+                )}
+                {auditList.map((p,i) => {
+                  const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+                  const classified = securityComplete(p);
+                  const hasSecFlag = (p.externalAccess===true&&p.requiresAuth===false)||(p.sendsToExternalAI===true&&p.hasSensitiveData===true);
+                  return (
+                    <tr key={p.id} style={{background:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
+                      onClick={()=>onOpenProject(p)}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.kangkong50}
+                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.white:C.mushroom50}>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,fontWeight:600,color:C.mushroom900,maxWidth:200}}>
+                        <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom600}}>{p.builtBy}</td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
+                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,background:sc.bg,color:sc.text,border:"1px solid "+sc.border}}>{STAGE_LABELS[p.stage]||p.stage}</span>
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
+                        {p.tier===null||p.tier===undefined
+                          ? <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.mango600,background:C.mango100,border:"1px solid "+C.mango300,borderRadius:DS.radius.full,padding:"2px 8px"}}>—</span>
+                          : <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,background:p.tier===3?C.carrot100:p.tier===2?C.blueberry100:C.mushroom100,color:p.tier===3?C.carrot500:p.tier===2?C.blueberry500:C.mushroom600,border:"1px solid "+(p.tier===3?C.carrot500:p.tier===2?C.blueberry400:C.mushroom300)}}>T{p.tier}</span>
+                        }
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,textAlign:"center"}}>
+                        <span style={{fontSize:14}}>{classified?"✅":"⬜"}</span>
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
+                        {p.releaseReviewStatus
+                          ? <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,background:p.releaseReviewStatus==="approved"?C.kangkong50:p.releaseReviewStatus==="pending"?"#faf5ff":C.tomato50,color:p.releaseReviewStatus==="approved"?C.kangkong700:p.releaseReviewStatus==="pending"?"#6d28d9":C.tomato600,border:"1px solid "+(p.releaseReviewStatus==="approved"?C.kangkong200:p.releaseReviewStatus==="pending"?"#c4b5fd":C.tomato200)}}>{p.releaseReviewStatus}</span>
+                          : <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>—</span>
+                        }
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,textAlign:"center"}}>
+                        {hasSecFlag && <span style={{fontSize:14}} title="Security flag">⚠️</span>}
+                      </td>
+                      <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom500,fontSize:11,whiteSpace:"nowrap"}}>{p.builder}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Grove Guide / Wiki ────────────────────────────────────────────────────────
 function GuideView() {
   const [guidePage, setGuidePage] = useState("overview"); // "overview" | "process-flow"
@@ -7895,6 +8352,8 @@ export default function SproutAIGarden() {
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
   const [gateToast, setGateToast] = useState(null); // { message, reason } | null
+  const [deleteRequests, setDeleteRequests] = useState([]);
+  const [deleteReqModal, setDeleteReqModal] = useState(null); // { entity, entityType } | null
 
   // ── Auth state ────────────────────────────────────────────────────────────
   const [authUser, setAuthUser]     = useState(null);
@@ -8038,7 +8497,7 @@ export default function SproutAIGarden() {
   useEffect(() => {
     if (!authUser) return;
     setDataLoading(true);
-    Promise.all([loadProjects(), loadWishes(), loadProfiles(), loadActivityLog(), loadDevopsRequests()]).then(([projs, wishs, profs, activity, devReqs]) => {
+    Promise.all([loadProjects(), loadWishes(), loadProfiles(), loadActivityLog(), loadDevopsRequests(), loadDeleteRequests()]).then(([projs, wishs, profs, activity, devReqs, delReqs]) => {
       const nameMap = Object.fromEntries(profs.map(p => [p.email, p.display_name]));
       const fmtName = (raw) => {
         if (!raw) return raw;
@@ -8057,6 +8516,7 @@ export default function SproutAIGarden() {
       })));
       setActivityLog(activity);
       setDevopsRequests(devReqs);
+      setDeleteRequests(delReqs);
       setDataLoading(false);
     });
   }, [authUser?.email]);
@@ -8428,6 +8888,51 @@ export default function SproutAIGarden() {
     }
   };
 
+  // ── Delete Request handlers ────────────────────────────────────────────────
+
+  const handleRequestDeletion = async (entity, entityType, reason) => {
+    if (!authUser) return;
+    const isOwner = entityType === 'project'
+      ? entity.builderEmail === authUser.email
+      : entity.wisherEmail  === authUser.email;
+    if (!isOwner && !authUser.isAdmin) return;
+
+    if (entityType === 'wish' && entity.fulfilledBy) return; // hard constraint — fulfilled wishes cannot be deleted
+
+    const { data, error } = await supabase.from('delete_requests').insert({
+      entity_type:  entityType,
+      entity_id:    String(entity.id),
+      entity_name:  entity.name || entity.title,
+      requested_by: authUser.email,
+      reason,
+      status: 'pending',
+    }).select().single();
+    if (error) { console.error('requestDeletion:', error); return; }
+    setDeleteRequests(prev => [toDeleteRequest(data), ...prev]);
+    logActivity('deletion_requested', entity.name || entity.title, { entity_type: entityType });
+  };
+
+  const handleApproveDeleteRequest = async (req) => {
+    if (!authUser?.isAdmin) return;
+    const table = req.entityType === 'project' ? 'projects' : 'wishes';
+    const { error: delErr } = await supabase.from(table).delete().eq('id', req.entityId);
+    if (delErr) { console.error('approveDelete:', delErr); return; }
+    const now = new Date().toISOString();
+    await supabase.from('delete_requests').update({ status: 'approved', reviewed_by: authUser.email, reviewed_at: now }).eq('id', req.id);
+    if (req.entityType === 'project') setProjects(prev => prev.filter(p => String(p.id) !== req.entityId));
+    else setWishes(prev => prev.filter(w => w.id !== req.entityId));
+    setDeleteRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved', reviewedBy: authUser.email, reviewedAt: now } : r));
+    if (selected && String(selected.id) === req.entityId) setSelected(null);
+    logActivity('deletion_approved', req.entityName, { entity_type: req.entityType });
+  };
+
+  const handleDenyDeleteRequest = async (req) => {
+    if (!authUser?.isAdmin) return;
+    const now = new Date().toISOString();
+    await supabase.from('delete_requests').update({ status: 'denied', reviewed_by: authUser.email, reviewed_at: now }).eq('id', req.id);
+    setDeleteRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'denied', reviewedBy: authUser.email, reviewedAt: now } : r));
+  };
+
   const handleMarkNotificationsRead = (projectId) => {
     const toMark = notifications.filter(n => !n.read && n.payload?.project_id === projectId);
     if (toMark.length === 0) return;
@@ -8734,11 +9239,13 @@ export default function SproutAIGarden() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const pendingDeleteIds = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+
   const NAV_TABS = [
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
-    ...(authUser?.isAdmin ? [{id:"devops", label:"Tool Shed", Icon:IcoDevops, wip:true}] : []),
+    {id:"devops", label:"Tool Shed", Icon:IcoDevops},
     {id:"guide",     label:"Guide",     Icon:IcoGuide},
   ];
 
@@ -8781,6 +9288,7 @@ export default function SproutAIGarden() {
                 <NavIcon size={16} color={active?C.kangkong600:C.mushroom500}/>
                 {t.label}
                 {t.wip&&<span style={{fontFamily:FF,fontSize:9,fontWeight:700,letterSpacing:0.3,color:C.mango600,background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.full,padding:"1px 6px",lineHeight:1.4}}>In Progress</span>}
+                {t.badge&&<span style={{fontFamily:FF,fontSize:9,fontWeight:800,color:C.white,background:C.tomato500,borderRadius:DS.radius.full,padding:"1px 6px",lineHeight:1.4,minWidth:16,textAlign:"center"}}>{t.badge}</span>}
               </button>
             );
           })}
@@ -8848,6 +9356,18 @@ export default function SproutAIGarden() {
                     <span style={{fontSize:15}}>{item.icon}</span>{item.label}
                   </button>
                 ))}
+                {authUser?.isAdmin&&(
+                  <button onClick={()=>{setView("admin");setProfileOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,color:C.mushroom700,textAlign:"left",transition:"background 0.1s"}}
+                    onMouseOver={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseOut={e=>e.currentTarget.style.background="none"}
+                  >
+                    <IcoAdmin size={15} color={C.mushroom600}/>
+                    <span style={{flex:1}}>Admin</span>
+                    {deleteRequests.filter(r=>r.status==="pending").length>0&&(
+                      <span style={{fontFamily:FF,fontSize:9,fontWeight:800,color:C.white,background:C.tomato500,borderRadius:DS.radius.full,padding:"1px 6px",lineHeight:1.4}}>{deleteRequests.filter(r=>r.status==="pending").length}</span>
+                    )}
+                  </button>
+                )}
                 <div style={{borderTop:"1px solid "+C.mushroom100}}>
                   <button onClick={()=>{handleLogout();setProfileOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"none",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,color:C.tomato500,textAlign:"left",transition:"background 0.1s"}}
                     onMouseOver={e=>e.currentTarget.style.background=C.tomato100}
@@ -8866,9 +9386,10 @@ export default function SproutAIGarden() {
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
           {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
-          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
-          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish}/>}
+          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
+          {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
           {view==="project-detail"&&detailProject&&(
             <ProjectDetailPage
@@ -8890,6 +9411,7 @@ export default function SproutAIGarden() {
               onMoveStage={handleMoveStage}
               onSubmitReleaseReview={handleSubmitReleaseReview}
               onReleaseReviewAction={handleReleaseReviewAction}
+              onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
             />
           )}
         </div>
@@ -8909,6 +9431,7 @@ export default function SproutAIGarden() {
             onMoveStage={handleMoveStage}
             onSubmitReleaseReview={handleSubmitReleaseReview}
             onReleaseReviewAction={handleReleaseReviewAction}
+            onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
           />
         )}
 
@@ -8921,6 +9444,15 @@ export default function SproutAIGarden() {
           </div>
         )}
       </div>
+
+      {deleteReqModal && (
+        <RequestDeletionModal
+          entity={deleteReqModal.entity}
+          entityType={deleteReqModal.entityType}
+          onClose={()=>setDeleteReqModal(null)}
+          onSubmit={handleRequestDeletion}
+        />
+      )}
 
       {showForm && (
         <AddProjectModal
