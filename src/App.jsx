@@ -9244,7 +9244,10 @@ export default function SproutAIGarden() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const pendingDeleteIds = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+  const pendingDeleteIds  = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+  const approvedDeleteIds = new Set(deleteRequests.filter(r => r.status === "approved").map(r => String(r.entityId)));
+  const visibleProjects   = projects.filter(p => !approvedDeleteIds.has(String(p.id)));
+  const visibleWishes     = wishes.filter(w => !approvedDeleteIds.has(String(w.id)));
 
   const NAV_TABS = [
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
@@ -9390,16 +9393,16 @@ export default function SproutAIGarden() {
       {/* ── Main content + Detail Panel ── */}
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
-          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
-          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
+          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={visibleProjects} wishes={visibleWishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
-          {view==="project-detail"&&detailProject&&(
+          {view==="project-detail"&&detailProject&&!approvedDeleteIds.has(String(detailProject.id))&&(
             <ProjectDetailPage
-              project={projects.find(p=>p.id===detailProject.id)||detailProject}
-              allProjects={projects}
+              project={visibleProjects.find(p=>p.id===detailProject.id)||detailProject}
+              allProjects={visibleProjects}
               authUser={authUser}
               onBack={()=>{setView("garden");setDetailProject(null);}}
               onNote={addNote}
@@ -9421,9 +9424,9 @@ export default function SproutAIGarden() {
           )}
         </div>
 
-        {selected && view!=="project-detail" && (
+        {selected && view!=="project-detail" && !approvedDeleteIds.has(String(selected.id)) && (
           <DetailPanel
-            project={selected} allProjects={projects}
+            project={selected} allProjects={visibleProjects}
             onClose={()=>setSelected(null)} onNote={addNote} setSelected={setSelected}
             authUser={authUser}
             onSubmitToNursery={submitToNursery}
