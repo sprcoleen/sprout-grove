@@ -1896,6 +1896,18 @@ function IcoAdmin({size=16, color=C.mushroom500}) {
   );
 }
 
+function IcoTrash({size=16, color=C.tomato500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 4h10" stroke={color} strokeWidth="1.4"/>
+      <path d="M6 4V3h4v1" stroke={color} strokeWidth="1.2"/>
+      <path d="M5 4l.75 9h4.5L11 4" stroke={color} strokeWidth="1.3"/>
+      <line x1="6.5" y1="7" x2="6.5" y2="11" stroke={color} strokeWidth="1.1"/>
+      <line x1="9.5" y1="7" x2="9.5" y2="11" stroke={color} strokeWidth="1.1"/>
+    </svg>
+  );
+}
+
 function IcoViewList({size=16, color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -2007,7 +2019,7 @@ function WishDetailPanel({wish, onClose, onClaim, onEdit, authUser}) {
 
 
 // ── Unified Garden Hub (Directory + Garden + Board) ───────────────────────────
-const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveStage, onWishClaim, onUnclaimSeed, onUpdateWish, onViewDetail, initialViewMode="directory", initialStageFilter="All"}) => {
+const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveStage, onWishClaim, onUnclaimSeed, onUpdateWish, onViewDetail, initialViewMode="directory", initialStageFilter="All", pendingDeleteIds}) => {
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [deptFilter, setDeptFilter] = useState("All");
   const [capFilter, setCapFilter] = useState("All");
@@ -2277,9 +2289,10 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               const sc  = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
               const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
               const dc  = builtForColor(p.builtFor);
+              const isPendingDelete = !!pendingDeleteIds?.has(String(p.id));
               return (
                 <div key={p.id} onClick={()=>setSelected(p)}
-                  style={{position:"relative",background:C.white,borderRadius:DS.radius.xl,border:"1px solid "+C.mushroom200,padding:16,cursor:"pointer",transition:"all 0.15s"}}
+                  style={{position:"relative",background:C.white,borderRadius:DS.radius.xl,border:"1px solid "+(isPendingDelete?"#fca5a5":C.mushroom200),padding:16,cursor:"pointer",transition:"all 0.15s"}}
                   onMouseOver={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=DS.shadow.lg;e.currentTarget.style.borderColor=C.mushroom300;}}
                   onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=C.mushroom200;}}
                 >
@@ -2307,7 +2320,15 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.35}}>{p.name}</div>
                   </div>
                   {/* Security badges */}
-                  <div style={{marginBottom:8}}><SecurityBadges project={p}/></div>
+                  <div style={{marginBottom:isPendingDelete?4:8}}><SecurityBadges project={p}/></div>
+
+                  {/* Pending deletion indicator */}
+                  {isPendingDelete&&(
+                    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:8}}>
+                      <IcoTrash size={11} color={C.tomato500}/>
+                      <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                    </div>
+                  )}
 
                   {/* Description */}
                   {p.description&&(
@@ -2659,13 +2680,20 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   )}
                   {seedCol.map(w=>{
                     const deptColor = builtForColor(w.builtFor);
+                    const isWishPendingDelete = !!pendingDeleteIds?.has(String(w.id));
                     return (
                       <div key={w.id} onClick={()=>setSelectedWish(w)}
-                        style={{background:C.mushroom50,borderRadius:DS.radius.lg,padding:"11px 13px",marginBottom:8,border:"1.5px dashed "+(w.readyForReview?C.mango500:w.claimedBy?C.wintermelon400:C.mushroom300),cursor:"pointer",transition:"all 0.15s"}}
+                        style={{background:C.mushroom50,borderRadius:DS.radius.lg,padding:"11px 13px",marginBottom:8,border:"1.5px dashed "+(isWishPendingDelete?"#fca5a5":w.readyForReview?C.mango500:w.claimedBy?C.wintermelon400:C.mushroom300),cursor:"pointer",transition:"all 0.15s"}}
                         onMouseOver={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.boxShadow=DS.shadow.md;}}
                         onMouseOut={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.boxShadow="none";}}
                       >
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom800,lineHeight:1.3,marginBottom:6}}>{w.title}</div>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom800,lineHeight:1.3,marginBottom:isWishPendingDelete?4:6}}>{w.title}</div>
+                        {isWishPendingDelete&&(
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6}}>
+                            <IcoTrash size={10} color={C.tomato500}/>
+                            <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                          </div>
+                        )}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:builtForArr(w.builtFor).length>0?6:0}}>
                           <span style={{fontFamily:FF,fontSize:10,color:C.mushroom400}}>{w.upvoters.length} votes</span>
                           {w.readyForReview
@@ -2761,6 +2789,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                     const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
                     const wilting = p.lastUpdated>30;
                     const readyForNursery = stage==="seedling"&&p.prototypeLink&&p.deckLink;
+                    const isPendingDelete = !!pendingDeleteIds?.has(String(p.id));
                     return (
                       <div key={p.id}
                         draggable
@@ -2770,13 +2799,13 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                         style={{
                           background: dragProjectId===p.id ? sc.bg : C.white,
                           borderRadius:DS.radius.xl,padding:"14px 14px 12px 18px",marginBottom:8,
-                          border:"1px solid "+(readyForNursery?C.mango300:C.mushroom200),
+                          border:"1px solid "+(isPendingDelete?"#fca5a5":readyForNursery?C.mango300:C.mushroom200),
                           cursor:"grab",transition:"all 0.15s",
                           opacity:dragProjectId===p.id?0.5:1,
                           position:"relative",overflow:"hidden",
                         }}
                         onMouseOver={e=>{if(dragProjectId!==p.id){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=DS.shadow.lg;e.currentTarget.style.borderColor=C.mushroom300;}const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="1";}}
-                        onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=readyForNursery?C.mango300:C.mushroom200;const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="0";}}
+                        onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=isPendingDelete?"#fca5a5":readyForNursery?C.mango300:C.mushroom200;const dh=e.currentTarget.querySelector('[data-drag]');if(dh)dh.style.opacity="0";}}
                       >
                         {/* Left accent bar */}
                         <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:dfc||C.mushroom300,borderRadius:"12px 0 0 12px"}}/>
@@ -2791,12 +2820,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                           </span>
                         )}
                         {/* Name + stale indicator */}
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isPendingDelete?2:4}}>
                           <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:C.mushroom900,flex:1,lineHeight:1.3,letterSpacing:"-0.01em"}}>
                             {p.name}
                           </div>
                           {wilting&&<IcoStale size={13} color={C.mango500}/>}
                         </div>
+                        {isPendingDelete&&(
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                            <IcoTrash size={10} color={C.tomato500}/>
+                            <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                          </div>
+                        )}
                         {p.tier!==null&&p.tier!==undefined&&<div style={{marginBottom:4}}><TierBadge tier={p.tier}/></div>}
                         <div style={{marginBottom:p.description?4:8}}><SecurityBadges project={p}/></div>
                         {/* Description teaser */}
@@ -3805,11 +3840,16 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
 
         {/* Danger zone — Request Deletion */}
         {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200}}>
-            <button onClick={()=>onRequestDeletion(project,"project")}
-              style={{fontFamily:FF,fontSize:11,color:C.tomato500,background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline",textUnderlineOffset:2}}>
-              Request deletion of this project
+          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
+            <button
+              onClick={()=>onRequestDeletion(project,"project")}
+              title="Request deletion of this project"
+              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+              <IcoTrash size={13} color={C.tomato500}/>
             </button>
+            <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
           </div>
         )}
       </div>
@@ -4722,11 +4762,16 @@ const ProjectDetailPage = ({
 
     {/* Danger zone — Request Deletion (bottom of full detail page) */}
     {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent"}}>
-        <button onClick={()=>onRequestDeletion(project,"project")}
-          style={{fontFamily:FF,fontSize:12,color:C.tomato500,background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline",textUnderlineOffset:2}}>
-          Request deletion of this project
+      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent",display:"flex",alignItems:"center",gap:8}}>
+        <button
+          onClick={()=>onRequestDeletion(project,"project")}
+          title="Request deletion of this project"
+          onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+          onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+          style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+          <IcoTrash size={13} color={C.tomato500}/>
         </button>
+        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
       </div>
     )}
     </>
@@ -4736,7 +4781,7 @@ const ProjectDetailPage = ({
 // ── Add Project Modal ─────────────────────────────────────────────────────────
 
 // ── Wishlist View ─────────────────────────────────────────────────────────────
-function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUnclaimSeed, onUpdateWish, onRequestDeletion}) {
+function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUnclaimSeed, onUpdateWish, onRequestDeletion, pendingDeleteIds}) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [sort, setSort] = useState("upvotes");
   const [claimingWish, setClaimingWish] = useState(null);
@@ -4832,10 +4877,11 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
           const demandBg     = fulfilled ? C.white : votes >= 10 ? C.mango100 : votes >= 5 ? C.mango50  : C.white;
           const demandBorder = fulfilled ? C.kangkong200 : votes >= 10 ? C.mango500 : votes >= 5 ? C.mango300 : C.mushroom200;
           const demandCount  = votes >= 10 ? C.mango600 : votes >= 5 ? C.mango500 : votes > 0 ? C.mushroom500 : C.mushroom300;
+          const isWishPendingDelete = !!pendingDeleteIds?.has(String(wish.id));
           return (
             <div key={wish.id} style={{
               background:demandBg,borderRadius:DS.radius.xl,
-              border:"1.5px solid "+demandBorder,
+              border:"1.5px solid "+(isWishPendingDelete?"#fca5a5":demandBorder),
               padding:"20px 22px",
               boxShadow:DS.shadow.sm,
               position:"relative",overflow:"hidden",
@@ -4856,7 +4902,7 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
               )}
 
               {/* Top row */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:isWishPendingDelete?6:10}}>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,lineHeight:1.4}}>
                     {wish.title}
@@ -4867,6 +4913,14 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
                   <div style={{fontFamily:FF,fontSize:9,fontWeight:600,color:C.mushroom400,marginTop:2,textTransform:"uppercase",letterSpacing:0.5,lineHeight:1.2}}>need<br/>this</div>
                 </div>
               </div>
+
+              {/* Pending deletion indicator */}
+              {isWishPendingDelete&&(
+                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:10}}>
+                  <IcoTrash size={11} color={C.tomato500}/>
+                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.tomato500}}>Deletion requested</span>
+                </div>
+              )}
 
               {/* Why */}
               <p style={{fontFamily:FF,fontSize:12,color:C.mushroom600,lineHeight:1.6,marginBottom:14}}>
@@ -4988,11 +5042,25 @@ function WishlistView({wishes, projects, authUser, onUpvote, onWishClaim, onUncl
 
               {/* Danger zone — Request Deletion */}
               {(authUser?.email===wish.wisherEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-                <div style={{marginTop:10,paddingTop:8,borderTop:"1px dashed "+C.mushroom200}}>
-                  <button onClick={e=>{e.stopPropagation();onRequestDeletion(wish,"wish");}}
-                    style={{fontFamily:FF,fontSize:11,color:C.tomato400,background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline",textUnderlineOffset:2}}>
+                <div style={{marginTop:10,paddingTop:8,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
+                  {wish.fulfilledBy ? (
+                    <button disabled title="Cannot delete — seed was fulfilled"
+                      style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"not-allowed",opacity:0.35,flexShrink:0}}>
+                      <IcoTrash size={12} color={C.mushroom400}/>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e=>{e.stopPropagation();onRequestDeletion(wish,"wish");}}
+                      title="Request deletion of this seed"
+                      onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+                      onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+                      style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+                      <IcoTrash size={12} color={C.tomato500}/>
+                    </button>
+                  )}
+                  <span style={{fontFamily:FF,fontSize:11,color:wish.fulfilledBy?C.mushroom300:C.mushroom400}}>
                     {wish.fulfilledBy ? "Cannot delete — seed was fulfilled" : "Request deletion"}
-                  </button>
+                  </span>
                 </div>
               )}
             </div>
@@ -9171,6 +9239,8 @@ export default function SproutAIGarden() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const pendingDeleteIds = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+
   const NAV_TABS = [
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
@@ -9305,8 +9375,8 @@ export default function SproutAIGarden() {
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
           {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
-          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}}/>}
-          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}/>}
+          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
