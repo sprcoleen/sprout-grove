@@ -1384,9 +1384,11 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
               </div>
             </div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
-              {activityLog.length === 0 ? (
-                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
-              ) : activityLog.map((ev, i) => {
+              {(() => {
+                const publicLog = activityLog.filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved");
+                return publicLog.length === 0 ? (
+                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
+                ) : publicLog.map((ev, i) => {
                 const evProject   = ev.project_id ? projects.find(p => String(p.id) === String(ev.project_id)) : null;
                 const actor       = ev.actor_name || ev.actor_email?.split("@")[0] || "?";
                 const initials    = actor.split(" ").filter(Boolean).map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
@@ -1400,7 +1402,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                     style={{
                       display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
                       borderLeft: "3px solid " + accentColor,
-                      borderBottom: i < activityLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
+                      borderBottom: i < publicLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
                       transition:"background 0.15s",
                       animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
                       cursor: evProject ? "pointer" : "default",
@@ -1425,7 +1427,8 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                     <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(ev.created_at)}</div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           </div>
 
