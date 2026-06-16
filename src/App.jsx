@@ -8312,7 +8312,7 @@ function GuideView() {
                 body:"If you're already building something, add it directly to the Garden. Fill in what it does, who it's for, and what tools you're using."},
               {step:"4", color:"#805ad5", bg:"#faf5ff", border:"#9f7aea",
                 title:"Classify your project 🏷️",
-                body:"Go to the Technical tab and answer the classification questions. This determines your Tier (1–3) and flags any security or data concerns that need coordination."},
+                body:"Go to the Technical tab. Answer two questions — does the project have a backend, and who are the intended users? Your tier (1–3) is computed automatically. A short checklist then collects hosting, version control, auth, and database details based on your tier."},
               {step:"5", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
                 title:"Progress through stages 🚀",
                 body:"Move your project from Seedling → Nursery → Sprout → Bloom → Thriving as it grows. Each stage reflects where you are in the build journey."},
@@ -8350,7 +8350,24 @@ function GuideView() {
         {/* Tiers */}
         <Section title="Tier Classification" icon="🏷️">
           <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:20}}>
-            Every project needs to be classified by tier. This determines who needs to be involved before you ship and what level of review is required. Answer the questions in the <strong>Technical tab</strong> of your project — the tier is computed automatically.
+            Every project needs a tier. Two questions determine it: does the project have a backend, and who are the intended users? Based on the result, a contextual checklist collects the right technical details — hosting, version control, auth, database — only asking what's relevant for that tier.
+          </div>
+          <div style={{display:"flex",gap:10,marginBottom:20,padding:"12px 16px",background:"#faf5ff",border:"1px solid #c4b5fd",borderRadius:DS.radius.lg}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8,flex:1}}>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:"#6d28d9",textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>How the tier is decided</div>
+              {[
+                ["No backend + Internal only","→","Tier 1"],
+                ["No backend + External or Both","→","Tier 2"],
+                ["Has backend + Internal only","→","Tier 2"],
+                ["Has backend + External or Both","→","Tier 3"],
+              ].map(([cond,arrow,tier])=>(
+                <div key={cond} style={{display:"flex",alignItems:"center",gap:8,fontFamily:FF,fontSize:12}}>
+                  <span style={{color:C.mushroom600,flex:1}}>{cond}</span>
+                  <span style={{color:C.mushroom400}}>{arrow}</span>
+                  <span style={{fontWeight:700,color:"#6d28d9",minWidth:40}}>{tier}</span>
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             {tiers.map(t=>(
@@ -8382,33 +8399,49 @@ function GuideView() {
         </Section>
 
         {/* Security & Data */}
-        <Section title="Security &amp; Data Classification" icon="🔐">
-          <Card>
-            <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
-              Every project also answers 5 security questions (in the Technical tab). These determine whether additional review is needed before launch.
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {[
-                {q:"Requires user login / authentication?",          flag:"🔐 Auth Required",      note:"Needs proper auth implementation."},
-                {q:"Accessible outside the Sprout network / VPN?",   flag:"⚠ External Access",     note:"Exposed endpoints need extra scrutiny."},
-                {q:"Handles sensitive data? (PII, payroll, HR…)",    flag:"⚠ Sensitive Data",      note:"Auth + Sensitive Data → auto-classifies as Tier 3."},
-                {q:"Sends data to external AI models?",              flag:"🔒 AI + Data risk",      note:"Sensitive data + external AI → DPO/privacy review required."},
-                {q:"Stores or logs user inputs persistently?",        flag:"📦 Data Retention",     note:"Review data retention policy with Raffy."},
-              ].map((r,i,arr)=>(
-                <div key={r.q} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 12px",background:C.mushroom50,borderRadius:DS.radius.md,border:"1px solid "+C.mushroom200}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom800,marginBottom:2}}>{r.q}</div>
-                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{r.note}</div>
-                  </div>
-                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.blueberry500,background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.full,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{r.flag}</span>
+        <Section title="Per-Tier Checklist" icon="🔐">
+          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
+            After the tier is computed, a checklist appears in the Technical tab. The fields shown depend on the tier — only ask what's relevant.
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {
+                tier:1, label:"Static / Internal", color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300,
+                fields:["Live URL (optional)","Version control — repo URL if Yes"],
+              },
+              {
+                tier:2, label:"Internal App", color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400,
+                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?"],
+              },
+              {
+                tier:3, label:"External-Facing", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
+                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?","Data sensitivity level","Sends data to external AI models?"],
+              },
+            ].map(t=>(
+              <div key={t.tier} style={{background:t.bg,border:"1px solid "+t.border,borderRadius:DS.radius.lg,padding:"14px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:t.color,padding:"2px 10px",background:C.white,border:"1.5px solid "+t.border,borderRadius:DS.radius.full}}>Tier {t.tier}</span>
+                  <span style={{fontFamily:FF,fontSize:12,fontWeight:600,color:t.color}}>{t.label}</span>
                 </div>
-              ))}
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {t.fields.map(f=>(
+                    <div key={f} style={{display:"flex",alignItems:"flex-start",gap:7}}>
+                      <span style={{color:t.color,fontWeight:700,fontSize:12,flexShrink:0,marginTop:1}}>·</span>
+                      <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.mango700}}>
+              <strong>⚠ No-auth warning (Tier 3):</strong> If the project is accessible to external users but has no authentication, a warning is shown — must be resolved before shipping. Coordinate with Raffy.
             </div>
-            <div style={{marginTop:16,padding:"12px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
-              <strong style={{fontFamily:FF,fontSize:12,color:C.mango700}}>⚠ Auto-escalation rule:</strong>
-              <span style={{fontFamily:FF,fontSize:12,color:C.mango700}}> If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 3</strong> regardless of other answers. Coordinate with Belle or Coleen before shipping.</span>
+            <div style={{padding:"10px 14px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.carrot500}}>
+              <strong>🔒 Data + AI warning (Tier 3):</strong> If the project sends sensitive data (PII, payroll, HR, health) to an external AI model, a DPO/privacy review is required. Coordinate with Belle or Coleen before launch.
             </div>
-          </Card>
+          </div>
         </Section>
 
         {/* Roles */}
