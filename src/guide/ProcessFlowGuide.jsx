@@ -277,18 +277,18 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         <Section title="Tier Assignment" icon="🏷️">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {[
-              { num: 1, label: "Low Risk — Markup / Simple Logic", color: C.mushroom700, bg: C.mushroom50, border: C.mushroom300, accent: C.mushroom400,
-                criteria: "UI-only tool, no deployment needed, no sensitive data, no external integrations",
+              { num: 1, label: "Low Risk — Static / Internal", color: C.mushroom700, bg: C.mushroom50, border: C.mushroom300, accent: C.mushroom400,
+                criteria: "No backend + internal users only. No release review required.",
                 review: "Self-declaration only — no RM review required",
-                examples: "ChatGPT prompt library, email templates, simple data scripts" },
+                examples: "ChatGPT prompt library, email templates, simple internal dashboards" },
               { num: 2, label: "Medium Risk — Internal App", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400, accent: C.blueberry500,
-                criteria: "Requires deployment or infrastructure, but no high-risk data exposure",
+                criteria: "Has backend + internal users only, OR no backend + external/both users",
                 review: "Release Manager acknowledgment required before Blooming and Thriving",
                 examples: "HR dashboards, internal chatbots, payroll tools, team utilities" },
-              { num: 3, label: "High Risk — External App / Sensitive Data", color: C.carrot500, bg: C.carrot100, border: C.carrot500, accent: C.carrot500,
-                criteria: "Accesses external APIs OR sends data to external AI OR (requires auth AND handles sensitive data)",
+              { num: 3, label: "High Risk — External-Facing", color: C.carrot500, bg: C.carrot100, border: C.carrot500, accent: C.carrot500,
+                criteria: "Has backend + accessible to external or both internal and external users",
                 review: "Full RM sign-off + Jira DevOps ticket + policy compliance checklist before Thriving",
-                examples: "Client portals, public-facing AI, partner integrations, projects with auth + PII" },
+                examples: "Client portals, public-facing AI tools, partner integrations, customer apps" },
             ].map(t => (
               <div key={t.num} style={{ position: "relative", background: t.bg, border: "1px solid " + t.border, borderRadius: DS.radius.xl, padding: "18px 20px 18px 26px", overflow: "hidden" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, background: t.accent, borderRadius: DS.radius.xl + " 0 0 " + DS.radius.xl }} />

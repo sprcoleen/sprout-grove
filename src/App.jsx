@@ -5491,7 +5491,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     dataSources:[], dataSourcesOther:"",
     description:"", demoLink:"", collaboratorEmails:[],
     problem:"", built:"", betterNow:"",
-    isUiOnly:null, usesExternalApis:null, requiresDeployment:null,
+    hasBackend:null, targetUsers:null,
   });
   const setP = (k,v) => setPlantRaw(p=>({...p,[k]:v}));
 
@@ -5524,11 +5524,10 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
 
   // Tier computation (derived from yes/no answers)
   const plantTier =
-    plant.isUiOnly === true           ? 1 :
-    plant.usesExternalApis === true   ? 3 :
-    plant.requiresDeployment === true ? 2 :
-    plant.requiresDeployment === false? 1 :
-    null;
+    plant.hasBackend === null || plant.targetUsers === null ? null :
+    plant.hasBackend === false && plant.targetUsers === 'internal' ? 1 :
+    plant.hasBackend === true  && plant.targetUsers !== 'internal' ? 3 :
+    2;
 
   // Validation
   const plantStep1Valid = !!(plant.name.trim() && plant.builtFor.length>0 && plantTier !== null);
@@ -5567,7 +5566,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
       agenticFramework:[...plant.agenticFramework,...(plant.agenticFrameworkOther?[plant.agenticFrameworkOther]:[])],
       dataSources:[...plant.dataSources,...(plant.dataSourcesOther?[plant.dataSourcesOther]:[])],
       problem:plant.problem, built:plant.built, betterNow:plant.betterNow,
-      isUiOnly:plant.isUiOnly, usesExternalApis:plant.usesExternalApis, requiresDeployment:plant.requiresDeployment,
+      hasBackend:plant.hasBackend, targetUsers:plant.targetUsers,
       tier:plantTier,
       problemSpace:"", capability:"",
       id:Date.now(), lastUpdated:0, notes:[],
@@ -5728,52 +5727,33 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
             {/* ── TIER QUESTIONS ── */}
             <div>
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                Is this project UI-only or static content — no backend logic or automation? <span style={{color:C.carrot500}}>*</span>
+                Does this project have a backend, database, or server-side logic? <span style={{color:C.carrot500}}>*</span>
               </label>
               <div style={{display:"flex",gap:8}}>
-                {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                {[{v:false,l:"No — static / UI only"},{v:true,l:"Yes — has backend"}].map(opt=>(
                   <button key={String(opt.v)} type="button"
-                    onClick={()=>{setP("isUiOnly",opt.v);setP("usesExternalApis",null);setP("requiresDeployment",null);}}
-                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:plant.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.isUiOnly===opt.v?700:400,color:plant.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                    onClick={()=>setP("hasBackend",opt.v)}
+                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.hasBackend===opt.v?C.kangkong400:C.mushroom200}`,background:plant.hasBackend===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.hasBackend===opt.v?700:400,color:plant.hasBackend===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
                     {opt.l}
                   </button>
                 ))}
               </div>
             </div>
 
-            {plant.isUiOnly===false&&(
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                  Does it use any external APIs or third-party services outside Sprout? <span style={{color:C.carrot500}}>*</span>
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                    <button key={String(opt.v)} type="button"
-                      onClick={()=>{setP("usesExternalApis",opt.v);setP("requiresDeployment",null);}}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:plant.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.usesExternalApis===opt.v?700:400,color:plant.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                Who are the target users? <span style={{color:C.carrot500}}>*</span>
+              </label>
+              <div style={{display:"flex",gap:8}}>
+                {[{v:"internal",l:"Internal only"},{v:"external",l:"External only"},{v:"both",l:"Both"}].map(opt=>(
+                  <button key={opt.v} type="button"
+                    onClick={()=>setP("targetUsers",opt.v)}
+                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.targetUsers===opt.v?C.kangkong400:C.mushroom200}`,background:plant.targetUsers===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.targetUsers===opt.v?700:400,color:plant.targetUsers===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                    {opt.l}
+                  </button>
+                ))}
               </div>
-            )}
-
-            {plant.isUiOnly===false&&plant.usesExternalApis===false&&(
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                  Does it require deployment to infrastructure (Vercel, Azure, or similar)? <span style={{color:C.carrot500}}>*</span>
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                    <button key={String(opt.v)} type="button"
-                      onClick={()=>setP("requiresDeployment",opt.v)}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:plant.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.requiresDeployment===opt.v?700:400,color:plant.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
 
             {plantTier!==null&&(
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:plantTier===1?C.mushroom50:plantTier===2?C.blueberry100:C.carrot100,border:`1px solid ${plantTier===1?C.mushroom300:plantTier===2?C.blueberry400:C.carrot500}`}}>
@@ -6475,9 +6455,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     dataSource:         "",
     dataSources:        [],
     demoLink:           "",
-    isUiOnly:           null,
-    usesExternalApis:   null,
-    requiresDeployment: null,
+    hasBackend:         null,
+    targetUsers:        null,
     toolUsed:           [],
     agenticFramework:   [],
     collaboratorEmails: [],
@@ -6485,7 +6464,6 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     hosting:            "",
     database:           "",
     requiresAuth:       null,
-    externalAccess:     null,
     hasSensitiveData:   null,
     sendsToExternalAI:  null,
     storesUserInputs:   null,
@@ -6513,11 +6491,10 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
   const canSummarize = !!(form.name.trim() && (form.problem || form.built || form.betterNow));
 
   const editingTier =
-    form.isUiOnly === true            ? 1 :
-    form.usesExternalApis === true    ? 3 :
-    form.requiresDeployment === true  ? 2 :
-    form.requiresDeployment === false ? 1 :
-    null;
+    form.hasBackend === null || form.targetUsers === null ? null :
+    form.hasBackend === false && form.targetUsers === 'internal' ? 1 :
+    form.hasBackend === true  && form.targetUsers !== 'internal' ? 3 :
+    2;
 
   const handleSummarize = async () => {
     if (!canSummarize || aiSummarizing) return;
@@ -6773,13 +6750,13 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               {/* Q1 */}
               <div>
                 <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                  Is this project UI-only or static content — no backend logic or automation?
+                  Does this project have a backend, database, or server-side logic?
                 </label>
                 <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                  {[{v:false,l:"No — static / UI only"},{v:true,l:"Yes — has backend"}].map(opt=>(
                     <button key={String(opt.v)} type="button"
-                      onClick={()=>{setField("isUiOnly",opt.v);setField("usesExternalApis",null);setField("requiresDeployment",null);}}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:form.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.isUiOnly===opt.v?700:400,color:form.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      onClick={()=>setField("hasBackend",opt.v)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.hasBackend===opt.v?C.kangkong400:C.mushroom200}`,background:form.hasBackend===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.hasBackend===opt.v?700:400,color:form.hasBackend===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
                       {opt.l}
                     </button>
                   ))}
@@ -6787,40 +6764,20 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               </div>
 
               {/* Q2 */}
-              {form.isUiOnly===false&&(
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                    Does it use any external APIs or third-party services outside Sprout?
-                  </label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>{setField("usesExternalApis",opt.v);setField("requiresDeployment",null);}}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:form.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.usesExternalApis===opt.v?700:400,color:form.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
+                  Who are the target users?
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  {[{v:"internal",l:"Internal only"},{v:"external",l:"External only"},{v:"both",l:"Both"}].map(opt=>(
+                    <button key={opt.v} type="button"
+                      onClick={()=>setField("targetUsers",opt.v)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.targetUsers===opt.v?C.kangkong400:C.mushroom200}`,background:form.targetUsers===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.targetUsers===opt.v?700:400,color:form.targetUsers===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      {opt.l}
+                    </button>
+                  ))}
                 </div>
-              )}
-
-              {/* Q3 */}
-              {form.isUiOnly===false&&form.usesExternalApis===false&&(
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                    Does it require deployment to infrastructure (Vercel, Azure, or similar)?
-                  </label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>setField("requiresDeployment",opt.v)}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:form.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.requiresDeployment===opt.v?700:400,color:form.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Resolved tier badge */}
               {editingTier!==null&&(()=>{
@@ -6847,11 +6804,10 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
                 Required before advancing to Bloom. Answer now to avoid being blocked later.
               </div>
               {[
-                {q:"Does this project require user login or authentication?",                k:"requiresAuth"},
-                {q:"Is this project accessible outside the Sprout internal network / VPN?",  k:"externalAccess"},
-                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)",   k:"hasSensitiveData"},
-                {q:"Does it send employee or company data to external AI models?",            k:"sendsToExternalAI"},
-                {q:"Does it store or log user inputs / outputs persistently?",               k:"storesUserInputs"},
+                {q:"Does this project require user login or authentication?",              k:"requiresAuth"},
+                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)", k:"hasSensitiveData"},
+                {q:"Does it send employee or company data to external AI models?",          k:"sendsToExternalAI"},
+                {q:"Does it store or log user inputs / outputs persistently?",             k:"storesUserInputs"},
               ].map(({q,k})=>(
                 <div key={k}>
                   <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
@@ -6870,7 +6826,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
                   </div>
                 </div>
               ))}
-              {form.externalAccess===true&&form.requiresAuth===false&&(
+              {form.targetUsers!=='internal'&&form.requiresAuth===false&&form.requiresAuth!==null&&(
                 <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
                   <span style={{fontSize:14}}>⚠️</span>
                   <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
@@ -6886,8 +6842,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
           </>
         )}
 
-        {/* ── Section 6: Technical Details (Tier 3 only) ── */}
-        {editingTier===3&&(
+        {/* ── Section 6: Technical Details (Tier 2+) ── */}
+        {editingTier>=2&&(
           <>
             <SectionHeader title="Technical Details"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
