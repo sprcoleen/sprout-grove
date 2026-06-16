@@ -8204,7 +8204,7 @@ function GuideView() {
       color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300, accent:C.mushroom400,
       desc:"No backend logic, internal use only. Scripts, static pages, prompt templates, or simple one-off tools.",
       examples:"Prompt libraries, static dashboards, email templates, simple scripts",
-      triggers:["No backend or server-side logic", "Used by Sprout employees only"],
+      triggers:["No backend", "Internal users only"],
       coord: null,
     },
     {
@@ -8212,15 +8212,15 @@ function GuideView() {
       color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
       desc:"Has backend logic, deployed for Sprout employees only. Requires infrastructure, access control, and data handling review.",
       examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
-      triggers:["Has backend / server-side logic", "Internal Sprout users only"],
+      triggers:["Has backend + internal users only", "No backend + external or both users"],
       coord: "Coordinate with Raffy (DevOps) before shipping.",
     },
     {
       num:3, label:"External-Facing",
       color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
-      desc:"Accessible to customers, partners, or the public — regardless of whether it has a backend. Highest scrutiny and coordination required.",
+      desc:"Has backend and accessible to customers, partners, or the public. Highest scrutiny and coordination required.",
       examples:"Client portals, public-facing AI features, partner integrations, customer tools",
-      triggers:["Accessible to external users, customers, or partners", "Both internal and external users"],
+      triggers:["Has backend + external or both users"],
       coord: "Coordinate with Belle or Coleen before shipping.",
     },
   ];
