@@ -17,7 +17,7 @@
 
 SproutAIGarden is an internal AI project tracker for Sprout — offices in the **Philippines (PH)** and **Thailand (TH)**. It tracks AI initiatives from seed idea → prototype → production.
 
-The UI prototype is `src/App.jsx` (converted from `SproutAIGarden_v9.jsx`). It is functionally complete. The job now is to give it a real backend and deploy it.
+The app is live on Vercel. All four build phases are complete. Current work is post-launch feature development on the `feature/stage-gate-release-review` branch.
 
 ---
 
@@ -107,6 +107,34 @@ Full schemas in PRD Section 2. Critical rules:
 - `stage`: `sprout | growing | blooming | thriving` only. Never `seed`.
 - `country`: auto-set from user profile at creation. Immutable.
 - `last_updated`: set to `now()` on every mutation. Calculate "days ago" at query time — no scheduled job needed.
+- `tier`: `1 | 2 | 3` — computed from `has_backend` × `target_users`. Never set manually; always derive from the two classification questions.
+- `has_backend` (boolean): Does the project have a backend, database, or server-side logic?
+- `target_users` (`'internal' | 'external' | 'both'`): Who are the target users?
+
+**Tier classification matrix:**
+
+| `has_backend` | `target_users` | Tier |
+|---|---|---|
+| `false` | `'internal'` | 1 — Static / Internal |
+| `false` | `'external'` or `'both'` | 2 — Internal App |
+| `true` | `'internal'` | 2 — Internal App |
+| `true` | `'external'` or `'both'` | 3 — External-Facing |
+
+**Per-tier checklist fields** (set via Classification panel, not at creation):
+- All tiers: `demo_link`, `github_repo`
+- Tier 2+: `hosting`, `requires_auth`, `auth_type`, `has_database`, `database`, `connects_sprout_db`
+- Tier 3 only: `data_sensitivity`, `sends_to_external_ai`
+
+**Security fields — definitions:**
+- `requires_auth`: project requires user login / authentication
+- `auth_type`: e.g. "Supabase Auth", "Google SSO"
+- `has_database`: project uses a database
+- `connects_sprout_db`: connects to or reads from Sprout's internal database
+- `data_sensitivity`: `'None' | 'Internal (non-sensitive)' | 'Sensitive (PII, HR, payroll)' | 'Highly sensitive (health, financial)'`
+- `sends_to_external_ai`: project sends Sprout employee or company data to an external AI provider (OpenAI, Anthropic, Gemini, etc.) — triggers DPO/privacy review flag when combined with sensitive data
+- `has_sensitive_data`: legacy field, kept for backwards compat; prefer `data_sensitivity`
+
+**Pending migration:** `supabase/migrations/18-tier-classification-v2.sql` adds `has_backend`, `target_users`, `has_database`, `connects_sprout_db`, `auth_type`, `data_sensitivity`. Must be run manually in the Supabase dashboard SQL editor — the anon key cannot run DDL.
 
 **wishes**
 - `id`: format `"w" + integer`, e.g. `"w10"`.
@@ -291,7 +319,24 @@ create policy "Admin delete" on wishes for delete
 
 ---
 
-## 12. v2 Backlog — Do Not Build in v1
+## 12. Release Review Gate (Stage-Gate System)
+
+Projects at Tier 2 and Tier 3 require a release review before advancing to Blooming/Thriving. The gate is enforced in `getStageGate()` in `src/App.jsx`.
+
+**Tier thresholds:**
+- Tier 1 (Static / Internal): no release review required at any stage
+- Tier 2 (Internal App): review required before Blooming and Thriving
+- Tier 3 (External-Facing): review required before Blooming and Thriving; full sign-off required before Thriving
+
+**Review statuses:** `null → 'pending' → 'approved' | 'rejected'`
+
+**Who reviews:** Admins (`is_gardener = true`) can approve or reject release reviews.
+
+**Activity feed:** `deletion_requested` and `deletion_approved` events are filtered from the public Momentum feed — they are admin-only actions and should not appear to regular users.
+
+---
+
+## 13. v2 Backlog — Do Not Build in v1
 
 Do not add any of these unless the product owner explicitly asks:
 
@@ -305,7 +350,7 @@ Do not add any of these unless the product owner explicitly asks:
 
 ---
 
-## 13. Escalation Contact
+## 14. Escalation Contact
 
 **Product Owner:** Sprout Product Team
 **Countries in scope:** Philippines (PH) + Thailand (TH)
