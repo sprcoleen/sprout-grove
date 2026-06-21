@@ -3905,7 +3905,6 @@ const ProjectDetailPage = ({
     agenticFramework:   project.agenticFramework   || [],
     dataSources:        project.dataSources        || [],
     collaboratorEmails: project.collaboratorEmails || [],
-    stage:              project.stage              || 'sprout',
     githubRepo:         project.githubRepo         || '',
     hosting:            project.hosting            || '',
     database:           project.database           || '',
@@ -3928,7 +3927,6 @@ const ProjectDetailPage = ({
       agenticFramework:   project.agenticFramework   || [],
       dataSources:        project.dataSources        || [],
       collaboratorEmails: project.collaboratorEmails || [],
-      stage:              project.stage              || 'sprout',
       githubRepo:         project.githubRepo         || '',
       hosting:            project.hosting            || '',
       database:           project.database           || '',
@@ -4168,20 +4166,46 @@ const ProjectDetailPage = ({
                 </div>
               </div>
 
-              {/* ── Section: Stage ── */}
+              {/* ── Section: Stage (read-only — changes go through onMoveStage) ── */}
               <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400}}>Stage</div>
+                  {canEdit && (() => {
+                    const gate = getStageGate(project);
+                    const stagesArr = STAGES.filter(s=>s!=='nursery');
+                    const curIdx = stagesArr.indexOf(project.stage);
+                    const nextStage = stagesArr[curIdx + 1];
+                    const prevStage = stagesArr[curIdx - 1];
+                    if (!nextStage && !authUser?.isAdmin) return null;
+                    return (
+                      <div style={{display:"flex",gap:6}}>
+                        {authUser?.isAdmin && prevStage && (
+                          <button onClick={()=>onMoveStage?.(project,-1)} style={{padding:"4px 10px",background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
+                            ← {STAGE_LABELS[prevStage]}
+                          </button>
+                        )}
+                        {nextStage && (authUser?.isAdmin || !gate.blocked) && (
+                          <button onClick={()=>onMoveStage?.(project,1)} style={{padding:"4px 10px",background:C.kangkong500,border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.white,cursor:"pointer",transition:"all 0.15s"}}>
+                            Advance to {STAGE_LABELS[nextStage]} →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                   {STAGES.filter(s=>s!=='nursery').map(s=>{
                     const sc=STAGE_COLORS[s];
-                    const active=editForm.stage===s;
-                    const adjacent=authUser?.isAdmin||Math.abs(STAGES.indexOf(s)-STAGES.indexOf(project.stage))<=1;
+                    const active=project.stage===s;
+                    const stagesArr=STAGES.filter(x=>x!=='nursery');
+                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
+                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
                     return(
-                      <button key={s} onClick={()=>adjacent&&setEF("stage",s)} style={{
-                        padding:"12px 10px",borderRadius:DS.radius.lg,cursor:adjacent?"pointer":"not-allowed",textAlign:"left",
+                      <div key={s} style={{
+                        padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
                         border:"2px solid "+(active?sc.dot:C.mushroom200),
-                        background:active?sc.bg:adjacent?C.white:C.mushroom50,
-                        opacity:adjacent?1:0.45,transition:"all 0.15s",
+                        background:active?sc.bg:isPast?C.mushroom50:C.white,
+                        opacity:isFuture?0.4:1,
                       }}>
                         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
                           <StageIcon stage={s} size={14}/>
@@ -4189,7 +4213,7 @@ const ProjectDetailPage = ({
                           {active&&<IcoCheck size={11} color={sc.dot}/>}
                         </div>
                         <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
