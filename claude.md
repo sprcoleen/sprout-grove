@@ -120,6 +120,10 @@ Full schemas in PRD Section 2. Critical rules:
 | `true` | `'internal'` | 2 — Internal App |
 | `true` | `'external'` or `'both'` | 3 — External-Facing |
 
+**Hosting by tier:**
+- **Tier 1:** Hosted on **Markup** — uploaded directly by the project owner. No deployment infrastructure required.
+- **Tier 2 & 3:** Hosted on **Sprout Vercel** or **Sprout Azure** (Company Repository). Requires IS / Execom approval before deployment. This is a prerequisite to going Live (Blooming / Thriving).
+
 **Per-tier checklist fields** (set via Classification panel, not at creation):
 - All tiers: `demo_link`, `github_repo`
 - Tier 2+: `hosting`, `requires_auth`, `auth_type`, `has_database`, `database`, `connects_sprout_db`
@@ -316,6 +320,10 @@ create policy "Admin delete" on wishes for delete
 5. Admins: can skip stages in any direction
 6. On success: update `stage`, set `last_updated = now()`, append milestone label + date
 7. On failure: surface clear error to user, no state change
+
+**IS / Execom Approval Gate** (for tickets assigned to Coleen, Blaise, Nikki, or Raffy):
+- At `sprout` stage: optional — encouraged before creating tickets
+- At `growing` stage: **required** — approval must be secured before the project advances to Blooming
 
 ---
 
