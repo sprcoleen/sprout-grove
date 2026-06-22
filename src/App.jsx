@@ -8429,18 +8429,24 @@ function GuideView() {
 
         {/* Roles */}
         <Section title="Roles &amp; Permissions" icon="👤">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
             {[
-              {role:"Employee", icon:"🌱", color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200,
+              {role:"Gardener", icon:"🌿", color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200,
+                who:"Any Sprout employee who owns or builds an AI project",
                 can:["Submit seed ideas to the Wishlist","Upvote any seed","Claim an unclaimed seed","Add a project to the Garden","Edit and move your own projects","Change stage (adjacent stages only)"]},
-              {role:"Admin (🌿 Gardener)", icon:"🌿", color:"#805ad5", bg:"#faf5ff", border:"#c4b5fd",
-                can:["Everything an employee can do","Edit any project or seed","Delete any project or seed","Skip stages in any direction","Access the Tool Shed (DevOps requests)","Moderate duplicates and manage records"]},
+              {role:"DevOps & IS / Execom", icon:"🛠️", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
+                who:"Raffy (DevOps) · Coleen, Nikki, Blaise (IS/Execom)",
+                can:["Receives Jira tickets for hosting & deployment setup","Grants IS / Execom approval at the Growing stage","Configures Sprout Vercel or Azure for Tier 2 & 3","Required approval gate before reaching Blooming","Supports AI projects in going Live"]},
+              {role:"Admin", icon:"🔐", color:"#805ad5", bg:"#faf5ff", border:"#c4b5fd",
+                who:"Belle Asis, Diane Litan",
+                can:["Everything a Gardener can do","Edit any project or seed","Delete any project or seed","Skip stages in any direction","Approve or reject release reviews","Moderate duplicates and manage Grove"]},
             ].map(r=>(
               <Card key={r.role} bg={r.bg} border={r.border}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                   <span style={{fontSize:22}}>{r.icon}</span>
                   <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:r.color}}>{r.role}</div>
                 </div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:12,paddingLeft:2}}>{r.who}</div>
                 {r.can.map(c=>(
                   <div key={c} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:5}}>
                     <span style={{color:r.color,fontWeight:700,flexShrink:0,fontSize:12}}>✓</span>

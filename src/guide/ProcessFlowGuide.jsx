@@ -184,16 +184,19 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
 
         {/* ── Roles ── */}
         <Section title="Roles in this Process" icon="👥">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {[
-              { icon: "🌱", role: "Builder", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200,
-                who: "Any Sprout employee",
-                does: ["Registers the project in Grove", "Completes security classification", "Submits for release review", "Advances stages after approval"] },
+              { icon: "🌿", role: "Gardener", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200,
+                who: "Any Sprout employee who owns or builds an AI project",
+                does: ["Registers the project in Grove", "Completes security & tier classification", "Submits for release review", "Advances stages after approval", "Edits and manages their own projects"] },
+              { icon: "🛠️", role: "DevOps & IS / Execom", color: C.carrot500, bg: C.carrot100, border: C.carrot500,
+                who: "Raffy (DevOps) · Coleen, Nikki, Blaise (IS/Execom)",
+                does: ["Receives Jira tickets for hosting setup and deployment", "Grants IS / Execom approval for projects at Growing stage", "Configures Sprout Vercel or Azure for Tier 2 & 3 projects", "Required approval gate before a project can reach Blooming", "Supports AI projects in going Live"] },
               { icon: "🔍", role: "Release Manager", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
                 who: "Belle Asis, Diane Litan",
                 does: ["Reviews Tier 2 & 3 projects", "Approves or rejects stage advancement", "Monitors the governance dashboard", "Manages the review queue"] },
-              { icon: "🌿", role: "Admin (Gardener)", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400,
-                who: "Same as Release Manager",
+              { icon: "🔐", role: "Admin", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400,
+                who: "Belle Asis, Diane Litan",
                 does: ["All Release Manager actions", "Edit any project or seed", "Skip stages in any direction", "Delete records and moderate Grove"] },
             ].map(r => (
               <Card key={r.role} bg={r.bg} border={r.border}>
