@@ -8171,10 +8171,10 @@ function GuideView() {
   );
 
   const stages = [
-    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Idea registered. Classify your project and begin building.", color:STAGE_COLORS.sprout},
-    {key:"growing",  emoji:"🌱", label:"Growing",  desc:"Actively in development. IS/Execom approval required before creating tickets for Coleen, Blaise, Nikki, or Raffy.", color:STAGE_COLORS.growing},
-    {key:"blooming", emoji:"🌸", label:"Blooming", desc:"Live and being used by the team. Tier 2 & 3 require RM review to reach this stage.", color:STAGE_COLORS.blooming},
-    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Fully deployed and making a lasting impact at Sprout. Highest scrutiny for Tier 3.", color:STAGE_COLORS.thriving},
+    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Idea registered. Classify your project and begin building.", color:{bg:"#f0faf0", border:"#aadcaa", text:"#1f6e1f"}},
+    {key:"growing",  emoji:"🌱", label:"Growing",  desc:"Actively in development. IS/Execom approval required before creating tickets for Coleen, Blaise, Nikki, or Raffy.", color:{bg:"#fefcbf", border:"#d69e2e", text:"#744210"}},
+    {key:"blooming", emoji:"🌸", label:"Blooming", desc:"Live and being used by the team. Tier 2 & 3 require RM review to reach this stage.", color:{bg:"#feebc8", border:"#dd6b20", text:"#7b341e"}},
+    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Fully deployed and making a lasting impact at Sprout. Highest scrutiny for Tier 3.", color:{bg:"#ebf8ff", border:"#63b3ed", text:"#2c5282"}},
   ];
 
   const tiers = [
