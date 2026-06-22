@@ -1384,9 +1384,11 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
               </div>
             </div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
-              {activityLog.length === 0 ? (
-                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
-              ) : activityLog.map((ev, i) => {
+              {(() => {
+                const publicLog = activityLog.filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved");
+                return publicLog.length === 0 ? (
+                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
+                ) : publicLog.map((ev, i) => {
                 const evProject   = ev.project_id ? projects.find(p => String(p.id) === String(ev.project_id)) : null;
                 const actor       = ev.actor_name || ev.actor_email?.split("@")[0] || "?";
                 const initials    = actor.split(" ").filter(Boolean).map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
@@ -1400,7 +1402,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                     style={{
                       display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
                       borderLeft: "3px solid " + accentColor,
-                      borderBottom: i < activityLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
+                      borderBottom: i < publicLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
                       transition:"background 0.15s",
                       animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
                       cursor: evProject ? "pointer" : "default",
@@ -1425,7 +1427,8 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                     <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(ev.created_at)}</div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           </div>
 
@@ -2262,9 +2265,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,marginBottom:18}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -2446,9 +2449,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,marginBottom:18}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -2630,9 +2633,9 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           {(tierCounts.some(c=>c>0)||unclassifiedCount>0)&&(
             <div style={{display:"flex",gap:10,padding:"12px 20px 0",flexShrink:0}}>
               {[
-                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Markup / Simple Logic","No backend or external users — prompt engineering, scripts, and simple logic."],
-                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",      "Deployed for Sprout teams. Coordinate with Raffy before shipping."],
-                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External App",        "Faces customers or external partners. Coordinate with Belle or Coleen."],
+                [1,tierCounts[0],C.mushroom700,C.mushroom50, C.mushroom300,C.mushroom400,"Static / Internal","No backend, internal use only. No release review required."],
+                [2,tierCounts[1],C.blueberry500,C.blueberry100,C.blueberry400,C.blueberry500,"Internal App",  "Has backend, internal users only. Coordinate with Raffy before shipping."],
+                [3,tierCounts[2],C.carrot500,  C.carrot100,  C.carrot500,  C.carrot500,   "External-Facing","Accessible to external users or customers. Full sign-off required."],
                 [0,unclassifiedCount,C.mushroom500,C.mushroom100,C.mushroom200,C.mushroom300,"Unclassified",      "Tier classification pending — open each project to classify."],
               ].map(([tier,count,color,bg,border,accent,label,desc])=>{
                 const isActive = tierFilter === tier;
@@ -3244,7 +3247,7 @@ function SecurityBadges({project, size="sm"}) {
 function TierBadge({tier, size="sm"}) {
   if (tier === null || tier === undefined) return null;
   const [color, bg, border, label] =
-    tier === 1 ? [C.mushroom700, C.mushroom100, C.mushroom300, "Markup"] :
+    tier === 1 ? [C.mushroom700, C.mushroom100, C.mushroom300, "Static"] :
     tier === 2 ? [C.blueberry500, C.blueberry100, C.blueberry400, "Internal"] :
                  [C.carrot500,   C.carrot100,   C.carrot500,   "External"];
   const fs = size === "lg" ? 12 : 10;
@@ -3291,7 +3294,7 @@ function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onRelease
   const isAdmin   = authUser?.isAdmin;
   const rrs       = project.releaseReviewStatus;
   const nextStage = project.stage === "sprout" ? "Bloom" : "Thriving";
-  const tierLabel = project.tier === 3 ? "Tier 3 — Full sign-off required" : "Tier 2 — RM acknowledgment required";
+  const tierLabel = project.tier === 3 ? "Tier 3 — Full sign-off required (Raffy + Belle/Coleen)" : "Tier 2 — Coordinate with Raffy before shipping";
 
   // Only show this banner at the gated stages
   if (project.stage !== "sprout" && project.stage !== "bloom") return null;
@@ -3524,9 +3527,9 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
 
         {project.tier!==null&&(()=>{
           const [tierColor,tierBg,tierBorder,tierLabel] =
-            project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
+            project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
             project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                             [C.carrot500,  C.carrot100,  C.carrot500,  "External App"];
+                             [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing"];
           return (
             <div style={{marginBottom:16,padding:"12px 14px",background:tierBg,border:`1px solid ${tierBorder}`,borderRadius:DS.radius.lg}}>
               <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Tier Classification</div>
@@ -3875,14 +3878,19 @@ const ProjectDetailPage = ({
 
 
   // Classification edit state
-  const [cIsUiOnly,           setCIsUiOnly]           = useState(project.isUiOnly           ?? null);
-  const [cUsesExternal,       setCUsesExternal]       = useState(project.usesExternalApis   ?? null);
-  const [cRequiresDeployment, setCRequiresDeployment] = useState(project.requiresDeployment ?? null);
-  const [cRequiresAuth,       setCRequiresAuth]       = useState(project.requiresAuth       ?? null);
-  const [cExternalAccess,     setCExternalAccess]     = useState(project.externalAccess     ?? null);
-  const [cHasSensitiveData,   setCHasSensitiveData]   = useState(project.hasSensitiveData   ?? null);
-  const [cSendsToExternalAI,  setCendsToExternalAI]  = useState(project.sendsToExternalAI  ?? null);
-  const [cStoresUserInputs,   setCStoresUserInputs]   = useState(project.storesUserInputs   ?? null);
+  const [cHasBackend,       setCHasBackend]       = useState(project.hasBackend       ?? null);
+  const [cTargetUsers,      setCTargetUsers]      = useState(project.targetUsers      ?? null);
+  const [cLiveUrl,          setCLiveUrl]          = useState(project.demoLink         || '');
+  const [cHasVersionCtrl,   setCHasVersionCtrl]   = useState(project.githubRepo ? true : null);
+  const [cRepoUrl,          setCRepoUrl]          = useState(project.githubRepo       || '');
+  const [cHostingPlatform,  setCHostingPlatform]  = useState(project.hosting          || '');
+  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth     ?? null);
+  const [cAuthType,         setCAuthType]         = useState(project.authType         || '');
+  const [cHasDatabase,      setCHasDatabase]      = useState(project.hasDatabase      ?? null);
+  const [cDbPlatform,       setCDbPlatform]       = useState(project.database         || '');
+  const [cConnectsSproutDb, setCConnectsSproutDb] = useState(project.connectsSproutDb ?? null);
+  const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
+  const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -3897,7 +3905,6 @@ const ProjectDetailPage = ({
     agenticFramework:   project.agenticFramework   || [],
     dataSources:        project.dataSources        || [],
     collaboratorEmails: project.collaboratorEmails || [],
-    stage:              project.stage              || 'sprout',
     githubRepo:         project.githubRepo         || '',
     hosting:            project.hosting            || '',
     database:           project.database           || '',
@@ -3920,7 +3927,6 @@ const ProjectDetailPage = ({
       agenticFramework:   project.agenticFramework   || [],
       dataSources:        project.dataSources        || [],
       collaboratorEmails: project.collaboratorEmails || [],
-      stage:              project.stage              || 'sprout',
       githubRepo:         project.githubRepo         || '',
       hosting:            project.hosting            || '',
       database:           project.database           || '',
@@ -3943,41 +3949,50 @@ const ProjectDetailPage = ({
 
   // Sync classification state when project data changes after a save
   useEffect(() => {
-    setCIsUiOnly(project.isUiOnly           ?? null);
-    setCUsesExternal(project.usesExternalApis   ?? null);
-    setCRequiresDeployment(project.requiresDeployment ?? null);
+    setCHasBackend(project.hasBackend           ?? null);
+    setCTargetUsers(project.targetUsers          ?? null);
+    setCLiveUrl(project.demoLink                || '');
+    setCHasVersionCtrl(project.githubRepo ? true : null);
+    setCRepoUrl(project.githubRepo              || '');
+    setCHostingPlatform(project.hosting         || '');
     setCRequiresAuth(project.requiresAuth       ?? null);
-    setCExternalAccess(project.externalAccess   ?? null);
-    setCHasSensitiveData(project.hasSensitiveData ?? null);
-    setCendsToExternalAI(project.sendsToExternalAI ?? null);
-    setCStoresUserInputs(project.storesUserInputs  ?? null);
-  }, [project.id, project.isUiOnly, project.usesExternalApis, project.requiresDeployment,
-      project.requiresAuth, project.externalAccess, project.hasSensitiveData,
-      project.sendsToExternalAI, project.storesUserInputs]);
+    setCAuthType(project.authType               || '');
+    setCHasDatabase(project.hasDatabase         ?? null);
+    setCDbPlatform(project.database             || '');
+    setCConnectsSproutDb(project.connectsSproutDb ?? null);
+    setCDataSensitivity(project.dataSensitivity || '');
+    setCendsToExtAI(project.sendsToExternalAI   ?? null);
+  }, [project.id, project.hasBackend, project.targetUsers, project.demoLink,
+      project.githubRepo, project.hosting, project.requiresAuth, project.authType,
+      project.hasDatabase, project.database, project.connectsSproutDb,
+      project.dataSensitivity, project.sendsToExternalAI]);
 
   const computedTier =
-    cIsUiOnly === true                                         ? 1 :
-    cUsesExternal === true                                     ? 3 :
-    (cRequiresAuth === true && cHasSensitiveData === true)     ? 3 :
-    cRequiresDeployment === true                               ? 2 :
-    cRequiresDeployment === false                              ? 1 : null;
+    cHasBackend === null || cTargetUsers === null ? null :
+    cHasBackend === false && cTargetUsers === 'internal' ? 1 :
+    cHasBackend === true  && cTargetUsers !== 'internal' ? 3 :
+    2;
 
+  const SENSITIVE_LEVELS = ['Sensitive (PII, HR, payroll)', 'Highly sensitive (health, financial)'];
   const securityFlags = {
-    authRequired:  cRequiresAuth === true,
-    sensitiveData: cHasSensitiveData === true,
-    noAuthRisk:    cExternalAccess === true && cRequiresAuth === false,
-    aiDataRisk:    cSendsToExternalAI === true && cHasSensitiveData === true,
-    storesInputs:  cStoresUserInputs === true,
+    aiDataRisk: cSendsToExtAI === true && SENSITIVE_LEVELS.includes(cDataSensitivity),
+    noAuthRisk: cTargetUsers !== 'internal' && cRequiresAuth === false && cRequiresAuth !== null,
   };
 
-  const classIsDirty = cIsUiOnly !== (project.isUiOnly ?? null)
-    || cUsesExternal !== (project.usesExternalApis ?? null)
-    || cRequiresDeployment !== (project.requiresDeployment ?? null)
-    || cRequiresAuth !== (project.requiresAuth ?? null)
-    || cExternalAccess !== (project.externalAccess ?? null)
-    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
-    || cSendsToExternalAI !== (project.sendsToExternalAI ?? null)
-    || cStoresUserInputs !== (project.storesUserInputs ?? null);
+  const classIsDirty =
+    cHasBackend      !== (project.hasBackend       ?? null)
+    || cTargetUsers  !== (project.targetUsers      ?? null)
+    || cLiveUrl      !== (project.demoLink         || '')
+    || cHasVersionCtrl !== (project.githubRepo ? true : null)
+    || cRepoUrl      !== (project.githubRepo       || '')
+    || cHostingPlatform !== (project.hosting       || '')
+    || cRequiresAuth !== (project.requiresAuth     ?? null)
+    || cAuthType     !== (project.authType         || '')
+    || cHasDatabase  !== (project.hasDatabase      ?? null)
+    || cDbPlatform   !== (project.database         || '')
+    || cConnectsSproutDb !== (project.connectsSproutDb ?? null)
+    || cDataSensitivity !== (project.dataSensitivity || '')
+    || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
@@ -3986,11 +4001,15 @@ const ProjectDetailPage = ({
     if (!canEdit) return;
     setClassSaving(true);
     await onSaveClassification?.(project.id, {
-      isUiOnly: cIsUiOnly, usesExternalApis: cUsesExternal,
-      requiresDeployment: cRequiresDeployment, tier: computedTier,
-      requiresAuth: cRequiresAuth, externalAccess: cExternalAccess,
-      hasSensitiveData: cHasSensitiveData, sendsToExternalAI: cSendsToExternalAI,
-      storesUserInputs: cStoresUserInputs,
+      hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
+      demoLink: cLiveUrl,
+      githubRepo: cHasVersionCtrl ? cRepoUrl : '',
+      hosting: cHostingPlatform,
+      requiresAuth: cRequiresAuth, authType: cAuthType,
+      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : '',
+      connectsSproutDb: cConnectsSproutDb,
+      dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
+      hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
     });
     setClassSaving(false);
   };
@@ -4051,9 +4070,9 @@ const ProjectDetailPage = ({
           {/* Tier indicator */}
           {(()=>{
             const [tc,tbg,tbr,tl] =
-              project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Markup / Simple Logic"]
+              project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Static / Internal"]
              :project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]
-             :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]
+             :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]
                                :[C.mushroom400,C.mushroom50,C.mushroom200,null];
             return (
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:DS.radius.lg,marginBottom:16,background:tbg,border:"1px solid "+tbr}}>
@@ -4147,20 +4166,46 @@ const ProjectDetailPage = ({
                 </div>
               </div>
 
-              {/* ── Section: Stage ── */}
+              {/* ── Section: Stage (read-only — changes go through onMoveStage) ── */}
               <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400}}>Stage</div>
+                  {canEdit && (() => {
+                    const gate = getStageGate(project);
+                    const stagesArr = STAGES.filter(s=>s!=='nursery');
+                    const curIdx = stagesArr.indexOf(project.stage);
+                    const nextStage = stagesArr[curIdx + 1];
+                    const prevStage = stagesArr[curIdx - 1];
+                    if (!nextStage && !authUser?.isAdmin) return null;
+                    return (
+                      <div style={{display:"flex",gap:6}}>
+                        {authUser?.isAdmin && prevStage && (
+                          <button onClick={()=>onMoveStage?.(project,-1)} style={{padding:"4px 10px",background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
+                            ← {STAGE_LABELS[prevStage]}
+                          </button>
+                        )}
+                        {nextStage && (authUser?.isAdmin || !gate.blocked) && (
+                          <button onClick={()=>onMoveStage?.(project,1)} style={{padding:"4px 10px",background:C.kangkong500,border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.white,cursor:"pointer",transition:"all 0.15s"}}>
+                            Advance to {STAGE_LABELS[nextStage]} →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                   {STAGES.filter(s=>s!=='nursery').map(s=>{
                     const sc=STAGE_COLORS[s];
-                    const active=editForm.stage===s;
-                    const adjacent=authUser?.isAdmin||Math.abs(STAGES.indexOf(s)-STAGES.indexOf(project.stage))<=1;
+                    const active=project.stage===s;
+                    const stagesArr=STAGES.filter(x=>x!=='nursery');
+                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
+                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
                     return(
-                      <button key={s} onClick={()=>adjacent&&setEF("stage",s)} style={{
-                        padding:"12px 10px",borderRadius:DS.radius.lg,cursor:adjacent?"pointer":"not-allowed",textAlign:"left",
+                      <div key={s} style={{
+                        padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
                         border:"2px solid "+(active?sc.dot:C.mushroom200),
-                        background:active?sc.bg:adjacent?C.white:C.mushroom50,
-                        opacity:adjacent?1:0.45,transition:"all 0.15s",
+                        background:active?sc.bg:isPast?C.mushroom50:C.white,
+                        opacity:isFuture?0.4:1,
                       }}>
                         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
                           <StageIcon stage={s} size={14}/>
@@ -4168,7 +4213,7 @@ const ProjectDetailPage = ({
                           {active&&<IcoCheck size={11} color={sc.dot}/>}
                         </div>
                         <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -4224,40 +4269,51 @@ const ProjectDetailPage = ({
                     ))}
                   </div>
                 );
+                const TU = ({val,label}) => {
+                  const active = cTargetUsers===val;
+                  return (
+                    <button onClick={()=>setCTargetUsers(val)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,textAlign:"center",
+                        border:`2px solid ${active?C.kangkong400:C.mushroom200}`,
+                        background:active?C.kangkong50:C.white,
+                        fontFamily:FF,fontSize:13,fontWeight:active?700:400,
+                        color:active?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
+                      onMouseOver={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
+                      onMouseOut={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
+                    >{label}</button>
+                  );
+                };
+                const inputStyle = {width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"};
+                const selectStyle = (hasVal) => ({...inputStyle, color:hasVal?C.mushroom800:C.mushroom400});
+                const subBlock = {marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200,display:"flex",flexDirection:"column",gap:10};
                 const [tc,tb,tbr,tl]=
-                  computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Markup / Simple Logic"]:
+                  computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                   computedTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                  computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]:
+                  computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                 return (
                   <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                     <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification</div>
                     <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                      {/* Q1 — backend */}
                       <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Is this project UI-only or static content — no backend logic?</div>
-                        <YesNo value={cIsUiOnly}
-                          onYes={()=>{setCIsUiOnly(true);setCUsesExternal(null);setCRequiresDeployment(null);}}
-                          onNo={()=>{setCIsUiOnly(false);setCUsesExternal(null);setCRequiresDeployment(null);}}
-                        />
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
+                        <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
                       </div>
-                      {cIsUiOnly===false&&(
-                        <div>
-                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it use external APIs or third-party services outside Sprout?</div>
-                          <YesNo value={cUsesExternal}
-                            onYes={()=>{setCUsesExternal(true);setCRequiresDeployment(null);}}
-                            onNo={()=>{setCUsesExternal(false);setCRequiresDeployment(null);}}
-                          />
+
+                      {/* Q2 — target users */}
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <TU val="internal" label="Internal only"/>
+                          <TU val="external" label="External only"/>
+                          <TU val="both"     label="Both"/>
                         </div>
-                      )}
-                      {cIsUiOnly===false&&cUsesExternal===false&&(
-                        <div>
-                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it require deployment infrastructure (Vercel, Azure, or similar)?</div>
-                          <YesNo value={cRequiresDeployment}
-                            onYes={()=>setCRequiresDeployment(true)}
-                            onNo={()=>setCRequiresDeployment(false)}
-                          />
-                        </div>
-                      )}
+                      </div>
+
+                      {/* Tier result pill */}
                       {computedTier!==null&&(
                         <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
                           <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
@@ -4265,41 +4321,156 @@ const ProjectDetailPage = ({
                         </div>
                       )}
 
-                      {/* ── Security & Data section ── */}
-                      <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:4}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:12}}>Security &amp; Data</div>
-                        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                          {[
-                            {q:"Does this project require user login or authentication?", val:cRequiresAuth, set:setCRequiresAuth},
-                            {q:"Is this project accessible outside the Sprout internal network / VPN?", val:cExternalAccess, set:setCExternalAccess},
-                            {q:"Does it handle or process sensitive data? (PII, payroll, HR records, health data)", val:cHasSensitiveData, set:setCHasSensitiveData},
-                            {q:"Does it send employee or company data to external AI models? (OpenAI, Claude, Gemini, etc.)", val:cSendsToExternalAI, set:setCendsToExternalAI},
-                            {q:"Does it store or log user inputs / outputs persistently?", val:cStoresUserInputs, set:setCStoresUserInputs},
-                          ].map(({q,val,set})=>(
-                            <div key={q}>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>{q}</div>
-                              <YesNo value={val} onYes={()=>set(true)} onNo={()=>set(false)}/>
+                      {/* ── Per-tier checklist ── */}
+                      {computedTier!==null&&(
+                        <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
+                          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project details</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                            {/* URL — all tiers */}
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
+                                Live URL{computedTier===1&&<span style={{fontWeight:400,color:C.mushroom400}}> (optional)</span>}
+                              </div>
+                              <input type="text" value={cLiveUrl} onChange={e=>setCLiveUrl(e.target.value)}
+                                placeholder="https://…" style={inputStyle}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                              />
                             </div>
-                          ))}
-                          {/* Security flag warnings */}
-                          {securityFlags.noAuthRisk&&(
-                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                              <span style={{fontSize:14}}>⚠️</span>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+
+                            {/* Hosting — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting platform</div>
+                                <select value={cHostingPlatform} onChange={e=>setCHostingPlatform(e.target.value)} style={selectStyle(!!cHostingPlatform)}>
+                                  <option value="">Select platform…</option>
+                                  {["Vercel","Azure","AWS","Google Cloud","Internal server","Other"].map(o=><option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Version control — all tiers */}
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Does this project have a code repository?</div>
+                              <YesNo value={cHasVersionCtrl}
+                                onYes={()=>setCHasVersionCtrl(true)}
+                                onNo={()=>{setCHasVersionCtrl(false);setCRepoUrl('');}}
+                              />
+                              {cHasVersionCtrl===true&&(
+                                <div style={{marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200}}>
+                                  <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                                    placeholder="github.com/org/repo" style={inputStyle}
+                                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                                  />
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {securityFlags.aiDataRisk&&(
-                            <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                              <span style={{fontSize:14}}>🔒</span>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                            </div>
-                          )}
+
+                            {/* Auth — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user authentication?</div>
+                                <YesNo value={cRequiresAuth}
+                                  onYes={()=>setCRequiresAuth(true)}
+                                  onNo={()=>{setCRequiresAuth(false);setCAuthType('');}}
+                                />
+                                {cRequiresAuth===true&&(
+                                  <div style={subBlock}>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Auth type</div>
+                                      <select value={cAuthType} onChange={e=>setCAuthType(e.target.value)} style={selectStyle(!!cAuthType)}>
+                                        <option value="">Select…</option>
+                                        {["Sprout SSO / Google","Email + password","API key","Other"].map(o=><option key={o}>{o}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Database — T2/T3 */}
+                            {computedTier>=2&&(
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project use a database?</div>
+                                <YesNo value={cHasDatabase}
+                                  onYes={()=>setCHasDatabase(true)}
+                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform('');setCConnectsSproutDb(null);}}
+                                />
+                                {cHasDatabase===true&&(
+                                  <div style={subBlock}>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database platform</div>
+                                      <select value={cDbPlatform} onChange={e=>setCDbPlatform(e.target.value)} style={selectStyle(!!cDbPlatform)}>
+                                        <option value="">Select…</option>
+                                        {["Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL","Other"].map(o=><option key={o}>{o}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it connect to or pull from the Sprout DB?</div>
+                                      <YesNo value={cConnectsSproutDb}
+                                        onYes={()=>setCConnectsSproutDb(true)}
+                                        onNo={()=>setCConnectsSproutDb(false)}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Data & Security — T3 only */}
+                            {computedTier===3&&(
+                              <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
+                                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
+                                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                                  <div>
+                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
+                                    <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
+                                      <option value="">Select…</option>
+                                      {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
+                                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
+                                    <YesNo value={cSendsToExtAI}
+                                      onYes={()=>setCendsToExtAI(true)}
+                                      onNo={()=>setCendsToExtAI(false)}
+                                    />
+                                  </div>
+                                  {securityFlags.aiDataRisk&&(
+                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
+                                      <span style={{fontSize:14}}>🔒</span>
+                                      <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
+                                    </div>
+                                  )}
+                                  {securityFlags.noAuthRisk&&(
+                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                                      <span style={{fontSize:14}}>⚠️</span>
+                                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {classIsDirty&&(
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{setCIsUiOnly(project.isUiOnly??null);setCUsesExternal(project.usesExternalApis??null);setCRequiresDeployment(project.requiresDeployment??null);setCRequiresAuth(project.requiresAuth??null);setCExternalAccess(project.externalAccess??null);setCHasSensitiveData(project.hasSensitiveData??null);setCendsToExternalAI(project.sendsToExternalAI??null);setCStoresUserInputs(project.storesUserInputs??null);}}
+                          <button onClick={()=>{
+                            setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                            setCLiveUrl(project.demoLink||'');setCHasVersionCtrl(project.githubRepo?true:null);
+                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(project.hosting||'');
+                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(project.authType||'');
+                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(project.database||'');
+                            setCConnectsSproutDb(project.connectsSproutDb??null);
+                            setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
+                          }}
                             style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
                           <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
                             style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
@@ -4311,21 +4482,7 @@ const ProjectDetailPage = ({
                 );
               })()}
 
-              {computedTier===3&&<>
-              {/* ── Section: Technical Details ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:6}}>Technical Details</div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:14,display:"flex",alignItems:"center",gap:5}}>
-                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                  Only visible for Tier 3 — External App projects
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <ModalField label="GitHub repo" k="githubRepo" ph="github.com/org/repo" form={editForm} onChange={setEF}/>
-                  <ModalField label="Hosting" k="hosting" ph="e.g. Free Vercel, Azure, None" form={editForm} onChange={setEF}/>
-                </div>
-                <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={editForm} onChange={setEF}/>
-              </div>
-              {/* ── Request DevOps Setup button ── */}
+              {computedTier>=2&&(
               <button onClick={()=>setShowDevopsModal(true)} style={{
                 width:"100%",padding:"11px",background:C.carrot500,color:C.white,
                 border:"none",borderRadius:DS.radius.lg,cursor:"pointer",
@@ -4338,7 +4495,7 @@ const ProjectDetailPage = ({
                 <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Request DevOps Setup
               </button>
-              </>}
+              )}
               </>}
 
               {/* Save / Cancel */}
@@ -4482,7 +4639,7 @@ const ProjectDetailPage = ({
                     <div style={sTitle}>Technical Details</div>
                     <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:12,display:"flex",alignItems:"center",gap:5}}>
                       <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                      Only visible for Tier 3 — External App projects
+                      Only visible for Tier 3 — External-Facing projects
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div>
@@ -4508,9 +4665,9 @@ const ProjectDetailPage = ({
                   {/* Tier classification */}
                   {project.tier&&(()=>{
                     const [tc,tb,tbr,tl]=
-                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Markup / Simple Logic"]:
+                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                       project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External App"]:
+                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                        [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                     return(
                       <div style={sCard}>
@@ -5358,7 +5515,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     dataSources:[], dataSourcesOther:"",
     description:"", demoLink:"", collaboratorEmails:[],
     problem:"", built:"", betterNow:"",
-    isUiOnly:null, usesExternalApis:null, requiresDeployment:null,
+    hasBackend:null, targetUsers:null,
   });
   const setP = (k,v) => setPlantRaw(p=>({...p,[k]:v}));
 
@@ -5391,11 +5548,10 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
 
   // Tier computation (derived from yes/no answers)
   const plantTier =
-    plant.isUiOnly === true           ? 1 :
-    plant.usesExternalApis === true   ? 3 :
-    plant.requiresDeployment === true ? 2 :
-    plant.requiresDeployment === false? 1 :
-    null;
+    plant.hasBackend === null || plant.targetUsers === null ? null :
+    plant.hasBackend === false && plant.targetUsers === 'internal' ? 1 :
+    plant.hasBackend === true  && plant.targetUsers !== 'internal' ? 3 :
+    2;
 
   // Validation
   const plantStep1Valid = !!(plant.name.trim() && plant.builtFor.length>0 && plantTier !== null);
@@ -5434,7 +5590,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
       agenticFramework:[...plant.agenticFramework,...(plant.agenticFrameworkOther?[plant.agenticFrameworkOther]:[])],
       dataSources:[...plant.dataSources,...(plant.dataSourcesOther?[plant.dataSourcesOther]:[])],
       problem:plant.problem, built:plant.built, betterNow:plant.betterNow,
-      isUiOnly:plant.isUiOnly, usesExternalApis:plant.usesExternalApis, requiresDeployment:plant.requiresDeployment,
+      hasBackend:plant.hasBackend, targetUsers:plant.targetUsers,
       tier:plantTier,
       problemSpace:"", capability:"",
       id:Date.now(), lastUpdated:0, notes:[],
@@ -5595,57 +5751,38 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
             {/* ── TIER QUESTIONS ── */}
             <div>
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                Is this project UI-only or static content — no backend logic or automation? <span style={{color:C.carrot500}}>*</span>
+                Does this project have a backend, database, or server-side logic? <span style={{color:C.carrot500}}>*</span>
               </label>
               <div style={{display:"flex",gap:8}}>
-                {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                {[{v:false,l:"No — static / UI only"},{v:true,l:"Yes — has backend"}].map(opt=>(
                   <button key={String(opt.v)} type="button"
-                    onClick={()=>{setP("isUiOnly",opt.v);setP("usesExternalApis",null);setP("requiresDeployment",null);}}
-                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:plant.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.isUiOnly===opt.v?700:400,color:plant.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                    onClick={()=>setP("hasBackend",opt.v)}
+                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.hasBackend===opt.v?C.kangkong400:C.mushroom200}`,background:plant.hasBackend===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.hasBackend===opt.v?700:400,color:plant.hasBackend===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
                     {opt.l}
                   </button>
                 ))}
               </div>
             </div>
 
-            {plant.isUiOnly===false&&(
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                  Does it use any external APIs or third-party services outside Sprout? <span style={{color:C.carrot500}}>*</span>
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                    <button key={String(opt.v)} type="button"
-                      onClick={()=>{setP("usesExternalApis",opt.v);setP("requiresDeployment",null);}}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:plant.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.usesExternalApis===opt.v?700:400,color:plant.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                Who are the target users? <span style={{color:C.carrot500}}>*</span>
+              </label>
+              <div style={{display:"flex",gap:8}}>
+                {[{v:"internal",l:"Internal only"},{v:"external",l:"External only"},{v:"both",l:"Both"}].map(opt=>(
+                  <button key={opt.v} type="button"
+                    onClick={()=>setP("targetUsers",opt.v)}
+                    style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.targetUsers===opt.v?C.kangkong400:C.mushroom200}`,background:plant.targetUsers===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.targetUsers===opt.v?700:400,color:plant.targetUsers===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                    {opt.l}
+                  </button>
+                ))}
               </div>
-            )}
-
-            {plant.isUiOnly===false&&plant.usesExternalApis===false&&(
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                  Does it require deployment to infrastructure (Vercel, Azure, or similar)? <span style={{color:C.carrot500}}>*</span>
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                    <button key={String(opt.v)} type="button"
-                      onClick={()=>setP("requiresDeployment",opt.v)}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${plant.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:plant.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:plant.requiresDeployment===opt.v?700:400,color:plant.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
 
             {plantTier!==null&&(
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:plantTier===1?C.mushroom50:plantTier===2?C.blueberry100:C.carrot100,border:`1px solid ${plantTier===1?C.mushroom300:plantTier===2?C.blueberry400:C.carrot500}`}}>
                 <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:plantTier===1?C.mushroom700:plantTier===2?C.blueberry500:C.carrot500}}>Tier {plantTier}</span>
-                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Markup / Simple Logic":plantTier===2?"Internal App (Kindly coordinate with Raffy)":"External App (Kindly coordinate with Belle or Coleen)"}</span>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Static / Internal":plantTier===2?"Internal App — coordinate with Raffy":"External-Facing — coordinate with Belle or Coleen"}</span>
               </div>
             )}
           </div>
@@ -6342,9 +6479,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     dataSource:         "",
     dataSources:        [],
     demoLink:           "",
-    isUiOnly:           null,
-    usesExternalApis:   null,
-    requiresDeployment: null,
+    hasBackend:         null,
+    targetUsers:        null,
     toolUsed:           [],
     agenticFramework:   [],
     collaboratorEmails: [],
@@ -6352,7 +6488,6 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     hosting:            "",
     database:           "",
     requiresAuth:       null,
-    externalAccess:     null,
     hasSensitiveData:   null,
     sendsToExternalAI:  null,
     storesUserInputs:   null,
@@ -6380,11 +6515,10 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
   const canSummarize = !!(form.name.trim() && (form.problem || form.built || form.betterNow));
 
   const editingTier =
-    form.isUiOnly === true            ? 1 :
-    form.usesExternalApis === true    ? 3 :
-    form.requiresDeployment === true  ? 2 :
-    form.requiresDeployment === false ? 1 :
-    null;
+    form.hasBackend === null || form.targetUsers === null ? null :
+    form.hasBackend === false && form.targetUsers === 'internal' ? 1 :
+    form.hasBackend === true  && form.targetUsers !== 'internal' ? 3 :
+    2;
 
   const handleSummarize = async () => {
     if (!canSummarize || aiSummarizing) return;
@@ -6640,13 +6774,13 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               {/* Q1 */}
               <div>
                 <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                  Is this project UI-only or static content — no backend logic or automation?
+                  Does this project have a backend, database, or server-side logic?
                 </label>
                 <div style={{display:"flex",gap:8}}>
-                  {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
+                  {[{v:false,l:"No — static / UI only"},{v:true,l:"Yes — has backend"}].map(opt=>(
                     <button key={String(opt.v)} type="button"
-                      onClick={()=>{setField("isUiOnly",opt.v);setField("usesExternalApis",null);setField("requiresDeployment",null);}}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.isUiOnly===opt.v?C.kangkong400:C.mushroom200}`,background:form.isUiOnly===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.isUiOnly===opt.v?700:400,color:form.isUiOnly===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      onClick={()=>setField("hasBackend",opt.v)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.hasBackend===opt.v?C.kangkong400:C.mushroom200}`,background:form.hasBackend===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.hasBackend===opt.v?700:400,color:form.hasBackend===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
                       {opt.l}
                     </button>
                   ))}
@@ -6654,47 +6788,27 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
               </div>
 
               {/* Q2 */}
-              {form.isUiOnly===false&&(
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                    Does it use any external APIs or third-party services outside Sprout?
-                  </label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>{setField("usesExternalApis",opt.v);setField("requiresDeployment",null);}}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.usesExternalApis===opt.v?C.kangkong400:C.mushroom200}`,background:form.usesExternalApis===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.usesExternalApis===opt.v?700:400,color:form.usesExternalApis===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
+                  Who are the target users?
+                </label>
+                <div style={{display:"flex",gap:8}}>
+                  {[{v:"internal",l:"Internal only"},{v:"external",l:"External only"},{v:"both",l:"Both"}].map(opt=>(
+                    <button key={opt.v} type="button"
+                      onClick={()=>setField("targetUsers",opt.v)}
+                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.targetUsers===opt.v?C.kangkong400:C.mushroom200}`,background:form.targetUsers===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.targetUsers===opt.v?700:400,color:form.targetUsers===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
+                      {opt.l}
+                    </button>
+                  ))}
                 </div>
-              )}
-
-              {/* Q3 */}
-              {form.isUiOnly===false&&form.usesExternalApis===false&&(
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                    Does it require deployment to infrastructure (Vercel, Azure, or similar)?
-                  </label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>setField("requiresDeployment",opt.v)}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.requiresDeployment===opt.v?C.kangkong400:C.mushroom200}`,background:form.requiresDeployment===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.requiresDeployment===opt.v?700:400,color:form.requiresDeployment===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Resolved tier badge */}
               {editingTier!==null&&(()=>{
                 const [tierColor,tierBg,tierBorder,tierLabel] =
-                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Markup / Simple Logic"]:
-                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App (Kindly coordinate with Raffy)"]:
-                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External App (Kindly coordinate with Belle or Coleen)"];
+                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
+                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App — coordinate with Raffy"]:
+                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing — coordinate with Belle or Coleen"];
                 return (
                   <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:tierBg,border:`1px solid ${tierBorder}`}}>
                     <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {editingTier}</span>
@@ -6714,11 +6828,10 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
                 Required before advancing to Bloom. Answer now to avoid being blocked later.
               </div>
               {[
-                {q:"Does this project require user login or authentication?",                k:"requiresAuth"},
-                {q:"Is this project accessible outside the Sprout internal network / VPN?",  k:"externalAccess"},
-                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)",   k:"hasSensitiveData"},
-                {q:"Does it send employee or company data to external AI models?",            k:"sendsToExternalAI"},
-                {q:"Does it store or log user inputs / outputs persistently?",               k:"storesUserInputs"},
+                {q:"Does this project require user login or authentication?",              k:"requiresAuth"},
+                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)", k:"hasSensitiveData"},
+                {q:"Does it send employee or company data to external AI models?",          k:"sendsToExternalAI"},
+                {q:"Does it store or log user inputs / outputs persistently?",             k:"storesUserInputs"},
               ].map(({q,k})=>(
                 <div key={k}>
                   <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
@@ -6737,7 +6850,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
                   </div>
                 </div>
               ))}
-              {form.externalAccess===true&&form.requiresAuth===false&&(
+              {form.targetUsers!=='internal'&&form.requiresAuth===false&&form.requiresAuth!==null&&(
                 <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
                   <span style={{fontSize:14}}>⚠️</span>
                   <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
@@ -6753,8 +6866,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
           </>
         )}
 
-        {/* ── Section 6: Technical Details (Tier 3 only) ── */}
-        {editingTier===3&&(
+        {/* ── Section 6: Technical Details (Tier 2+) ── */}
+        {editingTier>=2&&(
           <>
             <SectionHeader title="Technical Details"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
@@ -8067,27 +8180,27 @@ function GuideView() {
 
   const tiers = [
     {
-      num:1, label:"Markup / Simple Logic",
+      num:1, label:"Static / Internal",
       color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300, accent:C.mushroom400,
-      desc:"Prompt engineering, scripts, one-pagers, or simple automation with no backend and no external users.",
-      examples:"ChatGPT prompt library, email templates, simple data scripts",
-      triggers:["UI-only or static content", "No backend logic", "No external user access"],
+      desc:"No backend logic, internal use only. Scripts, static pages, prompt templates, or simple one-off tools.",
+      examples:"Prompt libraries, static dashboards, email templates, simple scripts",
+      triggers:["No backend", "Internal users only"],
       coord: null,
     },
     {
       num:2, label:"Internal App",
       color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
-      desc:"Deployed for Sprout employees. Requires proper infrastructure, access control, and data handling review.",
+      desc:"Has backend logic, deployed for Sprout employees only. Requires infrastructure, access control, and data handling review.",
       examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
-      triggers:["Requires deployment", "Accessible to Sprout employees"],
+      triggers:["Has backend + internal users only", "No backend + external or both users"],
       coord: "Coordinate with Raffy (DevOps) before shipping.",
     },
     {
-      num:3, label:"External App",
+      num:3, label:"External-Facing",
       color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
-      desc:"Faces customers, external partners, or anyone outside Sprout — OR requires user authentication AND handles sensitive data. Highest scrutiny and coordination required.",
-      examples:"Client portals, public-facing AI features, partner integrations, projects with auth + sensitive data",
-      triggers:["Uses external APIs / third-party services", "Customer-facing or external access", "Requires user auth AND handles sensitive data"],
+      desc:"Has backend and accessible to customers, partners, or the public. Highest scrutiny and coordination required.",
+      examples:"Client portals, public-facing AI features, partner integrations, customer tools",
+      triggers:["Has backend + external or both users"],
       coord: "Coordinate with Belle or Coleen before shipping.",
     },
   ];
@@ -8179,7 +8292,7 @@ function GuideView() {
                 body:"If you're already building something, add it directly to the Garden. Fill in what it does, who it's for, and what tools you're using."},
               {step:"4", color:"#805ad5", bg:"#faf5ff", border:"#9f7aea",
                 title:"Classify your project 🏷️",
-                body:"Go to the Technical tab and answer the classification questions. This determines your Tier (1–3) and flags any security or data concerns that need coordination."},
+                body:"Go to the Technical tab. Answer two questions — does the project have a backend, and who are the intended users? Your tier (1–3) is computed automatically. A short checklist then collects hosting, version control, auth, and database details based on your tier."},
               {step:"5", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
                 title:"Progress through stages 🚀",
                 body:"Move your project from Seedling → Nursery → Sprout → Bloom → Thriving as it grows. Each stage reflects where you are in the build journey."},
@@ -8217,7 +8330,24 @@ function GuideView() {
         {/* Tiers */}
         <Section title="Tier Classification" icon="🏷️">
           <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:20}}>
-            Every project needs to be classified by tier. This determines who needs to be involved before you ship and what level of review is required. Answer the questions in the <strong>Technical tab</strong> of your project — the tier is computed automatically.
+            Every project needs a tier. Two questions determine it: does the project have a backend, and who are the intended users? Based on the result, a contextual checklist collects the right technical details — hosting, version control, auth, database — only asking what's relevant for that tier.
+          </div>
+          <div style={{display:"flex",gap:10,marginBottom:20,padding:"12px 16px",background:"#faf5ff",border:"1px solid #c4b5fd",borderRadius:DS.radius.lg}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8,flex:1}}>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:"#6d28d9",textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>How the tier is decided</div>
+              {[
+                ["No backend + Internal only","→","Tier 1"],
+                ["No backend + External or Both","→","Tier 2"],
+                ["Has backend + Internal only","→","Tier 2"],
+                ["Has backend + External or Both","→","Tier 3"],
+              ].map(([cond,arrow,tier])=>(
+                <div key={cond} style={{display:"flex",alignItems:"center",gap:8,fontFamily:FF,fontSize:12}}>
+                  <span style={{color:C.mushroom600,flex:1}}>{cond}</span>
+                  <span style={{color:C.mushroom400}}>{arrow}</span>
+                  <span style={{fontWeight:700,color:"#6d28d9",minWidth:40}}>{tier}</span>
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             {tiers.map(t=>(
@@ -8249,33 +8379,49 @@ function GuideView() {
         </Section>
 
         {/* Security & Data */}
-        <Section title="Security &amp; Data Classification" icon="🔐">
-          <Card>
-            <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
-              Every project also answers 5 security questions (in the Technical tab). These determine whether additional review is needed before launch.
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {[
-                {q:"Requires user login / authentication?",          flag:"🔐 Auth Required",      note:"Needs proper auth implementation."},
-                {q:"Accessible outside the Sprout network / VPN?",   flag:"⚠ External Access",     note:"Exposed endpoints need extra scrutiny."},
-                {q:"Handles sensitive data? (PII, payroll, HR…)",    flag:"⚠ Sensitive Data",      note:"Auth + Sensitive Data → auto-classifies as Tier 3."},
-                {q:"Sends data to external AI models?",              flag:"🔒 AI + Data risk",      note:"Sensitive data + external AI → DPO/privacy review required."},
-                {q:"Stores or logs user inputs persistently?",        flag:"📦 Data Retention",     note:"Review data retention policy with Raffy."},
-              ].map((r,i,arr)=>(
-                <div key={r.q} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 12px",background:C.mushroom50,borderRadius:DS.radius.md,border:"1px solid "+C.mushroom200}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom800,marginBottom:2}}>{r.q}</div>
-                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{r.note}</div>
-                  </div>
-                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.blueberry500,background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.full,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{r.flag}</span>
+        <Section title="Per-Tier Checklist" icon="🔐">
+          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
+            After the tier is computed, a checklist appears in the Technical tab. The fields shown depend on the tier — only ask what's relevant.
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {
+                tier:1, label:"Static / Internal", color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300,
+                fields:["Live URL (optional)","Version control — repo URL if Yes"],
+              },
+              {
+                tier:2, label:"Internal App", color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400,
+                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?"],
+              },
+              {
+                tier:3, label:"External-Facing", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
+                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?","Data sensitivity level","Sends data to external AI models?"],
+              },
+            ].map(t=>(
+              <div key={t.tier} style={{background:t.bg,border:"1px solid "+t.border,borderRadius:DS.radius.lg,padding:"14px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:t.color,padding:"2px 10px",background:C.white,border:"1.5px solid "+t.border,borderRadius:DS.radius.full}}>Tier {t.tier}</span>
+                  <span style={{fontFamily:FF,fontSize:12,fontWeight:600,color:t.color}}>{t.label}</span>
                 </div>
-              ))}
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {t.fields.map(f=>(
+                    <div key={f} style={{display:"flex",alignItems:"flex-start",gap:7}}>
+                      <span style={{color:t.color,fontWeight:700,fontSize:12,flexShrink:0,marginTop:1}}>·</span>
+                      <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.mango700}}>
+              <strong>⚠ No-auth warning (Tier 3):</strong> If the project is accessible to external users but has no authentication, a warning is shown — must be resolved before shipping. Coordinate with Raffy.
             </div>
-            <div style={{marginTop:16,padding:"12px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
-              <strong style={{fontFamily:FF,fontSize:12,color:C.mango700}}>⚠ Auto-escalation rule:</strong>
-              <span style={{fontFamily:FF,fontSize:12,color:C.mango700}}> If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 3</strong> regardless of other answers. Coordinate with Belle or Coleen before shipping.</span>
+            <div style={{padding:"10px 14px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.carrot500}}>
+              <strong>🔒 Data + AI warning (Tier 3):</strong> If the project sends sensitive data (PII, payroll, HR, health) to an external AI model, a DPO/privacy review is required. Coordinate with Belle or Coleen before launch.
             </div>
-          </Card>
+          </div>
         </Section>
 
         {/* Roles */}
@@ -8745,22 +8891,24 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {isUiOnly, usesExternalApis, requiresDeployment, tier, requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}) => {
+  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, demoLink, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
     const now = new Date().toISOString();
     const { error } = await supabase.from("projects").update({
-      is_ui_only: isUiOnly, uses_external_apis: usesExternalApis,
-      requires_deployment: requiresDeployment, tier, last_updated: now,
-      requires_auth: requiresAuth, external_access: externalAccess,
-      has_sensitive_data: hasSensitiveData, sends_to_external_ai: sendsToExternalAI,
-      stores_user_inputs: storesUserInputs,
+      has_backend: hasBackend, target_users: targetUsers, tier, last_updated: now,
+      demo_link: demoLink, github_repo: githubRepo, hosting,
+      requires_auth: requiresAuth, auth_type: authType,
+      has_database: hasDatabase, database, connects_sprout_db: connectsSproutDb,
+      data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
+      has_sensitive_data: hasSensitiveData,
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, isUiOnly, usesExternalApis, requiresDeployment, tier, lastUpdated: 0,
-              requiresAuth, externalAccess, hasSensitiveData, sendsToExternalAI, storesUserInputs}
+      ? {...p, hasBackend, targetUsers, tier, demoLink, githubRepo, hosting,
+              requiresAuth, authType, hasDatabase, database, connectsSproutDb,
+              dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p
     ));
   };
@@ -8915,8 +9063,13 @@ export default function SproutAIGarden() {
   const handleApproveDeleteRequest = async (req) => {
     if (!authUser?.isAdmin) return;
     const table = req.entityType === 'project' ? 'projects' : 'wishes';
-    const { error: delErr } = await supabase.from(table).delete().eq('id', req.entityId);
-    if (delErr) { console.error('approveDelete:', delErr); return; }
+    const { error: delErr, count } = await supabase.from(table).delete({ count: 'exact' }).eq('id', req.entityId);
+    if (delErr || count === 0) {
+      const msg = delErr?.message || 'Row not deleted — Supabase RLS may have blocked it. Ensure your profile has is_gardener = true in the Supabase dashboard.';
+      console.error('approveDelete failed:', msg);
+      alert('Deletion failed: ' + msg);
+      return;
+    }
     const now = new Date().toISOString();
     await supabase.from('delete_requests').update({ status: 'approved', reviewed_by: authUser.email, reviewed_at: now }).eq('id', req.id);
     if (req.entityType === 'project') setProjects(prev => prev.filter(p => String(p.id) !== req.entityId));
@@ -9239,7 +9392,10 @@ export default function SproutAIGarden() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const pendingDeleteIds = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+  const pendingDeleteIds  = new Set(deleteRequests.filter(r => r.status === "pending").map(r => String(r.entityId)));
+  const approvedDeleteIds = new Set(deleteRequests.filter(r => r.status === "approved").map(r => String(r.entityId)));
+  const visibleProjects   = projects.filter(p => !approvedDeleteIds.has(String(p.id)));
+  const visibleWishes     = wishes.filter(w => !approvedDeleteIds.has(String(w.id)));
 
   const NAV_TABS = [
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
@@ -9385,16 +9541,16 @@ export default function SproutAIGarden() {
       {/* ── Main content + Detail Panel ── */}
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {view==="dashboard" && <OverviewDashboard projects={projects} wishes={wishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
-          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={projects} wishes={wishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
-          {view==="wishlist"  && <WishlistView wishes={wishes} projects={projects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
+          {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={visibleProjects} wishes={visibleWishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
+          {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
-          {view==="project-detail"&&detailProject&&(
+          {view==="project-detail"&&detailProject&&!approvedDeleteIds.has(String(detailProject.id))&&(
             <ProjectDetailPage
-              project={projects.find(p=>p.id===detailProject.id)||detailProject}
-              allProjects={projects}
+              project={visibleProjects.find(p=>p.id===detailProject.id)||detailProject}
+              allProjects={visibleProjects}
               authUser={authUser}
               onBack={()=>{setView("garden");setDetailProject(null);}}
               onNote={addNote}
@@ -9416,9 +9572,9 @@ export default function SproutAIGarden() {
           )}
         </div>
 
-        {selected && view!=="project-detail" && (
+        {selected && view!=="project-detail" && !approvedDeleteIds.has(String(selected.id)) && (
           <DetailPanel
-            project={selected} allProjects={projects}
+            project={selected} allProjects={visibleProjects}
             onClose={()=>setSelected(null)} onNote={addNote} setSelected={setSelected}
             authUser={authUser}
             onSubmitToNursery={submitToNursery}

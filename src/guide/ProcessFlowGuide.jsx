@@ -161,8 +161,8 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         </div>
         {/* Quick jump links */}
         <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
-          {["Process Flow", "Security Questions", "Stage Gates", "Review Queue", "Compliance Checklist", "Quick Reference"].map(label => (
-            <a key={label} href={"#" + label.toLowerCase().replace(/ /g, "-")}
+          {["Process Flow", "Stage Transition", "IS / Execom Gate", "Security Questions", "Stage Gates", "Review Queue", "Compliance Checklist", "Quick Reference"].map(label => (
+            <a key={label} href={"#" + label.toLowerCase().replace(/[\s/]+/g, "-")}
               style={{ fontFamily: FF, fontSize: 11, fontWeight: 600, color: C.white, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: DS.radius.full, padding: "4px 12px", textDecoration: "none" }}>
               {label}
             </a>
@@ -241,6 +241,140 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
           </div>
         </Section>
 
+        {/* ── Stage Transition Overview ── */}
+        <Section id="stage-transition" title="Stage Transition Overview" icon="🔀">
+          <Card>
+            <div style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Stage Lifecycle</div>
+            <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom400, marginBottom: 16 }}>Projects start at Sprout by default. Admins can set any initial stage and bypass all gates.</div>
+
+            {/* Pipeline */}
+            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+              {/* SPROUT */}
+              <div style={{ flexShrink: 0, background: "#f0faf0", border: "1.5px solid #aadcaa", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2d8c2d", margin: "0 auto 5px" }} />
+                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#1f6e1f", letterSpacing: "0.04em" }}>SPROUT</div>
+                <div style={{ fontFamily: FF, fontSize: 9, color: "#2d8c2d", marginTop: 2 }}>Early idea</div>
+                <div style={{ marginTop: 5, background: "transparent", border: "1px dashed #38b2ac", borderRadius: DS.radius.sm, padding: "2px 4px", fontSize: 8, color: "#2c7a7b", fontFamily: FF, fontWeight: 600, whiteSpace: "nowrap" }}>IS/Execom optional</div>
+              </div>
+              {/* Arrow 1 */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
+                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#2d8c2d", background: "#f0faf0", border: "1px solid #aadcaa", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>All tiers</div>
+                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                  <div style={{ flex: 1, height: 1.5, background: "#2d8c2d" }} />
+                  <span style={{ color: "#2d8c2d", fontSize: 11 }}>▶</span>
+                </div>
+              </div>
+              {/* GROWING */}
+              <div style={{ flexShrink: 0, background: "#fefcbf", border: "1.5px solid #d69e2e", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#b7791f", margin: "0 auto 5px" }} />
+                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#744210", letterSpacing: "0.04em" }}>GROWING</div>
+                <div style={{ fontFamily: FF, fontSize: 9, color: "#b7791f", marginTop: 2 }}>In development</div>
+                <div style={{ marginTop: 5, background: "#c4f0ec", border: "1px solid #38b2ac", borderRadius: DS.radius.sm, padding: "2px 4px", fontSize: 8, color: "#2c7a7b", fontFamily: FF, fontWeight: 700, whiteSpace: "nowrap" }}>IS/Execom req.</div>
+              </div>
+              {/* Arrow 2 */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
+                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#c05621", background: "#feebc8", border: "1px solid #dd6b20", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>T2+ gate</div>
+                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                  <div style={{ flex: 1, height: 1.5, background: "#dd6b20" }} />
+                  <span style={{ color: "#dd6b20", fontSize: 11 }}>▶</span>
+                </div>
+              </div>
+              {/* BLOOMING */}
+              <div style={{ flexShrink: 0, background: "#feebc8", border: "1.5px solid #dd6b20", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c05621", margin: "0 auto 5px" }} />
+                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#7b341e", letterSpacing: "0.04em" }}>BLOOMING</div>
+                <div style={{ fontFamily: FF, fontSize: 9, color: "#c05621", marginTop: 2 }}>Live & used</div>
+              </div>
+              {/* Arrow 3 */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
+                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#553c9a", background: "#faf5ff", border: "1px solid #9f7aea", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>T2+ gate</div>
+                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                  <div style={{ flex: 1, height: 1.5, background: "#3182ce" }} />
+                  <span style={{ color: "#3182ce", fontSize: 11 }}>▶</span>
+                </div>
+              </div>
+              {/* THRIVING */}
+              <div style={{ flexShrink: 0, background: "#ebf8ff", border: "1.5px solid #63b3ed", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3182ce", margin: "0 auto 5px" }} />
+                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#2c5282", letterSpacing: "0.04em" }}>THRIVING</div>
+                <div style={{ fontFamily: FF, fontSize: 9, color: "#3182ce", marginTop: 2 }}>Fully deployed</div>
+              </div>
+            </div>
+
+            {/* IS/Execom annotation */}
+            <div style={{ display: "flex", marginTop: 12 }}>
+              <div style={{ width: "45%", background: "#e6fffa", border: "1.5px solid #38b2ac", borderRadius: DS.radius.lg, padding: "10px 12px" }}>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", marginBottom: 6 }}>IS / Execom Approval — Coleen, Blaise, Nikki, Raffy</div>
+                <div style={{ fontFamily: FF, fontSize: 10, color: "#2c7a7b", lineHeight: 1.7 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+                    <span style={{ background: "transparent", border: "1px dashed #38b2ac", borderRadius: 3, padding: "0 5px", fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 }}>Sprout</span>
+                    <span>Optional — encouraged before creating tickets</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ background: "#c4f0ec", border: "1px solid #38b2ac", borderRadius: 3, padding: "0 5px", fontSize: 9, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>Growing</span>
+                    <span>Required to proceed to Blooming</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Who + what triggers */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid " + C.mushroom100, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Who Can Change Stages</div>
+                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom600, lineHeight: 1.7 }}>
+                  <div style={{ marginBottom: 6 }}><span style={{ color: C.kangkong600, fontWeight: 700 }}>Builder</span> — own project, adjacent stages only (±1), must pass gate</div>
+                  <div><span style={{ color: C.blueberry500, fontWeight: 700 }}>Admin</span> — any project, skip stages in any direction, bypass gates</div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Every Change Records</div>
+                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom600, lineHeight: 1.7 }}>
+                  Permission check → adjacency check → gate check → milestone appended → Supabase update → activity log → last_updated reset
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Section>
+
+        {/* ── IS/Execom Approval Gate ── */}
+        <Section id="is-execom-gate" title="IS / Execom Approval Gate" icon="✅">
+          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.7, marginBottom: 16 }}>
+            Before any Jira ticket or work item is created for <strong>Coleen, Blaise, Nikki,</strong> or <strong>Raffy</strong> on an AI or internal tool project, IS (Information Security) or Execom (Executive Committee) approval must be in place. The requirement level depends on the project's current stage.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div style={{ background: C.mushroom50, border: "1.5px dashed #38b2ac", borderRadius: DS.radius.xl, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2d8c2d" }} />
+                <div style={{ fontFamily: FF, fontWeight: 800, fontSize: 14, color: "#1f6e1f" }}>Sprout Stage</div>
+                <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", background: "transparent", border: "1px dashed #38b2ac", borderRadius: DS.radius.full, padding: "2px 8px" }}>Optional</span>
+              </div>
+              <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.7 }}>
+                IS / Execom approval is <strong>encouraged but not blocking</strong> at this stage. Teams should proactively seek approval early to avoid delays later.
+              </div>
+              <div style={{ marginTop: 12, padding: "8px 12px", background: "#e6fffa", borderRadius: DS.radius.md, fontFamily: FF, fontSize: 11, color: "#2c7a7b" }}>
+                💡 Best practice: secure approval during Sprout so Growing → Blooming is unblocked
+              </div>
+            </div>
+            <div style={{ background: "#e6fffa", border: "1.5px solid #38b2ac", borderRadius: DS.radius.xl, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#b7791f" }} />
+                <div style={{ fontFamily: FF, fontWeight: 800, fontSize: 14, color: "#744210" }}>Growing Stage</div>
+                <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.white, background: "#2c7a7b", borderRadius: DS.radius.full, padding: "2px 8px" }}>Required</span>
+              </div>
+              <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.7 }}>
+                IS / Execom approval is <strong>mandatory</strong> before any ticket for Coleen, Blaise, Nikki, or Raffy can be created. Without it, the project is blocked from advancing to Blooming.
+              </div>
+              <div style={{ marginTop: 12, padding: "8px 12px", background: C.white, borderRadius: DS.radius.md, border: "1px solid #38b2ac", fontFamily: FF, fontSize: 11, color: "#2c7a7b" }}>
+                🚦 Gate: Advancing Growing → Blooming requires this approval on record
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: "14px 18px", background: C.mango100, border: "1px solid " + C.mango500, borderRadius: DS.radius.xl, fontFamily: FF, fontSize: 12, color: C.mango700, lineHeight: 1.6 }}>
+            <strong>Who gives approval?</strong> IS (Information Security team) or Execom (Executive Committee). Approval must be documented before the project builder requests stage advancement or creates tickets for the named individuals. This requirement applies regardless of the project's tier.
+          </div>
+        </Section>
+
         {/* ── Security Questions ── */}
         <Section id="security-questions" title="Security & Data Classification Questions" icon="🔐">
           <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 16 }}>
@@ -277,18 +411,21 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         <Section title="Tier Assignment" icon="🏷️">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {[
-              { num: 1, label: "Low Risk — Markup / Simple Logic", color: C.mushroom700, bg: C.mushroom50, border: C.mushroom300, accent: C.mushroom400,
-                criteria: "UI-only tool, no deployment needed, no sensitive data, no external integrations",
+              { num: 1, label: "Low Risk — Static / Internal", color: C.mushroom700, bg: C.mushroom50, border: C.mushroom300, accent: C.mushroom400,
+                criteria: "No backend + internal users only. No release review required.",
                 review: "Self-declaration only — no RM review required",
-                examples: "ChatGPT prompt library, email templates, simple data scripts" },
+                hosting: "Markup — uploaded directly by the project owner",
+                examples: "ChatGPT prompt library, email templates, simple internal dashboards" },
               { num: 2, label: "Medium Risk — Internal App", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400, accent: C.blueberry500,
-                criteria: "Requires deployment or infrastructure, but no high-risk data exposure",
+                criteria: "Has backend + internal users only, OR no backend + external/both users",
                 review: "Release Manager acknowledgment required before Blooming and Thriving",
+                hosting: "Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
                 examples: "HR dashboards, internal chatbots, payroll tools, team utilities" },
-              { num: 3, label: "High Risk — External App / Sensitive Data", color: C.carrot500, bg: C.carrot100, border: C.carrot500, accent: C.carrot500,
-                criteria: "Accesses external APIs OR sends data to external AI OR (requires auth AND handles sensitive data)",
+              { num: 3, label: "High Risk — External-Facing", color: C.carrot500, bg: C.carrot100, border: C.carrot500, accent: C.carrot500,
+                criteria: "Has backend + accessible to external or both internal and external users",
                 review: "Full RM sign-off + Jira DevOps ticket + policy compliance checklist before Thriving",
-                examples: "Client portals, public-facing AI, partner integrations, projects with auth + PII" },
+                hosting: "Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
+                examples: "Client portals, public-facing AI tools, partner integrations, customer apps" },
             ].map(t => (
               <div key={t.num} style={{ position: "relative", background: t.bg, border: "1px solid " + t.border, borderRadius: DS.radius.xl, padding: "18px 20px 18px 26px", overflow: "hidden" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, background: t.accent, borderRadius: DS.radius.xl + " 0 0 " + DS.radius.xl }} />
@@ -301,9 +438,15 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
                     <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, marginBottom: 6, lineHeight: 1.5 }}><strong>Criteria:</strong> {t.criteria}</div>
                     <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom500 }}><strong>Examples:</strong> {t.examples}</div>
                   </div>
-                  <div style={{ minWidth: 220, padding: "10px 14px", background: C.white, border: "1px solid " + t.border, borderRadius: DS.radius.lg }}>
-                    <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: t.color, marginBottom: 4 }}>Review Required</div>
-                    <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{t.review}</div>
+                  <div style={{ minWidth: 220, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ padding: "10px 14px", background: C.white, border: "1px solid " + t.border, borderRadius: DS.radius.lg }}>
+                      <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: t.color, marginBottom: 4 }}>Review Required</div>
+                      <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{t.review}</div>
+                    </div>
+                    <div style={{ padding: "10px 14px", background: C.white, border: "1px solid " + t.border, borderRadius: DS.radius.lg }}>
+                      <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: t.color, marginBottom: 4 }}>Hosting</div>
+                      <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{t.hosting}</div>
+                    </div>
                   </div>
                 </div>
               </div>
