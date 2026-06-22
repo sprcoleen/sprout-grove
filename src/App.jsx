@@ -8171,11 +8171,10 @@ function GuideView() {
   );
 
   const stages = [
-    {key:"seedling", emoji:"🌱", label:"Seedling", desc:"You're actively building. Prototype + deck required to advance.", color:STAGE_COLORS.seedling},
-    {key:"nursery",  emoji:"🪴", label:"Nursery",  desc:"Under leadership review. Gathering feedback before scaling.", color:STAGE_COLORS.nursery},
-    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Approved and shipping. Full speed ahead.",                   color:STAGE_COLORS.sprout},
-    {key:"bloom",    emoji:"🌸", label:"Bloom",    desc:"Real users, real feedback. Measuring impact.",              color:STAGE_COLORS.bloom},
-    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Live, loved, and making a lasting impact at Sprout.",       color:STAGE_COLORS.thriving},
+    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Idea registered. Classify your project and begin building.", color:STAGE_COLORS.sprout},
+    {key:"growing",  emoji:"🌱", label:"Growing",  desc:"Actively in development. IS/Execom approval required before creating tickets for Coleen, Blaise, Nikki, or Raffy.", color:STAGE_COLORS.growing},
+    {key:"blooming", emoji:"🌸", label:"Blooming", desc:"Live and being used by the team. Tier 2 & 3 require RM review to reach this stage.", color:STAGE_COLORS.blooming},
+    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Fully deployed and making a lasting impact at Sprout. Highest scrutiny for Tier 3.", color:STAGE_COLORS.thriving},
   ];
 
   const tiers = [
@@ -8185,6 +8184,7 @@ function GuideView() {
       desc:"No backend logic, internal use only. Scripts, static pages, prompt templates, or simple one-off tools.",
       examples:"Prompt libraries, static dashboards, email templates, simple scripts",
       triggers:["No backend", "Internal users only"],
+      hosting:"Markup — uploaded directly by the project owner",
       coord: null,
     },
     {
@@ -8193,6 +8193,7 @@ function GuideView() {
       desc:"Has backend logic, deployed for Sprout employees only. Requires infrastructure, access control, and data handling review.",
       examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
       triggers:["Has backend + internal users only", "No backend + external or both users"],
+      hosting:"Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
       coord: "Coordinate with Raffy (DevOps) before shipping.",
     },
     {
@@ -8201,6 +8202,7 @@ function GuideView() {
       desc:"Has backend and accessible to customers, partners, or the public. Highest scrutiny and coordination required.",
       examples:"Client portals, public-facing AI features, partner integrations, customer tools",
       triggers:["Has backend + external or both users"],
+      hosting:"Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
       coord: "Coordinate with Belle or Coleen before shipping.",
     },
   ];
@@ -8295,7 +8297,7 @@ function GuideView() {
                 body:"Go to the Technical tab. Answer two questions — does the project have a backend, and who are the intended users? Your tier (1–3) is computed automatically. A short checklist then collects hosting, version control, auth, and database details based on your tier."},
               {step:"5", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
                 title:"Progress through stages 🚀",
-                body:"Move your project from Seedling → Nursery → Sprout → Bloom → Thriving as it grows. Each stage reflects where you are in the build journey."},
+                body:"Move your project from Sprout → Growing → Blooming → Thriving as it matures. Tier 2 and 3 projects require a Release Manager review before advancing past key gates. For projects involving Coleen, Blaise, Nikki, or Raffy — IS/Execom approval is required at Growing before any tickets are created."},
             ].map((s,i)=>(
               <div key={s.step} style={{display:"flex",gap:16,alignItems:"flex-start"}}>
                 <div style={{width:32,height:32,borderRadius:"50%",background:s.bg,border:"2px solid "+s.border,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:14,fontWeight:800,color:s.color,flexShrink:0,marginTop:2}}>{s.step}</div>
@@ -8323,7 +8325,7 @@ function GuideView() {
             ))}
           </div>
           <div style={{marginTop:12,padding:"10px 14px",background:C.mushroom100,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600}}>
-            💡 <strong>Seedling → Nursery</strong> requires a prototype link and deck. Stage changes are one step at a time for builders; admins can skip stages.
+            💡 Stage changes move <strong>one step at a time</strong> for builders. Tier 2 and 3 projects require a release review gate before Blooming and Thriving. Admins can skip stages in any direction.
           </div>
         </Section>
 
@@ -8361,7 +8363,8 @@ function GuideView() {
                     </div>
                     <div style={{fontFamily:FF,fontSize:13,color:C.mushroom700,lineHeight:1.6,marginBottom:8}}>{t.desc}</div>
                     <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500}}><strong>Examples:</strong> {t.examples}</div>
-                    {t.coord&&<div style={{marginTop:8,padding:"6px 10px",background:C.white,border:"1px solid "+t.border,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:t.color,fontWeight:600}}>⚑ {t.coord}</div>}
+                    <div style={{marginTop:8,padding:"6px 10px",background:C.white,border:"1px solid "+t.border,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom700}}><strong style={{color:t.color}}>🏠 Hosting:</strong> {t.hosting}</div>
+                    {t.coord&&<div style={{marginTop:6,padding:"6px 10px",background:C.white,border:"1px solid "+t.border,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:t.color,fontWeight:600}}>⚑ {t.coord}</div>}
                   </div>
                   <div style={{minWidth:200}}>
                     <Label>Triggered when</Label>
@@ -8455,7 +8458,7 @@ function GuideView() {
             {[
               {tip:"Always classify your project",  body:"Go to the Technical tab and answer the tier + security questions. Unclassified projects show up in the Unclassified count."},
               {tip:"Seeds are never deleted",         body:"Fulfilled wishes stay visible — they become part of the project's story. Just mark them fulfilled when you build them."},
-              {tip:"Coordinate early for Tier 2+",   body:"If your project is Tier 2 or 3, loop in Raffy (DevOps) or Belle/Coleen before you ship — use the Tool Shed to log the request."},
+              {tip:"IS / Execom approval for key people", body:"If your project needs tickets for Coleen, Blaise, Nikki, or Raffy — secure IS or Execom approval first. Optional at Sprout stage, mandatory at Growing before advancing to Blooming."},
               {tip:"Country is immutable",            body:"Your country (PH or TH) is set from your email domain at first login and can never be changed. Projects inherit this from their builder."},
             ].map(t=>(
               <Card key={t.tip}>
