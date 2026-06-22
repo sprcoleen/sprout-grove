@@ -189,9 +189,9 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
               { icon: "🌿", role: "Gardener", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200,
                 who: "Any Sprout employee who owns or builds an AI project",
                 does: ["Registers the project in Grove", "Completes security & tier classification", "Submits for release review", "Advances stages after approval", "Edits and manages their own projects"] },
-              { icon: "🛠️", role: "DevOps & IS / Execom", color: C.carrot500, bg: C.carrot100, border: C.carrot500,
-                who: "Raffy (DevOps) · Coleen, Nikki, Blaise (IS/Execom)",
-                does: ["Receives Jira tickets for hosting setup and deployment", "Grants IS / Execom approval for projects at Growing stage", "Configures Sprout Vercel or Azure for Tier 2 & 3 projects", "Required approval gate before a project can reach Blooming", "Supports AI projects in going Live"] },
+              { icon: "🔧", role: "Groundskeeper", color: C.carrot500, bg: C.carrot100, border: C.carrot500,
+                who: "Raffy, Coleen, Nikki, Blaise — Project Support & DevOps",
+                does: ["Receives Jira tickets for go-live support and deployment", "Configures hosting on Sprout Vercel or Azure for Tier 2 & 3", "Works with the builder on infrastructure and tooling setup", "Key partner for any AI project going Live (Blooming)", "IS / Execom approval must be secured before tickets are raised for them"] },
               { icon: "🔍", role: "Release Manager", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
                 who: "Belle Asis, Diane Litan",
                 does: ["Reviews Tier 2 & 3 projects", "Approves or rejects stage advancement", "Monitors the governance dashboard", "Manages the review queue"] },
@@ -307,7 +307,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             {/* IS/Execom annotation */}
             <div style={{ display: "flex", marginTop: 12 }}>
               <div style={{ width: "45%", background: "#e6fffa", border: "1.5px solid #38b2ac", borderRadius: DS.radius.lg, padding: "10px 12px" }}>
-                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", marginBottom: 6 }}>IS / Execom Approval — Coleen, Blaise, Nikki, Raffy</div>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", marginBottom: 6 }}>IS / Execom Approval — required before Groundskeeper tickets</div>
                 <div style={{ fontFamily: FF, fontSize: 10, color: "#2c7a7b", lineHeight: 1.7 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
                     <span style={{ background: "transparent", border: "1px dashed #38b2ac", borderRadius: 3, padding: "0 5px", fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 }}>Sprout</span>
@@ -343,7 +343,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         {/* ── IS/Execom Approval Gate ── */}
         <Section id="is-execom-gate" title="IS / Execom Approval Gate" icon="✅">
           <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.7, marginBottom: 16 }}>
-            Before any Jira ticket or work item is created for <strong>Coleen, Blaise, Nikki,</strong> or <strong>Raffy</strong> on an AI or internal tool project, IS (Information Security) or Execom (Executive Committee) approval must be in place. The requirement level depends on the project's current stage.
+            Before any Jira ticket is raised for the <strong>Groundskeepers</strong> (Raffy, Coleen, Nikki, Blaise) to begin go-live support work, IS (Information Security department) or Execom (Executive Committee) approval must be in place. The Groundskeepers are your Project Support & DevOps team — IS and Execom are the approval bodies that sign off on the work.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div style={{ background: C.mushroom50, border: "1.5px dashed #38b2ac", borderRadius: DS.radius.xl, padding: "18px 20px" }}>
@@ -374,7 +374,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             </div>
           </div>
           <div style={{ padding: "14px 18px", background: C.mango100, border: "1px solid " + C.mango500, borderRadius: DS.radius.xl, fontFamily: FF, fontSize: 12, color: C.mango700, lineHeight: 1.6 }}>
-            <strong>Who gives approval?</strong> IS (Information Security team) or Execom (Executive Committee). Approval must be documented before the project builder requests stage advancement or creates tickets for the named individuals. This requirement applies regardless of the project's tier.
+            <strong>Who gives approval?</strong> IS (Information Security department) or Execom (Executive Committee) — these are the approval bodies, separate from the Groundskeeper team. Approval must be documented before any go-live ticket is raised for Raffy, Coleen, Nikki, or Blaise. This requirement applies regardless of the project's tier.
           </div>
         </Section>
 

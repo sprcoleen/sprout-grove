@@ -8434,9 +8434,9 @@ function GuideView() {
               {role:"Gardener", icon:"🌿", color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200,
                 who:"Any Sprout employee who owns or builds an AI project",
                 can:["Submit seed ideas to the Wishlist","Upvote any seed","Claim an unclaimed seed","Add a project to the Garden","Edit and move your own projects","Change stage (adjacent stages only)"]},
-              {role:"DevOps & IS / Execom", icon:"🛠️", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
-                who:"Raffy (DevOps) · Coleen, Nikki, Blaise (IS/Execom)",
-                can:["Receives Jira tickets for hosting & deployment setup","Grants IS / Execom approval at the Growing stage","Configures Sprout Vercel or Azure for Tier 2 & 3","Required approval gate before reaching Blooming","Supports AI projects in going Live"]},
+              {role:"Groundskeeper", icon:"🔧", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
+                who:"Raffy, Coleen, Nikki, Blaise — Project Support & DevOps",
+                can:["Receives Jira tickets for go-live support and deployment","Configures hosting on Sprout Vercel or Azure for Tier 2 & 3","Works with builders on infrastructure and tooling setup","Key partner for any AI project going Live (Blooming)","IS / Execom approval must be secured before tickets are raised for them"]},
               {role:"Admin", icon:"🔐", color:"#805ad5", bg:"#faf5ff", border:"#c4b5fd",
                 who:"Belle Asis, Diane Litan",
                 can:["Everything a Gardener can do","Edit any project or seed","Delete any project or seed","Skip stages in any direction","Approve or reject release reviews","Moderate duplicates and manage Grove"]},
@@ -8464,7 +8464,7 @@ function GuideView() {
             {[
               {tip:"Always classify your project",  body:"Go to the Technical tab and answer the tier + security questions. Unclassified projects show up in the Unclassified count."},
               {tip:"Seeds are never deleted",         body:"Fulfilled wishes stay visible — they become part of the project's story. Just mark them fulfilled when you build them."},
-              {tip:"IS / Execom approval for key people", body:"If your project needs tickets for Coleen, Blaise, Nikki, or Raffy — secure IS or Execom approval first. Optional at Sprout stage, mandatory at Growing before advancing to Blooming."},
+              {tip:"IS / Execom approval gate",           body:"Before raising tickets for your Groundskeepers (Raffy, Coleen, Nikki, Blaise), IS or Execom must approve first. Optional at Sprout, mandatory at Growing before advancing to Blooming."},
               {tip:"Country is immutable",            body:"Your country (PH or TH) is set from your email domain at first login and can never be changed. Projects inherit this from their builder."},
             ].map(t=>(
               <Card key={t.tip}>
