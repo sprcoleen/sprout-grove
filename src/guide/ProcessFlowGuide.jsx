@@ -55,7 +55,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     {
       num: "2", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
       title: "Security & Data Classification",
-      body: "Go to the Technical tab and answer all 5 security questions. This step is mandatory — a project at the Sprout stage is blocked from advancing to Bloom until all 5 questions are answered and a tier is assigned.",
+      body: "Go to the Technical tab and answer all 5 security questions. This step is mandatory — a project cannot advance to any new stage until all 5 questions are answered and a tier is assigned.",
       tag: { label: "MANDATORY GATE", color: C.carrot500, bg: C.carrot100 },
     },
     {
@@ -67,7 +67,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     {
       num: "4", color: C.mango600, bg: C.mango50, border: C.mango300,
       title: "Stage Advancement (with Gate Checks)",
-      body: "As you build, move your project through stages using the stage buttons on the project page. Gates are enforced at Sprout → Bloom and Bloom → Thriving. Tier 1 moves freely once classified; Tier 2 and 3 need RM approval. A blocked move shows a purple notification at the bottom of the screen.",
+      body: "As you build, move your project through stages using the stage buttons on the project page. Gates are enforced at Growing → Blooming and Blooming → Thriving. Tier 1 moves freely once classified; Tier 2 and 3 need RM approval. A blocked move shows a purple notification at the bottom of the screen.",
       tag: { label: "GATES ENFORCED", color: C.mango600, bg: C.mango50 },
     },
     {
@@ -96,16 +96,16 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
   // ── Stage gate rules — reflects actual DB stage names ────────────────────────
   const gateRows = [
     {
-      from: "🌿 Sprout", to: "🌸 Bloom",
-      t1: "✅ Security classification complete + tier assigned",
-      t2: "✅ Classification + RM acknowledgment required",
-      t3: "✅ Classification + full RM sign-off required",
+      from: "🌱 Growing", to: "🌸 Blooming",
+      t1: "✅ Free — no release review required",
+      t2: "🔍 RM review required",
+      t3: "🔍 Full RM sign-off required",
     },
     {
-      from: "🌸 Bloom", to: "🌳 Thriving",
+      from: "🌸 Blooming", to: "🌳 Thriving",
       t1: "✅ No additional gate",
       t2: "🔍 RM final approval required",
-      t3: "🔐 RM final approval required",
+      t3: "🔐 RM final approval + compliance checklist required",
     },
   ];
 
@@ -460,7 +460,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
         {/* ── Stage Gates ── */}
         <Section id="stage-gates" title="Stage Gate Rules" icon="🚦">
           <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 16 }}>
-            Two gate checkpoints are enforced by Grove: <strong>Sprout → Bloom</strong> (going live) and <strong>Bloom → Thriving</strong> (production-ready). Earlier transitions (Seedling → Nursery → Sprout) follow the separate nursery prototype review process.
+            Two gate checkpoints are enforced by Grove: <strong>Growing → Blooming</strong> (going live) and <strong>Blooming → Thriving</strong> (production-ready). Projects start at Sprout; admins can set any initial stage and skip gates in any direction.
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
