@@ -4357,10 +4357,11 @@ const ProjectDetailPage = ({
                 {/* Validation: T2/T3 at advanced stages require tech stack */}
                 {['sprout','bloom','thriving'].includes(project.stage)&&project.tier>=2&&(()=>{
                   const missing=[];
-                  if(!editForm.toolUsed?.length)      missing.push("Tools used");
-                  if(!project.hosting?.length)         missing.push("Hosting platform");
-                  if(!project.authType?.length)        missing.push("Authentication");
-                  if(!project.database?.length)        missing.push("Database");
+                  if(!editForm.toolUsed?.length)                                        missing.push("Tools used");
+                  if(!project.hosting?.length)                                           missing.push("Hosting platform");
+                  if(!project.authType?.length)                                          missing.push("Authentication");
+                  if(project.tier===3&&!project.authType?.includes('Keycloak'))          missing.push("Keycloak (required for Tier 3)");
+                  if(!project.database?.length)                                          missing.push("Database");
                   if(!missing.length) return null;
                   return(
                     <div style={{marginTop:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
@@ -4578,13 +4579,21 @@ const ProjectDetailPage = ({
                             <MultiSelect
                               label="User authentication"
                               optional
-                              opts={["Sprout SSO / Google","Email + password","API key","Other"]}
+                              opts={["Sprout SSO / Google","Keycloak","Email + password","API key","Other"]}
                               value={cAuthType}
                               onChange={v=>setCAuthType(v)}
                               placeholder="Search auth types…"
                               palette="green"
                             />
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>How users log in, if the project requires authentication (leave blank if none)</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>
+                              How users log in, if the project requires authentication (leave blank if none).
+                              {computedTier===3&&<span style={{color:C.mango600,fontWeight:700}}> Keycloak is required for Tier 3 projects.</span>}
+                            </div>
+                            {computedTier===3&&!cAuthType.includes('Keycloak')&&cAuthType.length>0&&(
+                              <div style={{marginTop:6,padding:"6px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,color:C.mango600}}>
+                                Keycloak must be included for Tier 3 projects. Please add it above.
+                              </div>
+                            )}
                           </div>
                         )}
 
