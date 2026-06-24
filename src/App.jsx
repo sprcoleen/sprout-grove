@@ -1387,7 +1387,17 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             </div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
               {(() => {
-                const publicLog = activityLog.filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved");
+                const seenStageMoved = new Set();
+                const publicLog = activityLog
+                  .filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved")
+                  .filter(ev => {
+                    if (ev.event_type !== 'stage_moved') return true;
+                    const day = (ev.created_at || '').slice(0, 10);
+                    const key = `${ev.project_id}:${day}`;
+                    if (seenStageMoved.has(key)) return false;
+                    seenStageMoved.add(key);
+                    return true;
+                  });
                 return publicLog.length === 0 ? (
                   <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
                 ) : publicLog.map((ev, i) => {
