@@ -303,14 +303,13 @@ const DEPT_ZONES = {
 };
 
 const CAPABILITIES = ["All","LLM","Computer Vision","Automation","Prediction","NLP"];
-const TOOLS =["Claude Chat","Claude Code","Cowork","ChatGPT","Copilot","Cursor","Zapier / Make","Other"];
-const AGENTIC_FRAMEWORKS = ["AutoGPT","Aulendil","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
+const TOOLS = ["ChatGPT","Claude Chat","Claude Code","Copilot","Cowork","Cursor","Zapier / Make","Other"];
+const AGENTIC_FRAMEWORKS = ["Aulendil","AutoGPT","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
 const DB_AND_SOURCES = [
-  "Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL",
-  "Sprout HR","Sprout Payroll",
-  "HubSpot","NetSuite","Zendesk",
-  "Google Drive/Docs","Notion/Confluence","Jira","Meeting Transcripts","Survey Responses",
-  "Databricks","Product Analytics/Pendo/Userpilot","Website",
+  "Azure SQL","Databricks","Firebase","Google Drive/Docs","HubSpot","Jira",
+  "Meeting Transcripts","MongoDB","MySQL","NetSuite","Notion/Confluence",
+  "PostgreSQL","Product Analytics/Pendo/Userpilot","Sprout HR","Sprout Payroll",
+  "Supabase","Survey Responses","Website","Zendesk",
   "Other",
 ];
 
@@ -4553,7 +4552,7 @@ const ProjectDetailPage = ({
                         {computedTier>=2&&(
                           <MultiSelect
                             label="Hosting platform" optional
-                            opts={["Vercel","Azure","AWS","Google Cloud","Internal server","Other"]}
+                            opts={["AWS","Azure","Google Cloud","Internal server","Vercel","Other"]}
                             value={cHostingPlatform}
                             onChange={v=>setCHostingPlatform(v)}
                             placeholder="Search platforms…"
@@ -4579,7 +4578,7 @@ const ProjectDetailPage = ({
                             <MultiSelect
                               label="User authentication"
                               optional
-                              opts={["Sprout SSO / Google","Keycloak","Email + password","API key","Other"]}
+                              opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]}
                               value={cAuthType}
                               onChange={v=>setCAuthType(v)}
                               placeholder="Search auth types…"
