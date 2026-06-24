@@ -4002,6 +4002,8 @@ const ProjectDetailPage = ({
     githubRepo:         project.githubRepo         || '',
     hosting:            project.hosting            || '',
     database:           project.database           || '',
+    approverName:       project.approverName       || '',
+    approverEmail:      project.approverEmail      || '',
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
@@ -4024,6 +4026,8 @@ const ProjectDetailPage = ({
       githubRepo:         project.githubRepo         || '',
       hosting:            project.hosting            || '',
       database:           project.database           || '',
+      approverName:       project.approverName       || '',
+      approverEmail:      project.approverEmail      || '',
     });
     setFormDirty(false);
     setDetailTab("overview");
@@ -4035,6 +4039,30 @@ const ProjectDetailPage = ({
     await onUpdateProject?.({ ...project, ...editForm });
     setFormDirty(false);
     setFormSaving(false);
+  };
+
+  const [approvalSending, setApprovalSending] = useState(false);
+
+  const handleSendApprovalRequest = async () => {
+    if (!editForm.approverEmail?.trim() || approvalSending) return;
+    setApprovalSending(true);
+    await onUpdateProject?.({
+      ...project,
+      approverName: editForm.approverName,
+      approverEmail: editForm.approverEmail,
+      approvalStatus: 'pending',
+      approvalRequestedAt: new Date().toISOString(),
+    });
+    setApprovalSending(false);
+  };
+
+  const handleMarkApproved = async () => {
+    if (!authUser?.isAdmin) return;
+    await onUpdateProject?.({
+      ...project,
+      approvalStatus: 'approved',
+      approvedAt: new Date().toISOString(),
+    });
   };
 
   const interestedUsers = project.interestedUsers || [];
@@ -4277,33 +4305,9 @@ const ProjectDetailPage = ({
                 </div>
               </div>
 
-              {/* ── Section: Stage (read-only — changes go through onMoveStage) ── */}
+              {/* ── Section: Stage ── */}
               <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400}}>Stage</div>
-                  {canEdit && (() => {
-                    const gate = getStageGate(project);
-                    const stagesArr = STAGES.filter(s=>s!=='nursery');
-                    const curIdx = stagesArr.indexOf(project.stage);
-                    const nextStage = stagesArr[curIdx + 1];
-                    const prevStage = stagesArr[curIdx - 1];
-                    if (!nextStage && !authUser?.isAdmin) return null;
-                    return (
-                      <div style={{display:"flex",gap:6}}>
-                        {authUser?.isAdmin && prevStage && (
-                          <button onClick={()=>onMoveStage?.(project,-1)} style={{padding:"4px 10px",background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
-                            ← {STAGE_LABELS[prevStage]}
-                          </button>
-                        )}
-                        {nextStage && (authUser?.isAdmin || !gate.blocked) && (
-                          <button onClick={()=>onMoveStage?.(project,1)} style={{padding:"4px 10px",background:C.kangkong500,border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.white,cursor:"pointer",transition:"all 0.15s"}}>
-                            Advance to {STAGE_LABELS[nextStage]} →
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                   {STAGES.filter(s=>s!=='nursery').map(s=>{
                     const sc=STAGE_COLORS[s];
@@ -4311,13 +4315,24 @@ const ProjectDetailPage = ({
                     const stagesArr=STAGES.filter(x=>x!=='nursery');
                     const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
                     const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
+                    const sOrder=STAGE_ORDER[s];
+                    const curOrder=STAGE_ORDER[project.stage];
+                    const isAdjFwd=sOrder===curOrder+1;
+                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||isAdjFwd);
                     return(
-                      <div key={s} style={{
-                        padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
-                        border:"2px solid "+(active?sc.dot:C.mushroom200),
-                        background:active?sc.bg:isPast?C.mushroom50:C.white,
-                        opacity:isFuture?0.4:1,
-                      }}>
+                      <div key={s}
+                        onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
+                        style={{
+                          padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
+                          border:"2px solid "+(active?sc.dot:C.mushroom200),
+                          background:active?sc.bg:isPast?C.mushroom50:C.white,
+                          opacity:isFuture&&!authUser?.isAdmin?0.4:1,
+                          cursor:isClickable?"pointer":"default",
+                          transition:"all 0.15s",
+                        }}
+                        onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
+                        onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
+                      >
                         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
                           <StageIcon stage={s} size={14}/>
                           <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
@@ -4328,6 +4343,102 @@ const ProjectDetailPage = ({
                     );
                   })}
                 </div>
+
+                {/* Validation: T2/T3 at advanced stages require tech stack */}
+                {['sprout','bloom','thriving'].includes(project.stage)&&project.tier>=2&&(()=>{
+                  const missing=[];
+                  if(!editForm.toolUsed?.length)      missing.push("Tools used");
+                  if(!project.hosting?.length)         missing.push("Hosting platform");
+                  if(!project.authType?.length)        missing.push("Authentication");
+                  if(!project.database?.length)        missing.push("Database");
+                  if(!missing.length) return null;
+                  return(
+                    <div style={{marginTop:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Tech Stack required for Tier {project.tier} projects</div>
+                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>Complete these in the Technical tab: {missing.join(", ")}</div>
+                    </div>
+                  );
+                })()}
+
+                {/* Approver — shown for sprout/bloom/thriving */}
+                {['sprout','bloom','thriving'].includes(project.stage)&&(()=>{
+                  const isApproved = project.approvalStatus==='approved';
+                  const isPending  = project.approvalStatus==='pending';
+                  const hasEmail   = !!(editForm.approverEmail?.trim());
+                  const fmtDate    = ts => ts ? new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+                  const inputStyle = {width:"100%",padding:"9px 12px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,color:C.mushroom900,outline:"none",boxSizing:"border-box"};
+                  return(
+                    <div style={{marginTop:18,paddingTop:16,borderTop:"1px solid "+C.mushroom100}}>
+                      <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Approver</label>
+                      {isApproved?(
+                        <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.lg}}>
+                          <IcoCheck size={16} color={C.kangkong500}/>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700,marginBottom:3}}>Project approved</div>
+                            <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,lineHeight:1.6}}>
+                              Approved by <strong>{project.approverName||project.approverEmail}</strong>
+                              {project.approverName&&project.approverEmail?' ('+project.approverEmail+')':''}
+                              {project.approvedAt?' on '+fmtDate(project.approvedAt):''}
+                            </div>
+                          </div>
+                        </div>
+                      ):(
+                        <>
+                          {!isPending&&(
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:10,lineHeight:1.5}}>
+                              Enter the name and email of your IS or Execom approver. We'll send them an email requesting sign-off on this project before it advances to Bloom.
+                            </div>
+                          )}
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                            {[{k:'approverName',label:'Name',ph:'e.g. Coleen Santos',type:'text'},{k:'approverEmail',label:'Email',ph:'e.g. coleen@sprout.ph',type:'email'}].map(({k,label,ph,type})=>(
+                              <div key={k}>
+                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:4}}>{label}</div>
+                                <input
+                                  type={type}
+                                  value={editForm[k]||''}
+                                  onChange={e=>setEF(k,e.target.value)}
+                                  placeholder={ph}
+                                  disabled={!canEdit}
+                                  style={{...inputStyle,background:canEdit?C.white:C.mushroom50,opacity:canEdit?1:0.7}}
+                                  onFocus={e=>{if(canEdit)e.currentTarget.style.borderColor=C.kangkong400;}}
+                                  onBlur={e=>e.currentTarget.style.borderColor=C.mushroom300}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {isPending&&(
+                            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg,marginBottom:10}}>
+                              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Approval request sent</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600,lineHeight:1.5}}>
+                                An email was sent to {project.approverEmail} on {fmtDate(project.approvalRequestedAt)}. Waiting for their response.
+                              </div>
+                              {canEdit&&<button onClick={handleSendApprovalRequest} style={{marginTop:6,background:"none",border:"none",fontFamily:FF,fontSize:11,color:C.mushroom400,textDecoration:"underline",cursor:"pointer",padding:0}}>Resend email</button>}
+                            </div>
+                          )}
+                          {canEdit&&(
+                            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                              <button
+                                onClick={handleSendApprovalRequest}
+                                disabled={!hasEmail||approvalSending}
+                                style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:DS.radius.lg,border:"none",fontFamily:FF,fontSize:13,fontWeight:700,cursor:hasEmail&&!approvalSending?"pointer":"not-allowed",background:hasEmail&&!approvalSending?C.kangkong500:C.mushroom200,color:hasEmail&&!approvalSending?C.white:C.mushroom400,transition:"all 0.15s"}}
+                              >
+                                {approvalSending?"Sending…":isPending?"Resend approval request →":"Send approval request →"}
+                              </button>
+                              {authUser?.isAdmin&&isPending&&(
+                                <button
+                                  onClick={handleMarkApproved}
+                                  style={{padding:"9px 16px",borderRadius:DS.radius.lg,border:"1px solid "+C.kangkong400,fontFamily:FF,fontSize:13,fontWeight:700,cursor:"pointer",background:C.white,color:C.kangkong600,transition:"all 0.15s"}}
+                                >
+                                  Mark as approved
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               </>}
               {detailTab==="technical"&&<>
