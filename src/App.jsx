@@ -8619,6 +8619,24 @@ export default function SproutAIGarden() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Google Analytics page view tracking ──────────────────────────────────────
+  useEffect(() => {
+    if (typeof window.gtag !== "function") return;
+    const PAGE_TITLES = {
+      dashboard:      "Overview",
+      garden:         "Garden",
+      wishlist:       "Seeds",
+      devops:         "Tool Shed",
+      guide:          "Guide",
+      "project-detail": "Project Detail",
+      admin:          "Admin",
+    };
+    window.gtag("event", "page_view", {
+      page_title:    PAGE_TITLES[view] ?? view,
+      page_location: window.location.origin + "/#" + view,
+    });
+  }, [view]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setAuthUser(null);
