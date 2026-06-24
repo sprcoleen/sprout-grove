@@ -4185,6 +4185,30 @@ const ProjectDetailPage = ({
             );
           })()}
 
+          {/* Creator / created / modified */}
+          {(project.builder||project.createdAt||project.lastUpdatedAt)&&(
+            <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:16,padding:"10px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom100,borderRadius:DS.radius.lg}}>
+              {project.builder&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created by</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom800,fontWeight:500}}>{project.builder}</div>
+                </div>
+              )}
+              {project.createdAt&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom800,fontWeight:500}}>{new Date(project.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+                </div>
+              )}
+              {project.lastUpdatedAt&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Last modified</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:project.lastUpdated>30?C.mango600:C.mushroom800,fontWeight:500}}>{new Date(project.lastUpdatedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{display:"flex",gap:2,marginBottom:20,background:C.mushroom100,borderRadius:DS.radius.md,padding:2}}>
             {[{k:"overview",l:"Overview"},{k:"technical",l:"Technical"}].map(({k,l})=>(
               <button key={k} onClick={()=>setDetailTab(k)} style={{
@@ -4307,27 +4331,6 @@ const ProjectDetailPage = ({
               </div>
               </>}
               {detailTab==="technical"&&<>
-
-              {/* ── Section: Tech stack ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
-                <MultiSelect
-                  label="Tools you're using" required
-                  opts={TOOLS}
-                  value={editForm.toolUsed}
-                  onChange={v=>setEF("toolUsed",v)}
-                  placeholder="Search tools…"
-                  palette="green"
-                />
-                <MultiSelect
-                  label="Agentic framework" optional
-                  opts={AGENTIC_FRAMEWORKS}
-                  value={editForm.agenticFramework||[]}
-                  onChange={v=>setEF("agenticFramework",v)}
-                  placeholder="Search frameworks…"
-                  palette="purple"
-                />
-              </div>
 
               {/* ── Section: Tier classification ── */}
               {(()=>{
@@ -4535,6 +4538,27 @@ const ProjectDetailPage = ({
                 );
               })()}
 
+              {/* ── Section: Tech stack ── */}
+              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
+                <MultiSelect
+                  label="Tools you're using" required
+                  opts={TOOLS}
+                  value={editForm.toolUsed}
+                  onChange={v=>setEF("toolUsed",v)}
+                  placeholder="Search tools…"
+                  palette="green"
+                />
+                <MultiSelect
+                  label="Agentic framework" optional
+                  opts={AGENTIC_FRAMEWORKS}
+                  value={editForm.agenticFramework||[]}
+                  onChange={v=>setEF("agenticFramework",v)}
+                  placeholder="Search frameworks…"
+                  palette="purple"
+                />
+              </div>
+
               {computedTier>=2&&(
               <button onClick={()=>setShowDevopsModal(true)} style={{
                 width:"100%",padding:"11px",background:C.carrot500,color:C.white,
@@ -4655,41 +4679,45 @@ const ProjectDetailPage = ({
                   </>}
                   {detailTab==="technical"&&<>
 
-                  {/* Tech stack */}
-                  <div style={sCard}>
-                    <div style={sTitle}>Tech stack</div>
-                    <div style={{marginBottom:12}}>
-                      <label style={roLabel}>Tools</label>
-                      <div style={roBox}>
-                        {project.toolUsed?.length>0
-                          ? project.toolUsed.map(t=><span key={t} style={{...roChip,background:C.kangkong50,color:C.kangkong700,border:"1px solid "+C.kangkong200}}>{t}</span>)
-                          : <span>—</span>}
+                  {/* Tier classification */}
+                  {(()=>{
+                    const [tc,tb,tbr,tl]=
+                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
+                      project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
+                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
+                                       [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
+                    return(
+                      <div style={sCard}>
+                        <div style={sTitle}>Tier Classification</div>
+                        {project.tier?(
+                          <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
+                            <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
+                            <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
+                          </div>
+                        ):(
+                          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom400,fontStyle:"italic"}}>Not classified yet</div>
+                        )}
                       </div>
-                    </div>
-                    <div>
-                      <label style={roLabel}>Agentic framework</label>
-                      <div style={roBox}>
-                        {project.agenticFramework?.length>0
-                          ? project.agenticFramework.map(f=><span key={f} style={{...roChip,background:C.ubas100,color:C.ubas500,border:"1px solid "+C.ubas400}}>{f}</span>)
-                          : <span>—</span>}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
-                  {/* Technical Details */}
-                  {project.tier===3&&(project.githubRepo||project.hosting?.length||project.database?.length)&&(
+                  {/* Tech Stack — unified */}
                   <div style={sCard}>
-                    <div style={sTitle}>Technical Details</div>
-                    <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:12,display:"flex",alignItems:"center",gap:5}}>
-                      <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                      Only visible for Tier 3 — External-Facing projects
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                    <div style={sTitle}>Tech Stack</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:12}}>
                       <div>
-                        <label style={roLabel}>GitHub repo</label>
-                        <div style={{...roBox,wordBreak:"break-all"}}>
-                          {project.githubRepo
-                            ? <a href={project.githubRepo.includes("://")?project.githubRepo:"https://"+project.githubRepo} target="_blank" rel="noreferrer" style={{color:C.kangkong600,wordBreak:"break-all"}}>{project.githubRepo}</a>
+                        <label style={roLabel}>Tools</label>
+                        <div style={roBox}>
+                          {project.toolUsed?.length>0
+                            ? project.toolUsed.map(t=><span key={t} style={{...roChip,background:C.kangkong50,color:C.kangkong700,border:"1px solid "+C.kangkong200}}>{t}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={roLabel}>Agentic framework</label>
+                        <div style={roBox}>
+                          {project.agenticFramework?.length>0
+                            ? project.agenticFramework.map(f=><span key={f} style={{...roChip,background:C.ubas100,color:C.ubas500,border:"1px solid "+C.ubas400}}>{f}</span>)
                             : <span>—</span>}
                         </div>
                       </div>
@@ -4701,35 +4729,32 @@ const ProjectDetailPage = ({
                             : <span>—</span>}
                         </div>
                       </div>
-                    </div>
-                    <div>
-                      <label style={roLabel}>Database &amp; data sources</label>
-                      <div style={roBox}>
-                        {project.database?.length>0
-                          ? project.database.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
-                          : <span>—</span>}
+                      <div>
+                        <label style={roLabel}>Authentication</label>
+                        <div style={roBox}>
+                          {project.authType?.length>0
+                            ? project.authType.map(a=><span key={a} style={{...roChip,background:C.wintermelon100,color:C.wintermelon500,border:"1px solid "+C.wintermelon400}}>{a}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={roLabel}>Database &amp; data sources</label>
+                        <div style={roBox}>
+                          {project.database?.length>0
+                            ? project.database.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={roLabel}>Repository</label>
+                        <div style={{...roBox,wordBreak:"break-all"}}>
+                          {project.githubRepo
+                            ? <a href={project.githubRepo.includes("://")?project.githubRepo:"https://"+project.githubRepo} target="_blank" rel="noreferrer" style={{color:C.kangkong600,wordBreak:"break-all",cursor:"pointer"}}>{project.githubRepo}</a>
+                            : <span>—</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  )}
-
-                  {/* Tier classification */}
-                  {project.tier&&(()=>{
-                    const [tc,tb,tbr,tl]=
-                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
-                      project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
-                                       [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
-                    return(
-                      <div style={sCard}>
-                        <div style={sTitle}>Tier classification</div>
-                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
-                          <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
                   </>}
 
                 </div>
@@ -4903,35 +4928,63 @@ const ProjectDetailPage = ({
             </div>
           )}
 
-          {/* Interest button */}
-          <button onClick={()=>onToggleInterested&&onToggleInterested(project)} style={{width:"100%",padding:"11px",marginBottom:interestedUsers.length>0?10:24,background:isInterested?C.kangkong600:C.white,color:isInterested?C.white:C.kangkong600,border:"1.5px solid "+C.kangkong500,borderRadius:DS.radius.xl,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {isInterested
-              ?<><IcoCheck size={15} color={C.white}/> You're working on something similar</>
-              :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
-            }
-          </button>
+          {/* Interest button + who's interested */}
+          {(()=>{
+            const isCreator = authUser?.email === project.builderEmail;
+            const isCollab  = (project.collaboratorEmails||[]).includes(authUser?.email);
+            const blocked   = isCreator || isCollab;
+            return (<>
+              <button
+                onClick={()=>!blocked&&!isInterested&&onToggleInterested&&onToggleInterested(project)}
+                disabled={blocked}
+                title={blocked?(isCreator?"You're the project creator":"You're a collaborator on this project"):""}
+                style={{width:"100%",padding:"11px",marginBottom:interestedUsers.length>0?10:24,
+                  background:blocked?C.mushroom100:isInterested?C.kangkong600:C.white,
+                  color:blocked?C.mushroom400:isInterested?C.white:C.kangkong600,
+                  border:"1.5px solid "+(blocked?C.mushroom200:C.kangkong500),
+                  borderRadius:DS.radius.xl,
+                  cursor:blocked||isInterested?"default":"pointer",
+                  fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.2s",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                {isInterested
+                  ?<><IcoCheck size={15} color={C.white}/> Working on something similar</>
+                  :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
+                }
+              </button>
 
-          {/* Who's interested */}
-          {interestedUsers.length>0&&(
-            <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"12px 16px",marginBottom:24}}>
-              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:10}}>Also working on this ({interestedUsers.length})</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {interestedUsers.map(email=>{
-                  const initials=email.split("@")[0].slice(0,2).toUpperCase();
-                  const cc=COVER_COLORS[email]||COVER_COLORS.default;
-                  return(
-                    <div key={email} style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{initials}</div>
-                      <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:13,color:C.kangkong700,fontWeight:500,textDecoration:"none"}}
-                        onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
-                        onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
-                      >{email}</a>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              {interestedUsers.length>0&&(
+                <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"12px 16px",marginBottom:24}}>
+                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:10}}>Also working on this ({interestedUsers.length})</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {interestedUsers.map(email=>{
+                      const initials=email.split("@")[0].slice(0,2).toUpperCase();
+                      const cc=COVER_COLORS[email]||COVER_COLORS.default;
+                      const isMe=authUser?.email===email;
+                      return(
+                        <div key={email} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                            <div style={{width:28,height:28,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{initials}</div>
+                            <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:13,color:C.kangkong700,fontWeight:500,textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                              onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
+                              onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
+                            >{email}</a>
+                            {isMe&&<span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.kangkong100,color:C.kangkong700,borderRadius:DS.radius.full,flexShrink:0}}>You</span>}
+                          </div>
+                          {isMe&&(
+                            <button onClick={()=>onToggleInterested&&onToggleInterested(project)}
+                              style={{flexShrink:0,padding:"3px 10px",background:"none",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.borderColor=C.tomato500;e.currentTarget.style.color=C.tomato500;}}
+                              onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom500;}}
+                            >× Remove</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>);
+          })()}
 
           {/* Notes */}
           <div>
