@@ -2341,7 +2341,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   {/* Divider */}
                   <div style={{borderTop:"1px solid "+C.mushroom100,margin:"2px 0 8px"}}/>
 
-                  {/* Footer — builder + arrow */}
+                  {/* Footer — builder + actions */}
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:builtForArr(p.builtFor).length>0?8:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:7}}>
                       <div style={{width:24,height:24,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:9,fontWeight:700,flexShrink:0}}>
@@ -2349,16 +2349,31 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                       </div>
                       <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600,fontWeight:500}}>{p.builder||"Unknown"}</span>
                     </div>
-                    <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="View details" style={{background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",padding:"4px 6px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",color:C.mushroom400,transition:"all 0.15s",flexShrink:0}}
-                      onMouseOver={e=>{e.currentTarget.style.color=C.kangkong600;e.currentTarget.style.borderColor=C.kangkong300;}}
-                      onMouseOut={e=>{e.currentTarget.style.color=C.mushroom400;e.currentTarget.style.borderColor=C.mushroom200;}}
-                    >
-                      <svg width={12} height={12} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/>
-                        <path d="M8 1h4v4"/>
-                        <line x1="12" y1="1" x2="5.5" y2="7.5"/>
-                      </svg>
-                    </button>
+                    <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                      {(authUser?.email===p.builderEmail||authUser?.isAdmin)&&(
+                        <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="Edit your project"
+                          style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,cursor:"pointer",padding:"4px 7px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",gap:4,color:C.kangkong600,fontFamily:FF,fontSize:11,fontWeight:600,transition:"all 0.15s"}}
+                          onMouseOver={e=>{e.currentTarget.style.background=C.kangkong100;e.currentTarget.style.borderColor=C.kangkong400;}}
+                          onMouseOut={e=>{e.currentTarget.style.background=C.kangkong50;e.currentTarget.style.borderColor=C.kangkong200;}}
+                        >
+                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          Edit
+                        </button>
+                      )}
+                      <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="View details" style={{background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",padding:"4px 6px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",color:C.mushroom400,transition:"all 0.15s"}}
+                        onMouseOver={e=>{e.currentTarget.style.color=C.kangkong600;e.currentTarget.style.borderColor=C.kangkong300;}}
+                        onMouseOut={e=>{e.currentTarget.style.color=C.mushroom400;e.currentTarget.style.borderColor=C.mushroom200;}}
+                      >
+                        <svg width={12} height={12} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/>
+                          <path d="M8 1h4v4"/>
+                          <line x1="12" y1="1" x2="5.5" y2="7.5"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Teams chips — single line, below builder */}
@@ -3471,6 +3486,19 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             <TierBadge tier={project.tier}/>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
+              <button onClick={()=>onViewDetail&&onViewDetail(project)} title="Edit project"
+                style={{display:"flex",alignItems:"center",gap:5,background:C.kangkong50,border:"1px solid "+C.kangkong300,color:C.kangkong700,cursor:"pointer",padding:"5px 12px",borderRadius:DS.radius.sm,fontFamily:FF,fontSize:12,fontWeight:600,transition:"all 0.15s"}}
+                onMouseOver={e=>{e.currentTarget.style.background=C.kangkong100;e.currentTarget.style.borderColor=C.kangkong500;}}
+                onMouseOut={e=>{e.currentTarget.style.background=C.kangkong50;e.currentTarget.style.borderColor=C.kangkong300;}}
+              >
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit
+              </button>
+            )}
             <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:DS.radius.sm}}>
               <IcoClose size={18} color={C.mushroom500}/>
             </button>
