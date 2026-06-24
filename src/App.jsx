@@ -3967,18 +3967,17 @@ const ProjectDetailPage = ({
   useEffect(() => {
     setCHasBackend(project.hasBackend           ?? null);
     setCTargetUsers(project.targetUsers          ?? null);
-    setCLiveUrl(project.demoLink                || '');
     setCHasVersionCtrl(project.githubRepo ? true : null);
     setCRepoUrl(project.githubRepo              || '');
-    setCHostingPlatform(project.hosting         || '');
+    setCHostingPlatform(projArr(project.hosting));
     setCRequiresAuth(project.requiresAuth       ?? null);
-    setCAuthType(project.authType               || '');
+    setCAuthType(projArr(project.authType));
     setCHasDatabase(project.hasDatabase         ?? null);
-    setCDbPlatform(project.database             || '');
+    setCDbPlatform(projArr(project.database));
     setCConnectsSproutDb(project.connectsSproutDb ?? null);
     setCDataSensitivity(project.dataSensitivity || '');
     setCendsToExtAI(project.sendsToExternalAI   ?? null);
-  }, [project.id, project.hasBackend, project.targetUsers, project.demoLink,
+  }, [project.id, project.hasBackend, project.targetUsers,
       project.githubRepo, project.hosting, project.requiresAuth, project.authType,
       project.hasDatabase, project.database, project.connectsSproutDb,
       project.dataSensitivity, project.sendsToExternalAI]);
