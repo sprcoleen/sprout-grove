@@ -4365,13 +4365,13 @@ const ProjectDetailPage = ({
                 };
                 const inputStyle = {width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"};
                 const selectStyle = (hasVal) => ({...inputStyle, color:hasVal?C.mushroom800:C.mushroom400});
-                const subBlock = {marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200,display:"flex",flexDirection:"column",gap:10};
                 const [tc,tb,tbr,tl]=
                   computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                   computedTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
                   computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
-                return (
+                return (<>
+                  {/* Tier classification card — Q1 + Q2 + tier pill only */}
                   <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                     <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification</div>
                     <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -4400,164 +4400,161 @@ const ProjectDetailPage = ({
                           <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
                         </div>
                       )}
-
-                      {/* ── Per-tier checklist ── */}
-                      {computedTier!==null&&(
-                        <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
-                          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project details</div>
-                          <div style={{display:"flex",flexDirection:"column",gap:14}}>
-
-                            {/* Hosting — T2/T3 */}
-                            {computedTier>=2&&(
-                              <MultiSelect
-                                label="Hosting platform" optional
-                                opts={["Vercel","Azure","AWS","Google Cloud","Internal server","Other"]}
-                                value={cHostingPlatform}
-                                onChange={v=>setCHostingPlatform(v)}
-                                placeholder="Search platforms…"
-                                palette="green"
-                              />
-                            )}
-
-                            {/* Version control — all tiers */}
-                            <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Repository URL, if the code is in GitHub or a similar platform (optional)</div>
-                              <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
-                                placeholder="github.com/org/repo"
-                                style={inputStyle}
-                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                              />
-                            </div>
-
-                            {/* Auth — T2/T3 */}
-                            {computedTier>=2&&(
-                              <div>
-                                <MultiSelect
-                                  label="User authentication"
-                                  optional
-                                  opts={["Sprout SSO / Google","Email + password","API key","Other"]}
-                                  value={cAuthType}
-                                  onChange={v=>setCAuthType(v)}
-                                  placeholder="Search auth types…"
-                                  palette="green"
-                                />
-                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>How users log in, if the project requires authentication (leave blank if none)</div>
-                              </div>
-                            )}
-
-                            {/* Database — T2/T3 */}
-                            {computedTier>=2&&(
-                              <div>
-                                <MultiSelect
-                                  label="Database &amp; data sources"
-                                  optional
-                                  opts={DB_AND_SOURCES}
-                                  value={cDbPlatform}
-                                  onChange={v=>setCDbPlatform(v)}
-                                  placeholder="Search databases &amp; data sources…"
-                                  palette="blue"
-                                />
-                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>Database platform(s) and any Sprout systems this project reads from (leave blank if none)</div>
-                                {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
-                                  <div style={{marginTop:10}}>
-                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
-                                    <textarea
-                                      value={cSproutDbDetails}
-                                      onChange={e=>setCSpfroutDbDetails(e.target.value)}
-                                      placeholder="e.g. Employee list from Sprout HR to pre-populate user profiles"
-                                      rows={3}
-                                      style={{...inputStyle,resize:"vertical",minHeight:64}}
-                                      onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                                      onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Data & Security — T3 only */}
-                            {computedTier===3&&(
-                              <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
-                                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
-                                <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                                  <div>
-                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
-                                    <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
-                                      <option value="">Select…</option>
-                                      {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
-                                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
-                                    <YesNo value={cSendsToExtAI}
-                                      onYes={()=>setCendsToExtAI(true)}
-                                      onNo={()=>setCendsToExtAI(false)}
-                                    />
-                                  </div>
-                                  {securityFlags.aiDataRisk&&(
-                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                                      <span style={{fontSize:14}}>🔒</span>
-                                      <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                                    </div>
-                                  )}
-                                  {securityFlags.noAuthRisk&&(
-                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                                      <span style={{fontSize:14}}>⚠️</span>
-                                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                          </div>
-                        </div>
-                      )}
-
-                      {classIsDirty&&(
-                        <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{
-                            setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
-                            setCAuthType(projArr(project.authType));
-                            setCDbPlatform(projArr(project.database));
-                            setCSpfroutDbDetails(project.sproutDbDetails||'');
-                            setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
-                          }}
-                            style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
-                          <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
-                            style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
-                          >{classSaving?"Saving…":"Save classification"}</button>
-                        </div>
-                      )}
                     </div>
                   </div>
-                );
-              })()}
 
-              {/* ── Section: Tech stack ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
-                <MultiSelect
-                  label="Tools you're using" required
-                  opts={TOOLS}
-                  value={editForm.toolUsed}
-                  onChange={v=>setEF("toolUsed",v)}
-                  placeholder="Search tools…"
-                  palette="green"
-                />
-                <MultiSelect
-                  label="Agentic framework" optional
-                  opts={AGENTIC_FRAMEWORKS}
-                  value={editForm.agenticFramework||[]}
-                  onChange={v=>setEF("agenticFramework",v)}
-                  placeholder="Search frameworks…"
-                  palette="purple"
-                />
-              </div>
+                  {/* Tech Stack card — tools, framework, + all project detail fields */}
+                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                      <MultiSelect
+                        label="Tools you're using" required
+                        opts={TOOLS}
+                        value={editForm.toolUsed}
+                        onChange={v=>setEF("toolUsed",v)}
+                        placeholder="Search tools…"
+                        palette="green"
+                      />
+                      <MultiSelect
+                        label="Agentic framework" optional
+                        opts={AGENTIC_FRAMEWORKS}
+                        value={editForm.agenticFramework||[]}
+                        onChange={v=>setEF("agenticFramework",v)}
+                        placeholder="Search frameworks…"
+                        palette="purple"
+                      />
+
+                      {/* Project detail fields — shown once tier is set */}
+                      {computedTier!==null&&(<>
+
+                        {/* Hosting — T2/T3 */}
+                        {computedTier>=2&&(
+                          <MultiSelect
+                            label="Hosting platform" optional
+                            opts={["Vercel","Azure","AWS","Google Cloud","Internal server","Other"]}
+                            value={cHostingPlatform}
+                            onChange={v=>setCHostingPlatform(v)}
+                            placeholder="Search platforms…"
+                            palette="green"
+                          />
+                        )}
+
+                        {/* Version control — all tiers */}
+                        <div>
+                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
+                          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Repository URL, if the code is in GitHub or a similar platform (optional)</div>
+                          <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                            placeholder="github.com/org/repo"
+                            style={inputStyle}
+                            onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                            onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                          />
+                        </div>
+
+                        {/* Auth — T2/T3 */}
+                        {computedTier>=2&&(
+                          <div>
+                            <MultiSelect
+                              label="User authentication"
+                              optional
+                              opts={["Sprout SSO / Google","Email + password","API key","Other"]}
+                              value={cAuthType}
+                              onChange={v=>setCAuthType(v)}
+                              placeholder="Search auth types…"
+                              palette="green"
+                            />
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>How users log in, if the project requires authentication (leave blank if none)</div>
+                          </div>
+                        )}
+
+                        {/* Database — T2/T3 */}
+                        {computedTier>=2&&(
+                          <div>
+                            <MultiSelect
+                              label="Database &amp; data sources"
+                              optional
+                              opts={DB_AND_SOURCES}
+                              value={cDbPlatform}
+                              onChange={v=>setCDbPlatform(v)}
+                              placeholder="Search databases &amp; data sources…"
+                              palette="blue"
+                            />
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>Database platform(s) and any Sprout systems this project reads from (leave blank if none)</div>
+                            {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
+                              <div style={{marginTop:10}}>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
+                                <textarea
+                                  value={cSproutDbDetails}
+                                  onChange={e=>setCSpfroutDbDetails(e.target.value)}
+                                  placeholder="e.g. Employee list from Sprout HR to pre-populate user profiles"
+                                  rows={3}
+                                  style={{...inputStyle,resize:"vertical",minHeight:64}}
+                                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Data & Security — T3 only */}
+                        {computedTier===3&&(
+                          <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
+                            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
+                            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
+                                <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
+                                  <option value="">Select…</option>
+                                  {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
+                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
+                                <YesNo value={cSendsToExtAI}
+                                  onYes={()=>setCendsToExtAI(true)}
+                                  onNo={()=>setCendsToExtAI(false)}
+                                />
+                              </div>
+                              {securityFlags.aiDataRisk&&(
+                                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
+                                  <span style={{fontSize:14}}>🔒</span>
+                                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
+                                </div>
+                              )}
+                              {securityFlags.noAuthRisk&&(
+                                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                                  <span style={{fontSize:14}}>⚠️</span>
+                                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>)}
+                    </div>
+                  </div>
+
+                  {/* Save / Cancel — covers both tier + tech stack fields */}
+                  {classIsDirty&&(
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{
+                        setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                        setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
+                        setCAuthType(projArr(project.authType));
+                        setCDbPlatform(projArr(project.database));
+                        setCSpfroutDbDetails(project.sproutDbDetails||'');
+                        setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
+                      }}
+                        style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
+                      <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
+                        style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
+                      >{classSaving?"Saving…":"Save classification"}</button>
+                    </div>
+                  )}
+                </>);
+              })()}
 
               {computedTier>=2&&(
               <button onClick={()=>setShowDevopsModal(true)} style={{
