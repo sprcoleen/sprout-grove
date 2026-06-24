@@ -305,11 +305,13 @@ const DEPT_ZONES = {
 const CAPABILITIES = ["All","LLM","Computer Vision","Automation","Prediction","NLP"];
 const TOOLS =["Claude Chat","Claude Code","Cowork","ChatGPT","Copilot","Cursor","Zapier / Make","Other"];
 const AGENTIC_FRAMEWORKS = ["AutoGPT","Aulendil","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
-const DATA_SOURCES = [
-  "HubSpot","NetSuite","Sprout HR","Sprout Payroll",
-  "Google Drive/Docs","Product Analytics/Pendo/Userpilot","Databricks","Zendesk",
-  "Website","Jira","Notion/Confluence","Meeting Transcripts",
-  "Survey Responses","Others",
+const DB_AND_SOURCES = [
+  "Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL",
+  "Sprout HR","Sprout Payroll",
+  "HubSpot","NetSuite","Zendesk",
+  "Google Drive/Docs","Notion/Confluence","Jira","Meeting Transcripts","Survey Responses",
+  "Databricks","Product Analytics/Pendo/Userpilot","Website",
+  "Other",
 ];
 
 const INITIAL_PROJECTS = [
@@ -3892,16 +3894,16 @@ const ProjectDetailPage = ({
 
 
   // Classification edit state
+  const projArr = v => Array.isArray(v) ? v : (v && v !== '' ? [v] : []);
   const [cHasBackend,       setCHasBackend]       = useState(project.hasBackend       ?? null);
   const [cTargetUsers,      setCTargetUsers]      = useState(project.targetUsers      ?? null);
-  const [cLiveUrl,          setCLiveUrl]          = useState(project.demoLink         || '');
   const [cHasVersionCtrl,   setCHasVersionCtrl]   = useState(project.githubRepo ? true : null);
   const [cRepoUrl,          setCRepoUrl]          = useState(project.githubRepo       || '');
-  const [cHostingPlatform,  setCHostingPlatform]  = useState(project.hosting          || '');
+  const [cHostingPlatform,  setCHostingPlatform]  = useState(projArr(project.hosting));
   const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth     ?? null);
-  const [cAuthType,         setCAuthType]         = useState(project.authType         || '');
+  const [cAuthType,         setCAuthType]         = useState(projArr(project.authType));
   const [cHasDatabase,      setCHasDatabase]      = useState(project.hasDatabase      ?? null);
-  const [cDbPlatform,       setCDbPlatform]       = useState(project.database         || '');
+  const [cDbPlatform,       setCDbPlatform]       = useState(projArr(project.database));
   const [cConnectsSproutDb, setCConnectsSproutDb] = useState(project.connectsSproutDb ?? null);
   const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
   const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
@@ -3996,14 +3998,13 @@ const ProjectDetailPage = ({
   const classIsDirty =
     cHasBackend      !== (project.hasBackend       ?? null)
     || cTargetUsers  !== (project.targetUsers      ?? null)
-    || cLiveUrl      !== (project.demoLink         || '')
     || cHasVersionCtrl !== (project.githubRepo ? true : null)
     || cRepoUrl      !== (project.githubRepo       || '')
-    || cHostingPlatform !== (project.hosting       || '')
+    || cHostingPlatform.join('|') !== projArr(project.hosting).join('|')
     || cRequiresAuth !== (project.requiresAuth     ?? null)
-    || cAuthType     !== (project.authType         || '')
+    || cAuthType.join('|')        !== projArr(project.authType).join('|')
     || cHasDatabase  !== (project.hasDatabase      ?? null)
-    || cDbPlatform   !== (project.database         || '')
+    || cDbPlatform.join('|')      !== projArr(project.database).join('|')
     || cConnectsSproutDb !== (project.connectsSproutDb ?? null)
     || cDataSensitivity !== (project.dataSensitivity || '')
     || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
@@ -4016,11 +4017,10 @@ const ProjectDetailPage = ({
     setClassSaving(true);
     await onSaveClassification?.(project.id, {
       hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
-      demoLink: cLiveUrl,
       githubRepo: cHasVersionCtrl ? cRepoUrl : '',
       hosting: cHostingPlatform,
       requiresAuth: cRequiresAuth, authType: cAuthType,
-      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : '',
+      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : [],
       connectsSproutDb: cConnectsSproutDb,
       dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
       hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
@@ -4246,24 +4246,14 @@ const ProjectDetailPage = ({
                   placeholder="Search tools…"
                   palette="green"
                 />
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <MultiSelect
-                    label="Agentic framework" optional
-                    opts={AGENTIC_FRAMEWORKS}
-                    value={editForm.agenticFramework||[]}
-                    onChange={v=>setEF("agenticFramework",v)}
-                    placeholder="Search frameworks…"
-                    palette="purple"
-                  />
-                  <MultiSelect
-                    label="Data sources" optional
-                    opts={DATA_SOURCES}
-                    value={editForm.dataSources}
-                    onChange={v=>setEF("dataSources",v)}
-                    placeholder="Search data sources…"
-                    palette="blue"
-                  />
-                </div>
+                <MultiSelect
+                  label="Agentic framework" optional
+                  opts={AGENTIC_FRAMEWORKS}
+                  value={editForm.agenticFramework||[]}
+                  onChange={v=>setEF("agenticFramework",v)}
+                  placeholder="Search frameworks…"
+                  palette="purple"
+                />
               </div>
 
               {/* ── Section: Tier classification ── */}
@@ -4341,27 +4331,16 @@ const ProjectDetailPage = ({
                           <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project details</div>
                           <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
-                            {/* URL — all tiers */}
-                            <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
-                                Live URL{computedTier===1&&<span style={{fontWeight:400,color:C.mushroom400}}> (optional)</span>}
-                              </div>
-                              <input type="text" value={cLiveUrl} onChange={e=>setCLiveUrl(e.target.value)}
-                                placeholder="https://…" style={inputStyle}
-                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                              />
-                            </div>
-
                             {/* Hosting — T2/T3 */}
                             {computedTier>=2&&(
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting platform</div>
-                                <select value={cHostingPlatform} onChange={e=>setCHostingPlatform(e.target.value)} style={selectStyle(!!cHostingPlatform)}>
-                                  <option value="">Select platform…</option>
-                                  {["Vercel","Azure","AWS","Google Cloud","Internal server","Other"].map(o=><option key={o}>{o}</option>)}
-                                </select>
-                              </div>
+                              <MultiSelect
+                                label="Hosting platform" optional
+                                opts={["Vercel","Azure","AWS","Google Cloud","Internal server","Other"]}
+                                value={cHostingPlatform}
+                                onChange={v=>setCHostingPlatform(v)}
+                                placeholder="Search platforms…"
+                                palette="green"
+                              />
                             )}
 
                             {/* Version control — all tiers */}
@@ -4389,17 +4368,18 @@ const ProjectDetailPage = ({
                                 <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user authentication?</div>
                                 <YesNo value={cRequiresAuth}
                                   onYes={()=>setCRequiresAuth(true)}
-                                  onNo={()=>{setCRequiresAuth(false);setCAuthType('');}}
+                                  onNo={()=>{setCRequiresAuth(false);setCAuthType([]);}}
                                 />
                                 {cRequiresAuth===true&&(
                                   <div style={subBlock}>
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Auth type</div>
-                                      <select value={cAuthType} onChange={e=>setCAuthType(e.target.value)} style={selectStyle(!!cAuthType)}>
-                                        <option value="">Select…</option>
-                                        {["Sprout SSO / Google","Email + password","API key","Other"].map(o=><option key={o}>{o}</option>)}
-                                      </select>
-                                    </div>
+                                    <MultiSelect
+                                      label="Auth type" optional
+                                      opts={["Sprout SSO / Google","Email + password","API key","Other"]}
+                                      value={cAuthType}
+                                      onChange={v=>setCAuthType(v)}
+                                      placeholder="Search auth types…"
+                                      palette="green"
+                                    />
                                   </div>
                                 )}
                               </div>
@@ -4411,17 +4391,18 @@ const ProjectDetailPage = ({
                                 <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project use a database?</div>
                                 <YesNo value={cHasDatabase}
                                   onYes={()=>setCHasDatabase(true)}
-                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform('');setCConnectsSproutDb(null);}}
+                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform([]);setCConnectsSproutDb(null);}}
                                 />
                                 {cHasDatabase===true&&(
                                   <div style={subBlock}>
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database platform</div>
-                                      <select value={cDbPlatform} onChange={e=>setCDbPlatform(e.target.value)} style={selectStyle(!!cDbPlatform)}>
-                                        <option value="">Select…</option>
-                                        {["Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL","Other"].map(o=><option key={o}>{o}</option>)}
-                                      </select>
-                                    </div>
+                                    <MultiSelect
+                                      label="Database platform &amp; data sources" optional
+                                      opts={DB_AND_SOURCES}
+                                      value={cDbPlatform}
+                                      onChange={v=>setCDbPlatform(v)}
+                                      placeholder="Search databases &amp; data sources…"
+                                      palette="blue"
+                                    />
                                     <div>
                                       <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it connect to or pull from the Sprout DB?</div>
                                       <YesNo value={cConnectsSproutDb}
@@ -4478,10 +4459,10 @@ const ProjectDetailPage = ({
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
                           <button onClick={()=>{
                             setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                            setCLiveUrl(project.demoLink||'');setCHasVersionCtrl(project.githubRepo?true:null);
-                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(project.hosting||'');
-                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(project.authType||'');
-                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(project.database||'');
+                            setCHasVersionCtrl(project.githubRepo?true:null);
+                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
+                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(projArr(project.authType));
+                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(projArr(project.database));
                             setCConnectsSproutDb(project.connectsSproutDb??null);
                             setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
                           }}
@@ -4627,28 +4608,18 @@ const ProjectDetailPage = ({
                           : <span>—</span>}
                       </div>
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                      <div>
-                        <label style={roLabel}>Agentic framework</label>
-                        <div style={roBox}>
-                          {project.agenticFramework?.length>0
-                            ? project.agenticFramework.map(f=><span key={f} style={{...roChip,background:C.ubas100,color:C.ubas500,border:"1px solid "+C.ubas400}}>{f}</span>)
-                            : <span>—</span>}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={roLabel}>Data sources</label>
-                        <div style={roBox}>
-                          {project.dataSources?.length>0
-                            ? project.dataSources.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
-                            : <span>—</span>}
-                        </div>
+                    <div>
+                      <label style={roLabel}>Agentic framework</label>
+                      <div style={roBox}>
+                        {project.agenticFramework?.length>0
+                          ? project.agenticFramework.map(f=><span key={f} style={{...roChip,background:C.ubas100,color:C.ubas500,border:"1px solid "+C.ubas400}}>{f}</span>)
+                          : <span>—</span>}
                       </div>
                     </div>
                   </div>
 
                   {/* Technical Details */}
-                  {project.tier===3&&(project.githubRepo||project.hosting||project.database)&&(
+                  {project.tier===3&&(project.githubRepo||project.hosting?.length||project.database?.length)&&(
                   <div style={sCard}>
                     <div style={sTitle}>Technical Details</div>
                     <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:12,display:"flex",alignItems:"center",gap:5}}>
@@ -4666,12 +4637,20 @@ const ProjectDetailPage = ({
                       </div>
                       <div>
                         <label style={roLabel}>Hosting</label>
-                        <div style={roBox}>{project.hosting||<span>—</span>}</div>
+                        <div style={roBox}>
+                          {project.hosting?.length>0
+                            ? project.hosting.map(h=><span key={h} style={roChip}>{h}</span>)
+                            : <span>—</span>}
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <label style={roLabel}>Database</label>
-                      <div style={roBox}>{project.database||<span>—</span>}</div>
+                      <label style={roLabel}>Database &amp; data sources</label>
+                      <div style={roBox}>
+                        {project.database?.length>0
+                          ? project.database.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
+                          : <span>—</span>}
+                      </div>
                     </div>
                   </div>
                   )}
@@ -8932,14 +8911,14 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, demoLink, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
+  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
     const now = new Date().toISOString();
     const { error } = await supabase.from("projects").update({
       has_backend: hasBackend, target_users: targetUsers, tier, last_updated: now,
-      demo_link: demoLink, github_repo: githubRepo, hosting,
+      github_repo: githubRepo, hosting,
       requires_auth: requiresAuth, auth_type: authType,
       has_database: hasDatabase, database, connects_sprout_db: connectsSproutDb,
       data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
@@ -8947,7 +8926,7 @@ export default function SproutAIGarden() {
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, hasBackend, targetUsers, tier, demoLink, githubRepo, hosting,
+      ? {...p, hasBackend, targetUsers, tier, githubRepo, hosting,
               requiresAuth, authType, hasDatabase, database, connectsSproutDb,
               dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p

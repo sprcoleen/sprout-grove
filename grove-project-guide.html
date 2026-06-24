@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grove — How to Register & Manage Your AI Project</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-50:  #f0faf0; --green-100: #d6f0d6; --green-200: #aadcaa;
+      --green-500: #2d8c2d; --green-600: #1f6e1f; --green-700: #165216;
+      --mush-50:  #fafaf8; --mush-100: #f2f1ed; --mush-200: #e4e2da;
+      --mush-300: #ccc9bc; --mush-400: #b0ac9c; --mush-500: #928e7c;
+      --mush-600: #736f5e; --mush-700: #565244; --mush-800: #3a372e; --mush-900: #201e18;
+      --blue-100: #ebf8ff; --blue-400: #63b3ed; --blue-500: #3182ce; --blue-600: #2c5282;
+      --orange-100: #feebc8; --orange-500: #dd6b20; --orange-600: #c05621; --orange-700: #7b341e;
+      --yellow-50: #fefcbf; --yellow-500: #d69e2e; --yellow-600: #b7791f; --yellow-700: #744210;
+      --teal-50: #e6fffa; --teal-400: #38b2ac; --teal-600: #2c7a7b;
+      --red-100: #fed7d7; --red-500: #e53e3e;
+      --purple-50: #faf5ff; --purple-100: #e9d8fd; --purple-400: #9f7aea;
+      --purple-500: #805ad5; --purple-700: #553c9a;
+      --mango-100: #fefcbf; --mango-500: #d69e2e; --mango-600: #b7791f; --mango-700: #744210;
+      --font: 'Rubik', system-ui, sans-serif;
+      --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-full: 9999px;
+      --sh-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --sh-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--mush-50);
+      color: var(--mush-900);
+      line-height: 1.6;
+    }
+
+    a { color: var(--green-500); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1a3a1a 0%, #2d8c2d 60%, #4aaa4a 100%);
+      color: #fff;
+      padding: 48px 56px 40px;
+    }
+    .hero-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .hero-icon { font-size: 40px; line-height: 1; }
+    .hero-title { font-size: 30px; font-weight: 800; line-height: 1.1; }
+    .hero-sub { font-size: 14px; opacity: .75; margin-top: 4px; }
+    .hero-desc { font-size: 14px; opacity: .9; max-width: 700px; line-height: 1.75; margin-bottom: 20px; }
+    .hero-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+    .hero-chip {
+      font-size: 11px; font-weight: 600; color: #fff;
+      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
+      border-radius: var(--r-full); padding: 4px 14px; text-decoration: none;
+      transition: background .15s;
+    }
+    .hero-chip:hover { background: rgba(255,255,255,.28); text-decoration: none; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(72,187,120,.2); border: 1px solid rgba(72,187,120,.5);
+      border-radius: var(--r-full); padding: 4px 12px; margin-top: 14px;
+    }
+    .hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #68d391; display: inline-block; }
+    .hero-badge span { font-size: 11px; font-weight: 700; color: #c6f6d5; }
+
+    /* ── Layout ── */
+    .page { max-width: 980px; margin: 0 auto; padding: 40px 48px 80px; }
+
+    /* ── Warning banner ── */
+    .banner {
+      background: var(--yellow-50); border: 1px solid var(--mango-500);
+      border-radius: var(--r-xl); padding: 16px 20px; margin-bottom: 36px;
+      font-size: 13px; color: var(--mango-700); line-height: 1.7;
+    }
+    .banner strong { font-weight: 700; }
+
+    /* ── Section ── */
+    .section { margin-bottom: 44px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10; margin-bottom: 18px;
+      padding-bottom: 12px; border-bottom: 2px solid var(--mush-200);
+    }
+    .section-icon { font-size: 24px; line-height: 1; }
+    .section-title { font-size: 21px; font-weight: 800; color: var(--mush-900); }
+
+    /* ── Card ── */
+    .card {
+      background: #fff; border: 1px solid var(--mush-200);
+      border-radius: var(--r-xl); padding: 22px 26px;
+      box-shadow: var(--sh-sm);
+    }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* ── Role cards ── */
+    .role-card { border-radius: var(--r-xl); padding: 20px 22px; border: 1px solid; }
+    .role-name { font-size: 14px; font-weight: 800; }
+    .role-who { font-size: 11px; color: var(--mush-500); margin-top: 2px; margin-bottom: 12px; }
+    .role-item { display: flex; gap: 6px; margin-bottom: 5px; font-size: 11px; color: var(--mush-700); }
+    .role-check { font-weight: 700; flex-shrink: 0; font-size: 11px; }
+
+    /* ── Step list ── */
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .step { display: flex; gap: 16px; align-items: flex-start; }
+    .step-num {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; flex-shrink: 0; margin-top: 2px;
+      border: 2px solid;
+    }
+    .step-body { flex: 1; border-radius: var(--r-lg); padding: 14px 18px; border: 1px solid; }
+    .step-title { font-size: 14px; font-weight: 700; color: var(--mush-900); margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .step-desc { font-size: 13px; color: var(--mush-600); line-height: 1.7; }
+
+    /* ── Stage pipeline ── */
+    .pipeline {
+      display: flex; align-items: center; gap: 0;
+      background: #fff; border: 1px solid var(--mush-200);
+      border-radius: var(--r-xl); padding: 20px 24px;
+      box-shadow: var(--sh-sm); overflow-x: auto;
+    }
+    .stage-box {
+      flex-shrink: 0; border-radius: var(--r-md); padding: 12px 14px;
+      text-align: center; width: 120px; border: 1.5px solid;
+    }
+    .stage-dot { width: 9px; height: 9px; border-radius: 50%; margin: 0 auto 6px; }
+    .stage-name { font-size: 11px; font-weight: 800; letter-spacing: .06em; }
+    .stage-sub { font-size: 9px; margin-top: 3px; }
+    .stage-tag {
+      margin-top: 6px; border-radius: var(--r-sm); padding: 2px 5px;
+      font-size: 8px; font-weight: 700; white-space: nowrap;
+    }
+    .arrow { display: flex; flex-direction: column; align-items: center; flex: 1; padding: 0 4px; min-width: 40px; }
+    .arrow-label {
+      font-size: 9px; font-weight: 700; border-radius: var(--r-sm); padding: 2px 6px;
+      margin-bottom: 5px; white-space: nowrap;
+    }
+    .arrow-line { display: flex; align-items: center; width: 100%; }
+    .arrow-line div { flex: 1; height: 2px; }
+    .arrow-line span { font-size: 12px; }
+
+    /* ── Tier cards ── */
+    .tier-card { border-radius: var(--r-xl); padding: 20px 22px 20px 28px; border: 1px solid; position: relative; overflow: hidden; margin-bottom: 14px; }
+    .tier-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: var(--r-xl) 0 0 var(--r-xl); }
+    .tier-badge { font-size: 14px; font-weight: 800; background: #fff; border: 2px solid; border-radius: var(--r-full); padding: 2px 14px; display: inline-block; }
+    .tier-label { font-size: 13px; font-weight: 700; display: inline-block; margin-left: 10px; vertical-align: middle; }
+    .tier-row { font-size: 12px; color: var(--mush-700); line-height: 1.6; margin-top: 6px; }
+    .tier-info { border-radius: var(--r-lg); padding: 10px 14px; background: #fff; font-size: 12px; margin-top: 10px; line-height: 1.55; border: 1px solid; }
+    .tier-info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+
+    /* ── Security questions ── */
+    .sq { display: flex; gap: 14px; align-items: flex-start; padding: 14px 18px; background: #fff; border: 1px solid var(--mush-200); border-radius: var(--r-lg); box-shadow: var(--sh-sm); margin-bottom: 10px; }
+    .sq-num { width: 26px; height: 26px; border-radius: 50%; background: var(--purple-500); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0; margin-top: 2px; }
+    .sq-q { font-size: 13px; font-weight: 600; color: var(--mush-900); margin-bottom: 3px; }
+    .sq-risk { font-size: 12px; color: var(--mush-500); }
+    .sq-tier3 { font-size: 10px; font-weight: 700; color: var(--orange-600); background: var(--orange-100); border: 1px solid var(--orange-500); border-radius: var(--r-full); padding: 2px 8px; white-space: nowrap; flex-shrink: 0; align-self: center; }
+
+    /* ── Gate table ── */
+    .gate-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .gate-table th { background: var(--mush-100); color: var(--mush-600); font-weight: 700; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--mush-200); }
+    .gate-table td { padding: 12px 14px; border-bottom: 1px solid var(--mush-100); vertical-align: top; line-height: 1.55; color: var(--mush-700); }
+    .gate-table tr:last-child td { border-bottom: none; }
+    .gate-table tr:hover td { background: var(--mush-50); }
+
+    /* ── Tag ── */
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      border-radius: var(--r-full); padding: 2px 9px;
+    }
+
+    /* ── Checklist ── */
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--mush-700); line-height: 1.55; }
+    .checklist li::before { content: "☐"; font-size: 16px; color: var(--green-500); flex-shrink: 0; margin-top: -1px; }
+
+    /* ── Quick-ref table ── */
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ref-table th { background: var(--mush-800); color: #fff; font-weight: 700; padding: 10px 14px; text-align: left; }
+    .ref-table th:first-child { border-radius: var(--r-sm) 0 0 0; }
+    .ref-table th:last-child  { border-radius: 0 var(--r-sm) 0 0; }
+    .ref-table td { padding: 11px 14px; border-bottom: 1px solid var(--mush-100); vertical-align: top; line-height: 1.55; color: var(--mush-700); }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr:hover td { background: var(--mush-50); }
+
+    /* ── Tip box ── */
+    .tip { background: var(--teal-50); border: 1px solid var(--teal-400); border-radius: var(--r-lg); padding: 12px 16px; font-size: 12px; color: var(--teal-600); line-height: 1.6; margin-top: 14px; }
+
+    /* ── Info box ── */
+    .info { background: var(--blue-100); border: 1px solid var(--blue-400); border-radius: var(--r-lg); padding: 12px 16px; font-size: 12px; color: var(--blue-600); line-height: 1.6; margin-top: 14px; }
+
+    /* ── Warning box ── */
+    .warn { background: var(--orange-100); border: 1px solid var(--orange-500); border-radius: var(--r-lg); padding: 12px 16px; font-size: 12px; color: var(--orange-700); line-height: 1.6; margin-top: 14px; }
+
+    /* ── IS/Execom gate grid ── */
+    .gate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .gate-opt { border-radius: var(--r-xl); padding: 18px 20px; border: 1.5px solid; }
+    .gate-opt-title { font-size: 14px; font-weight: 800; }
+    .gate-opt-body { font-size: 12px; color: var(--mush-700); line-height: 1.7; margin-top: 8px; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--mush-800); color: var(--mush-300);
+      text-align: center; padding: 28px 24px;
+      font-size: 12px; line-height: 1.7;
+    }
+    footer a { color: var(--green-200); }
+
+    /* ── Print ── */
+    @media print {
+      .hero-chips { display: none; }
+      .card, .step-body, .tier-card, .sq { break-inside: avoid; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .hero { padding: 32px 24px; }
+      .page { padding: 28px 20px 60px; }
+      .grid-2, .grid-3, .gate-grid { grid-template-columns: 1fr; }
+      .pipeline { flex-wrap: nowrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-logo">
+    <span class="hero-icon">🌿</span>
+    <div>
+      <div class="hero-title">Grove — AI Project Guide</div>
+      <div class="hero-sub">How to register, classify, and advance your AI project · Sprout Philippines & Thailand</div>
+    </div>
+  </div>
+  <div class="hero-desc">
+    Every AI tool or internal app built at Sprout must be registered in Grove and pass through a lightweight governance
+    process before going live. This guide walks you through each step — from idea to production.
+  </div>
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    <span>grove.sprout.solutions · Updated June 2026</span>
+  </div>
+  <div class="hero-chips">
+    <a class="hero-chip" href="#how-to-create">How to Create a Project</a>
+    <a class="hero-chip" href="#stages">Stages</a>
+    <a class="hero-chip" href="#tiers">Tiers</a>
+    <a class="hero-chip" href="#is-execom">IS / Execom Gate</a>
+    <a class="hero-chip" href="#security-questions">Security Questions</a>
+    <a class="hero-chip" href="#stage-gates">Stage Gates</a>
+    <a class="hero-chip" href="#go-live-checklist">Go-Live Checklist</a>
+    <a class="hero-chip" href="#roles">Roles</a>
+    <a class="hero-chip" href="#quick-reference">Quick Reference</a>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ── WHY THIS EXISTS ── -->
+  <div class="banner" style="margin-top:8px;">
+    <strong>⚠️ Why Grove governance matters —</strong>
+    Sprout employees can build and ship internal tools using Claude, ChatGPT, and other AI platforms — many of which can access internal databases, handle employee PII, or send data to external AI providers. Without a governance process these tools may violate the PH Data Privacy Act, TH PDPA, or Sprout's internal data policies. Grove is the safeguard.
+  </div>
+
+  <!-- ── HOW TO CREATE A PROJECT ── -->
+  <div class="section" id="how-to-create">
+    <div class="section-header">
+      <span class="section-icon">🗺️</span>
+      <div class="section-title">How to Create &amp; Manage Your AI Project</div>
+    </div>
+
+    <div class="steps">
+
+      <!-- Step 1 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--green-50);border-color:var(--green-200);color:var(--green-500);">1</div>
+        <div class="step-body" style="background:var(--green-50);border-color:var(--green-200);">
+          <div class="step-title">
+            Register your project in Grove
+            <span class="tag" style="background:var(--green-50);color:var(--green-600);border:1px solid var(--green-200);">ALL TIERS</span>
+          </div>
+          <div class="step-desc">
+            Log into <a href="https://grove.sprout.solutions" target="_blank">grove.sprout.solutions</a> with your Sprout email.
+            Go to the <strong>Garden</strong> tab and click <strong>Add Plant</strong>. Fill in:
+            <ul style="margin:8px 0 0 18px;line-height:1.9;">
+              <li><strong>Project name</strong> — clear, descriptive</li>
+              <li><strong>Description</strong> — what it does and the problem it solves</li>
+              <li><strong>Your team &amp; target department</strong></li>
+              <li><strong>AI tools used</strong> (Claude, ChatGPT, Copilot, etc.)</li>
+              <li><strong>Project link</strong> — prototype URL, internal tool, or live product (optional at first)</li>
+            </ul>
+            <div class="tip" style="margin-top:10px;">
+              💡 <strong>Country is set automatically</strong> from your email domain — @sprout.ph → PH, @sproutsolutions.io → TH. It cannot be changed.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--purple-50);border-color:var(--purple-400);color:var(--purple-500);">2</div>
+        <div class="step-body" style="background:var(--purple-50);border-color:var(--purple-400);">
+          <div class="step-title">
+            Complete Security &amp; Data Classification
+            <span class="tag" style="background:var(--orange-100);color:var(--orange-600);border:1px solid var(--orange-500);">MANDATORY GATE</span>
+          </div>
+          <div class="step-desc">
+            Open your project, click the <strong>Technical</strong> tab, and answer all 5 security questions.
+            This is required before your project can advance past Sprout stage. You'll also fill in:
+            <ul style="margin:8px 0 0 18px;line-height:1.9;">
+              <li>Does it have a backend or server-side logic?</li>
+              <li>Who are the target users — internal only, external, or both?</li>
+              <li>Hosting platform, database &amp; data sources, auth method</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--blue-100);border-color:var(--blue-400);color:var(--blue-500);">3</div>
+        <div class="step-body" style="background:var(--blue-100);border-color:var(--blue-400);">
+          <div class="step-title">
+            Tier is auto-assigned
+            <span class="tag" style="background:var(--blue-100);color:var(--blue-500);border:1px solid var(--blue-400);">AUTO-COMPUTED</span>
+          </div>
+          <div class="step-desc">
+            Grove computes your <strong>Tier (1 / 2 / 3)</strong> automatically based on your answers about backend and target users. Tier determines how much review is needed before going live. See the <a href="#tiers">Tier section</a> below.
+            <div class="info">ℹ️ Unclassified projects are blocked from all stage changes — complete classification first.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--yellow-50);border-color:var(--yellow-500);color:var(--yellow-600);">4</div>
+        <div class="step-body" style="background:var(--yellow-50);border-color:var(--yellow-500);">
+          <div class="step-title">
+            Advance through stages as you build
+            <span class="tag" style="background:var(--yellow-50);color:var(--yellow-600);border:1px solid var(--yellow-500);">GATES ENFORCED</span>
+          </div>
+          <div class="step-desc">
+            Use the stage selector on your project page to move from Sprout → Growing → Blooming → Thriving as your work progresses.
+            Gates are enforced at <strong>Growing → Blooming</strong> and <strong>Blooming → Thriving</strong> for Tier 2 and Tier 3 projects.
+            <div class="tip">💡 Before creating Jira tickets for the Groundskeeper team (Raffy, Coleen, Nikki, Blaise), IS / Execom approval must be secured at the Growing stage. See <a href="#is-execom">IS / Execom Gate</a>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--orange-100);border-color:var(--orange-500);color:var(--orange-600);">5</div>
+        <div class="step-body" style="background:var(--orange-100);border-color:var(--orange-500);">
+          <div class="step-title">
+            Submit for Release Manager review (Tier 2 &amp; 3)
+            <span class="tag" style="background:var(--orange-100);color:var(--orange-600);border:1px solid var(--orange-500);">TIER 2 &amp; 3 ONLY</span>
+          </div>
+          <div class="step-desc">
+            If your project is Tier 2 or 3, click <strong>Submit for Release Review</strong> before each gate transition.
+            The Release Manager (Belle Asis or Diane Litan) reviews your classification and approves, rejects, or requests changes.
+            Tier 3 projects also get a Jira DevOps ticket created for Groundskeeper support.
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step">
+        <div class="step-num" style="background:var(--green-100);border-color:var(--green-200);color:var(--green-600);">6</div>
+        <div class="step-body" style="background:var(--green-100);border-color:var(--green-200);">
+          <div class="step-title">
+            Go live — reach Thriving 🌳
+            <span class="tag" style="background:var(--green-100);color:var(--green-600);border:1px solid var(--green-200);">PRODUCTION</span>
+          </div>
+          <div class="step-desc">
+            Once all gates are cleared your project reaches <strong>Thriving</strong> — fully deployed and part of Sprout's official AI portfolio.
+            Tier 3 projects must also complete the <a href="#go-live-checklist">policy compliance checklist</a> before this final step.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── STAGES ── -->
+  <div class="section" id="stages">
+    <div class="section-header">
+      <span class="section-icon">🔀</span>
+      <div class="section-title">Project Stages</div>
+    </div>
+
+    <div class="pipeline">
+
+      <div class="stage-box" style="background:var(--green-50);border-color:var(--green-200);">
+        <div class="stage-dot" style="background:var(--green-500);"></div>
+        <div class="stage-name" style="color:var(--green-600);">SPROUT</div>
+        <div class="stage-sub" style="color:var(--green-500);">Early idea</div>
+        <div class="stage-tag" style="background:transparent;border:1px dashed var(--teal-400);color:var(--teal-600);">IS/Execom optional</div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-label" style="background:var(--green-50);border:1px solid var(--green-200);color:var(--green-600);">All tiers</div>
+        <div class="arrow-line"><div style="background:var(--green-500);"></div><span style="color:var(--green-500);">▶</span></div>
+      </div>
+
+      <div class="stage-box" style="background:var(--yellow-50);border-color:var(--yellow-500);">
+        <div class="stage-dot" style="background:var(--yellow-600);"></div>
+        <div class="stage-name" style="color:var(--yellow-700);">GROWING</div>
+        <div class="stage-sub" style="color:var(--yellow-600);">In development</div>
+        <div class="stage-tag" style="background:#c4f0ec;border:1px solid var(--teal-400);color:var(--teal-600);">IS/Execom req.</div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-label" style="background:var(--orange-100);border:1px solid var(--orange-500);color:var(--orange-600);">T2+ gate</div>
+        <div class="arrow-line"><div style="background:var(--orange-500);"></div><span style="color:var(--orange-500);">▶</span></div>
+      </div>
+
+      <div class="stage-box" style="background:var(--orange-100);border-color:var(--orange-500);">
+        <div class="stage-dot" style="background:var(--orange-600);"></div>
+        <div class="stage-name" style="color:var(--orange-700);">BLOOMING</div>
+        <div class="stage-sub" style="color:var(--orange-600);">Live &amp; used</div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-label" style="background:var(--purple-50);border:1px solid var(--purple-400);color:var(--purple-700);">T2+ gate</div>
+        <div class="arrow-line"><div style="background:var(--blue-500);"></div><span style="color:var(--blue-500);">▶</span></div>
+      </div>
+
+      <div class="stage-box" style="background:var(--blue-100);border-color:var(--blue-400);">
+        <div class="stage-dot" style="background:var(--blue-500);"></div>
+        <div class="stage-name" style="color:var(--blue-600);">THRIVING</div>
+        <div class="stage-sub" style="color:var(--blue-500);">Fully deployed</div>
+      </div>
+
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mush-500);margin-bottom:8px;">Who can change stages</div>
+          <div style="font-size:12px;color:var(--mush-600);line-height:1.75;">
+            <div style="margin-bottom:5px;"><span style="color:var(--green-600);font-weight:700;">Builder (you)</span> — own project only, adjacent stages only (+1), must pass all gates</div>
+            <div><span style="color:var(--blue-500);font-weight:700;">Admin</span> — any project, can skip stages in any direction, can bypass gates</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mush-500);margin-bottom:8px;">Every stage change records</div>
+          <div style="font-size:12px;color:var(--mush-600);line-height:1.75;">
+            Permission check → tier gate check → milestone entry appended → project last-updated timestamp reset → activity log entry created
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TIERS ── -->
+  <div class="section" id="tiers">
+    <div class="section-header">
+      <span class="section-icon">🏷️</span>
+      <div class="section-title">Tier Classification</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:13px;color:var(--mush-600);line-height:1.7;margin-bottom:14px;">
+        Grove automatically assigns a <strong>Tier (1, 2, or 3)</strong> based on two questions in the Technical tab.
+        Tier determines how much review is required before going live and where the project is hosted.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--mush-100);">
+            <th style="padding:9px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:2px solid var(--mush-200);">Has backend / database?</th>
+            <th style="padding:9px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:2px solid var(--mush-200);">Target users</th>
+            <th style="padding:9px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:2px solid var(--mush-200);">Tier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">No</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">Internal only</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);"><span class="tag" style="background:var(--mush-100);color:var(--mush-700);border:1px solid var(--mush-300);">Tier 1</span> Static / Internal</td></tr>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">No</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">External or both</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);"><span class="tag" style="background:var(--blue-100);color:var(--blue-500);border:1px solid var(--blue-400);">Tier 2</span> Internal App</td></tr>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">Yes</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);">Internal only</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);"><span class="tag" style="background:var(--blue-100);color:var(--blue-500);border:1px solid var(--blue-400);">Tier 2</span> Internal App</td></tr>
+          <tr><td style="padding:9px 12px;">Yes</td><td style="padding:9px 12px;">External or both</td><td style="padding:9px 12px;"><span class="tag" style="background:var(--orange-100);color:var(--orange-600);border:1px solid var(--orange-500);">Tier 3</span> External-Facing</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tier-card" style="background:var(--mush-50);border-color:var(--mush-300);">
+      <div class="tier-accent" style="background:var(--mush-400);"></div>
+      <div><span class="tier-badge" style="color:var(--mush-700);border-color:var(--mush-300);">Tier 1</span><span class="tier-label" style="color:var(--mush-700);">Static / Internal — Low Risk</span></div>
+      <div class="tier-row"><strong>Criteria:</strong> No backend or server-side logic + internal users only</div>
+      <div class="tier-row"><strong>Examples:</strong> ChatGPT prompt library, email templates, simple dashboards, reference sheets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+        <div class="tier-info" style="border-color:var(--mush-300);">
+          <div class="tier-info-label" style="color:var(--mush-500);">Hosting</div>
+          <div style="color:var(--mush-700);">Hosted on <strong>Markup</strong> — uploaded directly by the project owner. No deployment infrastructure required.</div>
+        </div>
+        <div class="tier-info" style="border-color:var(--mush-300);">
+          <div class="tier-info-label" style="color:var(--mush-500);">Release review</div>
+          <div style="color:var(--mush-700);">Self-declaration only — no Release Manager review required. Moves freely through all stages once classified.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-card" style="background:var(--blue-100);border-color:var(--blue-400);">
+      <div class="tier-accent" style="background:var(--blue-500);"></div>
+      <div><span class="tier-badge" style="color:var(--blue-500);border-color:var(--blue-400);">Tier 2</span><span class="tier-label" style="color:var(--blue-500);">Internal App — Medium Risk</span></div>
+      <div class="tier-row"><strong>Criteria:</strong> Has backend + internal users, OR no backend + external / both users</div>
+      <div class="tier-row"><strong>Examples:</strong> HR dashboards, internal chatbots, payroll tools, team utilities with a database</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+        <div class="tier-info" style="border-color:var(--blue-400);">
+          <div class="tier-info-label" style="color:var(--blue-500);">Hosting</div>
+          <div style="color:var(--mush-700);"><strong>Sprout Vercel</strong> or <strong>Sprout Azure</strong> (Company Repository). Requires IS / Execom approval before deployment.</div>
+        </div>
+        <div class="tier-info" style="border-color:var(--blue-400);">
+          <div class="tier-info-label" style="color:var(--blue-500);">Release review</div>
+          <div style="color:var(--mush-700);">Release Manager acknowledgment required before <strong>Blooming</strong> and before <strong>Thriving</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-card" style="background:var(--orange-100);border-color:var(--orange-500);">
+      <div class="tier-accent" style="background:var(--orange-500);"></div>
+      <div><span class="tier-badge" style="color:var(--orange-600);border-color:var(--orange-500);">Tier 3</span><span class="tier-label" style="color:var(--orange-600);">External-Facing — High Risk</span></div>
+      <div class="tier-row"><strong>Criteria:</strong> Has backend + accessible to external users or both internal and external users</div>
+      <div class="tier-row"><strong>Examples:</strong> Client portals, public AI tools, partner integrations, customer-facing apps</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+        <div class="tier-info" style="border-color:var(--orange-500);">
+          <div class="tier-info-label" style="color:var(--orange-600);">Hosting</div>
+          <div style="color:var(--mush-700);"><strong>Sprout Vercel</strong> or <strong>Sprout Azure</strong> (Company Repository). Requires IS / Execom approval before deployment.</div>
+        </div>
+        <div class="tier-info" style="border-color:var(--orange-500);">
+          <div class="tier-info-label" style="color:var(--orange-600);">Release review</div>
+          <div style="color:var(--mush-700);">Full RM sign-off + Jira DevOps ticket + policy compliance checklist required before <strong>Thriving</strong>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── IS/EXECOM GATE ── -->
+  <div class="section" id="is-execom">
+    <div class="section-header">
+      <span class="section-icon">✅</span>
+      <div class="section-title">IS / Execom Approval Gate</div>
+    </div>
+
+    <div style="font-size:13px;color:var(--mush-600);line-height:1.7;margin-bottom:16px;">
+      Before any Jira ticket is raised for the <strong>Groundskeepers</strong> (Raffy, Coleen, Nikki, Blaise) to begin go-live support work,
+      approval from <strong>IS (Information Security department)</strong> or <strong>Execom (Executive Committee)</strong> must be in place.
+      The Groundskeepers are your Project Support &amp; DevOps team — IS and Execom are the approval bodies that sign off on the work.
+    </div>
+
+    <div class="gate-grid">
+      <div class="gate-opt" style="background:var(--mush-50);border-color:var(--teal-400);border-style:dashed;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--green-500);"></div>
+          <div class="gate-opt-title" style="color:var(--green-600);">Sprout Stage</div>
+          <span class="tag" style="background:transparent;color:var(--teal-600);border:1px dashed var(--teal-400);">Optional</span>
+        </div>
+        <div class="gate-opt-body">
+          IS / Execom approval is <strong>encouraged but not blocking</strong> at this stage.
+          Teams should proactively seek approval early to avoid delays later.
+        </div>
+        <div class="tip">💡 Best practice: secure approval during Sprout so Growing → Blooming is unblocked.</div>
+      </div>
+      <div class="gate-opt" style="background:var(--teal-50);border-color:var(--teal-400);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--yellow-600);"></div>
+          <div class="gate-opt-title" style="color:var(--yellow-700);">Growing Stage</div>
+          <span class="tag" style="background:var(--teal-600);color:#fff;border:none;">Required</span>
+        </div>
+        <div class="gate-opt-body">
+          IS / Execom approval is <strong>mandatory</strong> before any ticket for Coleen, Blaise, Nikki, or Raffy can be created.
+          Without it the project is blocked from advancing to Blooming.
+        </div>
+        <div class="warn" style="background:#fff;border:1px solid var(--teal-400);color:var(--teal-600);">🚦 Gate: advancing Growing → Blooming requires this approval on record.</div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <strong>Who gives approval?</strong> IS (Information Security department) or Execom (Executive Committee) — these are the approval bodies, separate from the Groundskeeper team.
+      Approval must be documented before any go-live ticket is raised for Raffy, Coleen, Nikki, or Blaise.
+      This requirement applies regardless of the project's Tier.
+    </div>
+  </div>
+
+  <!-- ── SECURITY QUESTIONS ── -->
+  <div class="section" id="security-questions">
+    <div class="section-header">
+      <span class="section-icon">🔐</span>
+      <div class="section-title">Security &amp; Data Classification Questions</div>
+    </div>
+
+    <div style="font-size:13px;color:var(--mush-600);line-height:1.7;margin-bottom:16px;">
+      These 5 questions appear in the <strong>Technical tab</strong> of your project and must be answered before your project can advance past Sprout.
+      Answering YES to Q2 or Q4 automatically escalates the project to <strong>Tier 3</strong>.
+    </div>
+
+    <div class="sq">
+      <div class="sq-num">Q1</div>
+      <div style="flex:1;">
+        <div class="sq-q">Does this tool require user login / authentication?</div>
+        <div class="sq-risk">If YES: Access control layer is required</div>
+      </div>
+    </div>
+    <div class="sq">
+      <div class="sq-num">Q2</div>
+      <div style="flex:1;">
+        <div class="sq-q">Does it access external APIs or third-party services?</div>
+        <div class="sq-risk">If YES: Data egress risk — review required</div>
+      </div>
+      <div class="sq-tier3">→ Tier 3</div>
+    </div>
+    <div class="sq">
+      <div class="sq-num">Q3</div>
+      <div style="flex:1;">
+        <div class="sq-q">Does it handle or display sensitive employee / client data?</div>
+        <div class="sq-risk">If YES: PDPA / Data Privacy Act compliance required</div>
+      </div>
+    </div>
+    <div class="sq">
+      <div class="sq-num">Q4</div>
+      <div style="flex:1;">
+        <div class="sq-q">Does it send data to an external AI service? (OpenAI, Claude, Gemini, Azure AI, etc.)</div>
+        <div class="sq-risk">If YES: Data-sharing policy review required</div>
+      </div>
+      <div class="sq-tier3">→ Tier 3</div>
+    </div>
+    <div class="sq">
+      <div class="sq-num">Q5</div>
+      <div style="flex:1;">
+        <div class="sq-q">Does it store user inputs in a database?</div>
+        <div class="sq-risk">If YES: Data retention policy applies</div>
+      </div>
+    </div>
+
+    <div class="warn" style="margin-top:4px;">
+      <strong>⚠ Auto-escalation rule:</strong>
+      If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 3</strong> regardless of other answers. Coordinate with Belle or Coleen before shipping.
+    </div>
+  </div>
+
+  <!-- ── STAGE GATES ── -->
+  <div class="section" id="stage-gates">
+    <div class="section-header">
+      <span class="section-icon">🛡️</span>
+      <div class="section-title">Stage Gates</div>
+    </div>
+    <div class="card">
+      <table class="gate-table">
+        <thead>
+          <tr>
+            <th>Transition</th>
+            <th>Tier 1 — Static</th>
+            <th>Tier 2 — Internal App</th>
+            <th>Tier 3 — External-Facing</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>🌱 Growing → 🌸 Blooming</strong></td>
+            <td>✅ Free — no release review required</td>
+            <td>🔍 Release Manager review required</td>
+            <td>🔍 Full RM sign-off required</td>
+          </tr>
+          <tr>
+            <td><strong>🌸 Blooming → 🌳 Thriving</strong></td>
+            <td>✅ No additional gate</td>
+            <td>🔍 RM final approval required</td>
+            <td>🔐 RM final approval + compliance checklist required</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info" style="margin-top:14px;">
+      ℹ️ <strong>Sprout → Growing</strong> has no tier gate — all projects can move freely between these two stages once classified. The gates only apply at Blooming and Thriving thresholds.
+    </div>
+  </div>
+
+  <!-- ── GO-LIVE CHECKLIST ── -->
+  <div class="section" id="go-live-checklist">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div class="section-title">Go-Live Compliance Checklist</div>
+    </div>
+
+    <div style="font-size:13px;color:var(--mush-600);line-height:1.7;margin-bottom:16px;">
+      <strong>Tier 3 projects</strong> must complete this checklist before reaching Thriving.
+      Tier 2 projects should review these items as best practice.
+    </div>
+
+    <div class="card">
+      <ul class="checklist">
+        <li>Data Minimization — only collecting what is strictly necessary for the tool's purpose</li>
+        <li>Access Control — access is restricted to authorized users only</li>
+        <li>No hardcoded credentials or API keys in source code</li>
+        <li>No PII stored in application logs</li>
+        <li>Compliant with PH Data Privacy Act and / or TH PDPA (as applicable)</li>
+        <li>Reviewed by at least one person who is not the builder</li>
+        <li>DevOps infrastructure confirmed — GitHub repo, hosting platform, database</li>
+        <li>IS / Execom approval on record</li>
+        <li>Release Manager has reviewed and signed off in Grove</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── ROLES ── -->
+  <div class="section" id="roles">
+    <div class="section-header">
+      <span class="section-icon">👥</span>
+      <div class="section-title">Roles in This Process</div>
+    </div>
+
+    <div class="grid-2">
+
+      <div class="role-card" style="background:var(--green-50);border-color:var(--green-200);">
+        <div style="font-size:20px;margin-bottom:6px;">🌿</div>
+        <div class="role-name" style="color:var(--green-600);">Gardener</div>
+        <div class="role-who">Any Sprout employee who owns or builds an AI project</div>
+        <div class="role-item"><span class="role-check" style="color:var(--green-600);">✓</span> Registers the project in Grove</div>
+        <div class="role-item"><span class="role-check" style="color:var(--green-600);">✓</span> Completes security &amp; tier classification</div>
+        <div class="role-item"><span class="role-check" style="color:var(--green-600);">✓</span> Submits for release review</div>
+        <div class="role-item"><span class="role-check" style="color:var(--green-600);">✓</span> Advances stages after approval</div>
+        <div class="role-item"><span class="role-check" style="color:var(--green-600);">✓</span> Edits and manages their own projects only</div>
+      </div>
+
+      <div class="role-card" style="background:var(--orange-100);border-color:var(--orange-500);">
+        <div style="font-size:20px;margin-bottom:6px;">🔧</div>
+        <div class="role-name" style="color:var(--orange-600);">Groundskeeper</div>
+        <div class="role-who">Raffy, Coleen, Nikki, Blaise — Project Support &amp; DevOps</div>
+        <div class="role-item"><span class="role-check" style="color:var(--orange-600);">✓</span> Receives Jira tickets for go-live support &amp; deployment</div>
+        <div class="role-item"><span class="role-check" style="color:var(--orange-600);">✓</span> Configures hosting on Sprout Vercel or Azure for Tier 2 &amp; 3</div>
+        <div class="role-item"><span class="role-check" style="color:var(--orange-600);">✓</span> Works with the builder on infrastructure &amp; tooling setup</div>
+        <div class="role-item"><span class="role-check" style="color:var(--orange-600);">✓</span> IS / Execom approval must be secured before tickets are raised for them</div>
+      </div>
+
+      <div class="role-card" style="background:var(--purple-50);border-color:var(--purple-400);">
+        <div style="font-size:20px;margin-bottom:6px;">🔍</div>
+        <div class="role-name" style="color:var(--purple-500);">Release Manager</div>
+        <div class="role-who">Belle Asis, Diane Litan</div>
+        <div class="role-item"><span class="role-check" style="color:var(--purple-500);">✓</span> Reviews Tier 2 &amp; 3 projects before stage advancement</div>
+        <div class="role-item"><span class="role-check" style="color:var(--purple-500);">✓</span> Approves or rejects release review submissions</div>
+        <div class="role-item"><span class="role-check" style="color:var(--purple-500);">✓</span> Monitors the governance dashboard &amp; review queue</div>
+        <div class="role-item"><span class="role-check" style="color:var(--purple-500);">✓</span> Manages periodic audits of all Thriving projects</div>
+      </div>
+
+      <div class="role-card" style="background:var(--blue-100);border-color:var(--blue-400);">
+        <div style="font-size:20px;margin-bottom:6px;">🔐</div>
+        <div class="role-name" style="color:var(--blue-500);">Admin</div>
+        <div class="role-who">Belle Asis, Diane Litan — system-level access</div>
+        <div class="role-item"><span class="role-check" style="color:var(--blue-500);">✓</span> All Release Manager actions</div>
+        <div class="role-item"><span class="role-check" style="color:var(--blue-500);">✓</span> Edit any project or seed</div>
+        <div class="role-item"><span class="role-check" style="color:var(--blue-500);">✓</span> Skip stages in any direction, bypass gates</div>
+        <div class="role-item"><span class="role-check" style="color:var(--blue-500);">✓</span> Delete records and moderate Grove</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── QUICK REFERENCE ── -->
+  <div class="section" id="quick-reference">
+    <div class="section-header">
+      <span class="section-icon">⚡</span>
+      <div class="section-title">Quick Reference</div>
+    </div>
+
+    <div class="card" style="overflow:auto;">
+      <table class="ref-table">
+        <thead>
+          <tr>
+            <th style="min-width:180px;">Scenario</th>
+            <th style="min-width:280px;">What the builder does</th>
+            <th style="min-width:220px;">What the RM does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>New tool, Tier 1</strong></td>
+            <td>Register → Classify → Advance freely</td>
+            <td>No action required</td>
+          </tr>
+          <tr>
+            <td><strong>New tool, Tier 2</strong></td>
+            <td>Register → Classify → Submit for review → Wait for approval → Advance</td>
+            <td>Review at Growing→Blooming and Blooming→Thriving</td>
+          </tr>
+          <tr>
+            <td><strong>New tool, Tier 3</strong></td>
+            <td>Register → Classify → Submit for review → DevOps ticket raised → Compliance checklist → Advance</td>
+            <td>Full sign-off at every gate + Jira ticket tracking</td>
+          </tr>
+          <tr>
+            <td><strong>Existing tool not yet in Grove</strong></td>
+            <td>Register immediately at the correct current stage</td>
+            <td>Review retroactively if Tier 2 or 3</td>
+          </tr>
+          <tr>
+            <td><strong>Tier escalation (data scope increased)</strong></td>
+            <td>Update classification in Technical tab → Re-submit for review</td>
+            <td>Re-review triggered automatically</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mush-500);margin-bottom:12px;">Monitoring schedule</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--mush-100);">
+            <th style="padding:8px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:1px solid var(--mush-200);">Activity</th>
+            <th style="padding:8px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:1px solid var(--mush-200);">Frequency</th>
+            <th style="padding:8px 12px;text-align:left;color:var(--mush-600);font-weight:700;border-bottom:1px solid var(--mush-200);">Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-700);">Review pending projects in the queue</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Weekly</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Release Manager</td></tr>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-700);">Audit unclassified projects (no tier assigned)</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Bi-weekly</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Release Manager</td></tr>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-700);">Re-review all Thriving projects</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Every 6 months</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Release Manager</td></tr>
+          <tr><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-700);">Check for tools built outside Grove</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Monthly</td><td style="padding:9px 12px;border-bottom:1px solid var(--mush-100);color:var(--mush-600);">Release Manager + Team Leads</td></tr>
+          <tr><td style="padding:9px 12px;color:var(--mush-700);">Review Tier 3 projects accessing internal DBs</td><td style="padding:9px 12px;color:var(--mush-600);">Quarterly</td><td style="padding:9px 12px;color:var(--mush-600);">Release Manager + IT Security</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div style="font-size:20px;margin-bottom:8px;">🌿</div>
+  <div style="font-weight:700;color:#fff;margin-bottom:6px;">Grove — Sprout AI Project Tracker</div>
+  <div>Philippines &amp; Thailand · grove.sprout.solutions</div>
+  <div style="margin-top:8px;opacity:.7;">Release Managers: Belle Asis, Diane Litan · Updated June 2026</div>
+  <div style="margin-top:6px;opacity:.6;font-size:11px;">This is an internal reference guide. For questions, contact the Release Manager or log into Grove directly.</div>
+</footer>
+
+</body>
+</html>
