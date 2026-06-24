@@ -3895,16 +3895,14 @@ const ProjectDetailPage = ({
 
   // Classification edit state
   const projArr = v => Array.isArray(v) ? v : (v && v !== '' ? [v] : []);
+  const SPROUT_SYSTEMS = ['Sprout HR', 'Sprout Payroll'];
   const [cHasBackend,       setCHasBackend]       = useState(project.hasBackend       ?? null);
   const [cTargetUsers,      setCTargetUsers]      = useState(project.targetUsers      ?? null);
-  const [cHasVersionCtrl,   setCHasVersionCtrl]   = useState(project.githubRepo ? true : null);
   const [cRepoUrl,          setCRepoUrl]          = useState(project.githubRepo       || '');
   const [cHostingPlatform,  setCHostingPlatform]  = useState(projArr(project.hosting));
-  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth     ?? null);
   const [cAuthType,         setCAuthType]         = useState(projArr(project.authType));
-  const [cHasDatabase,      setCHasDatabase]      = useState(project.hasDatabase      ?? null);
   const [cDbPlatform,       setCDbPlatform]       = useState(projArr(project.database));
-  const [cConnectsSproutDb, setCConnectsSproutDb] = useState(project.connectsSproutDb ?? null);
+  const [cSproutDbDetails,  setCSpfroutDbDetails] = useState(project.sproutDbDetails  || '');
   const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
   const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
@@ -3967,19 +3965,16 @@ const ProjectDetailPage = ({
   useEffect(() => {
     setCHasBackend(project.hasBackend           ?? null);
     setCTargetUsers(project.targetUsers          ?? null);
-    setCHasVersionCtrl(project.githubRepo ? true : null);
     setCRepoUrl(project.githubRepo              || '');
     setCHostingPlatform(projArr(project.hosting));
-    setCRequiresAuth(project.requiresAuth       ?? null);
     setCAuthType(projArr(project.authType));
-    setCHasDatabase(project.hasDatabase         ?? null);
     setCDbPlatform(projArr(project.database));
-    setCConnectsSproutDb(project.connectsSproutDb ?? null);
+    setCSpfroutDbDetails(project.sproutDbDetails || '');
     setCDataSensitivity(project.dataSensitivity || '');
     setCendsToExtAI(project.sendsToExternalAI   ?? null);
   }, [project.id, project.hasBackend, project.targetUsers,
-      project.githubRepo, project.hosting, project.requiresAuth, project.authType,
-      project.hasDatabase, project.database, project.connectsSproutDb,
+      project.githubRepo, project.hosting, project.authType,
+      project.database, project.sproutDbDetails,
       project.dataSensitivity, project.sendsToExternalAI]);
 
   const computedTier =
@@ -3991,20 +3986,17 @@ const ProjectDetailPage = ({
   const SENSITIVE_LEVELS = ['Sensitive (PII, HR, payroll)', 'Highly sensitive (health, financial)'];
   const securityFlags = {
     aiDataRisk: cSendsToExtAI === true && SENSITIVE_LEVELS.includes(cDataSensitivity),
-    noAuthRisk: cTargetUsers !== 'internal' && cRequiresAuth === false && cRequiresAuth !== null,
+    noAuthRisk: cTargetUsers !== 'internal' && cAuthType.length === 0,
   };
 
   const classIsDirty =
     cHasBackend      !== (project.hasBackend       ?? null)
     || cTargetUsers  !== (project.targetUsers      ?? null)
-    || cHasVersionCtrl !== (project.githubRepo ? true : null)
     || cRepoUrl      !== (project.githubRepo       || '')
     || cHostingPlatform.join('|') !== projArr(project.hosting).join('|')
-    || cRequiresAuth !== (project.requiresAuth     ?? null)
     || cAuthType.join('|')        !== projArr(project.authType).join('|')
-    || cHasDatabase  !== (project.hasDatabase      ?? null)
     || cDbPlatform.join('|')      !== projArr(project.database).join('|')
-    || cConnectsSproutDb !== (project.connectsSproutDb ?? null)
+    || cSproutDbDetails !== (project.sproutDbDetails || '')
     || cDataSensitivity !== (project.dataSensitivity || '')
     || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
 
@@ -4014,13 +4006,15 @@ const ProjectDetailPage = ({
   const handleClassSave = async () => {
     if (!canEdit) return;
     setClassSaving(true);
+    const connectsSprout = SPROUT_SYSTEMS.some(s => cDbPlatform.includes(s));
     await onSaveClassification?.(project.id, {
       hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
-      githubRepo: cHasVersionCtrl ? cRepoUrl : '',
+      githubRepo: cRepoUrl,
       hosting: cHostingPlatform,
-      requiresAuth: cRequiresAuth, authType: cAuthType,
-      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : [],
-      connectsSproutDb: cConnectsSproutDb,
+      requiresAuth: cAuthType.length > 0, authType: cAuthType,
+      hasDatabase: cDbPlatform.length > 0, database: cDbPlatform,
+      connectsSproutDb: connectsSprout,
+      sproutDbDetails: connectsSprout ? cSproutDbDetails : '',
       dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
       hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
     });
@@ -4345,70 +4339,56 @@ const ProjectDetailPage = ({
                             {/* Version control — all tiers */}
                             <div>
                               <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Does this project have a code repository?</div>
-                              <YesNo value={cHasVersionCtrl}
-                                onYes={()=>setCHasVersionCtrl(true)}
-                                onNo={()=>{setCHasVersionCtrl(false);setCRepoUrl('');}}
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Repository URL, if the code is in GitHub or a similar platform (optional)</div>
+                              <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                                placeholder="github.com/org/repo"
+                                style={inputStyle}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
                               />
-                              {cHasVersionCtrl===true&&(
-                                <div style={{marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200}}>
-                                  <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
-                                    placeholder="github.com/org/repo" style={inputStyle}
-                                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                                  />
-                                </div>
-                              )}
                             </div>
 
                             {/* Auth — T2/T3 */}
                             {computedTier>=2&&(
                               <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user authentication?</div>
-                                <YesNo value={cRequiresAuth}
-                                  onYes={()=>setCRequiresAuth(true)}
-                                  onNo={()=>{setCRequiresAuth(false);setCAuthType([]);}}
+                                <MultiSelect
+                                  label="User authentication"
+                                  optional
+                                  opts={["Sprout SSO / Google","Email + password","API key","Other"]}
+                                  value={cAuthType}
+                                  onChange={v=>setCAuthType(v)}
+                                  placeholder="Search auth types…"
+                                  palette="green"
                                 />
-                                {cRequiresAuth===true&&(
-                                  <div style={subBlock}>
-                                    <MultiSelect
-                                      label="Auth type" optional
-                                      opts={["Sprout SSO / Google","Email + password","API key","Other"]}
-                                      value={cAuthType}
-                                      onChange={v=>setCAuthType(v)}
-                                      placeholder="Search auth types…"
-                                      palette="green"
-                                    />
-                                  </div>
-                                )}
+                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>How users log in, if the project requires authentication (leave blank if none)</div>
                               </div>
                             )}
 
                             {/* Database — T2/T3 */}
                             {computedTier>=2&&(
                               <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project use a database?</div>
-                                <YesNo value={cHasDatabase}
-                                  onYes={()=>setCHasDatabase(true)}
-                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform([]);setCConnectsSproutDb(null);}}
+                                <MultiSelect
+                                  label="Database &amp; data sources"
+                                  optional
+                                  opts={DB_AND_SOURCES}
+                                  value={cDbPlatform}
+                                  onChange={v=>setCDbPlatform(v)}
+                                  placeholder="Search databases &amp; data sources…"
+                                  palette="blue"
                                 />
-                                {cHasDatabase===true&&(
-                                  <div style={subBlock}>
-                                    <MultiSelect
-                                      label="Database platform &amp; data sources" optional
-                                      opts={DB_AND_SOURCES}
-                                      value={cDbPlatform}
-                                      onChange={v=>setCDbPlatform(v)}
-                                      placeholder="Search databases &amp; data sources…"
-                                      palette="blue"
+                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>Database platform(s) and any Sprout systems this project reads from (leave blank if none)</div>
+                                {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
+                                  <div style={{marginTop:10}}>
+                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
+                                    <textarea
+                                      value={cSproutDbDetails}
+                                      onChange={e=>setCSpfroutDbDetails(e.target.value)}
+                                      placeholder="e.g. Employee list from Sprout HR to pre-populate user profiles"
+                                      rows={3}
+                                      style={{...inputStyle,resize:"vertical",minHeight:64}}
+                                      onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                      onBlur={e=>e.target.style.borderColor=C.mushroom300}
                                     />
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it connect to or pull from the Sprout DB?</div>
-                                      <YesNo value={cConnectsSproutDb}
-                                        onYes={()=>setCConnectsSproutDb(true)}
-                                        onNo={()=>setCConnectsSproutDb(false)}
-                                      />
-                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -4458,11 +4438,10 @@ const ProjectDetailPage = ({
                         <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
                           <button onClick={()=>{
                             setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                            setCHasVersionCtrl(project.githubRepo?true:null);
                             setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
-                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(projArr(project.authType));
-                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(projArr(project.database));
-                            setCConnectsSproutDb(project.connectsSproutDb??null);
+                            setCAuthType(projArr(project.authType));
+                            setCDbPlatform(projArr(project.database));
+                            setCSpfroutDbDetails(project.sproutDbDetails||'');
                             setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
                           }}
                             style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
@@ -8910,7 +8889,7 @@ export default function SproutAIGarden() {
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
   };
 
-  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
+  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
@@ -8920,13 +8899,14 @@ export default function SproutAIGarden() {
       github_repo: githubRepo, hosting,
       requires_auth: requiresAuth, auth_type: authType,
       has_database: hasDatabase, database, connects_sprout_db: connectsSproutDb,
+      sprout_db_details: sproutDbDetails || null,
       data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
       has_sensitive_data: hasSensitiveData,
     }).eq("id", projectId);
     if (error) { console.error("saveClassification:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
       ? {...p, hasBackend, targetUsers, tier, githubRepo, hosting,
-              requiresAuth, authType, hasDatabase, database, connectsSproutDb,
+              requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails,
               dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p
     ));

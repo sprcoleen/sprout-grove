@@ -62,6 +62,7 @@ export const toProject = (row) => ({
   connectsSproutDb:    row.connects_sprout_db   ?? null,
   authType:            Array.isArray(row.auth_type) ? row.auth_type : (row.auth_type ? [row.auth_type] : []),
   dataSensitivity:     row.data_sensitivity     || '',
+  sproutDbDetails:     row.sprout_db_details   || '',
   releaseReviewStatus:  row.release_review_status  || null,
   releaseReviewComment: row.release_review_comment || null,
   releaseReviewedBy:    row.release_reviewed_by    || null,
