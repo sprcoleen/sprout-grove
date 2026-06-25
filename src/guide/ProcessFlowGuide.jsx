@@ -35,7 +35,9 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     const el = refs[key]?.current;
     const container = scrollContainerRef.current;
     if (!el || !container) return;
-    const offset = el.offsetTop - container.offsetTop - 24;
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const offset = elRect.top - containerRect.top + container.scrollTop - 24;
     container.scrollTo({ top: offset, behavior: "smooth" });
   };
 
