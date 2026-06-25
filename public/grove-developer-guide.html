@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grove Developer Guide — Sprout</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Rubik',system-ui,sans-serif;background:#fafaf8;color:#201e18;font-size:13px;}
+.page{max-width:860px;margin:0 auto;padding:0 0 60px;}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#165216 0%,#2d8c2d 100%);padding:36px 48px 32px;color:#fff;}
+.hero-eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1px;opacity:.75;margin-bottom:8px;}
+.hero-title{font-size:26px;font-weight:800;line-height:1.15;margin-bottom:8px;}
+.hero-sub{font-size:14px;opacity:.88;line-height:1.7;max-width:600px;margin-bottom:18px;}
+.hero-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.hero-tag{font-size:11px;font-weight:600;padding:3px 12px;border-radius:9999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;}
+
+/* Section heading */
+.page-section{padding:32px 48px;}
+.sec-h{font-size:20px;font-weight:800;color:#201e18;margin-bottom:16px;padding-bottom:8px;border-bottom:1.5px solid #e4e2da;}
+.sec-h2{font-size:15px;font-weight:700;color:#201e18;margin:20px 0 10px;}
+.divider{height:.5px;background:#e4e2da;margin:24px 0;}
+
+/* Cards */
+.card-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.card-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.card{background:#fff;border:1px solid #e4e2da;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.card-title{font-size:13px;font-weight:700;color:#201e18;margin-bottom:5px;}
+.card-body{font-size:12px;color:#736f5e;line-height:1.65;}
+
+/* Steps */
+.step{display:flex;gap:14px;align-items:flex-start;margin-bottom:10px;}
+.step-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;margin-top:2px;}
+.step-body{flex:1;border-radius:14px;padding:13px 16px;}
+.step-title{font-size:13px;font-weight:700;color:#201e18;margin-bottom:4px;}
+.step-text{font-size:12px;color:#736f5e;line-height:1.6;}
+
+/* Alerts */
+.alert{border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.55;}
+.alert-title{font-weight:700;margin-bottom:3px;}
+.alert-green{background:#f0faf0;border:.5px solid #aadcaa;color:#1f6e1f;}
+.alert-blue{background:#ebf8ff;border:.5px solid #63b3ed;color:#2c5282;}
+.alert-orange{background:#feebc8;border:.5px solid #dd6b20;color:#7b341e;}
+.alert-amber{background:#fefcbf;border:.5px solid #d69e2e;color:#744210;}
+.alert-teal{background:#e6fffa;border:.5px solid #38b2ac;color:#2c7a7b;}
+
+/* Tier boxes */
+.tier-box{border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.tier-box-1{background:#f2f1ed;border:1px solid #ccc9bc;}
+.tier-box-2{background:#ebf8ff;border:1px solid #63b3ed;}
+.tier-box-3{background:#feebc8;border:1px solid #dd6b20;}
+
+/* Matrix */
+.matrix{border-radius:14px;overflow:hidden;border:1px solid #e4e2da;margin-bottom:16px;}
+.matrix table{width:100%;border-collapse:collapse;font-size:12px;}
+.matrix th{padding:9px 12px;text-align:left;font-weight:700;color:#928e7c;background:#f2f1ed;border-bottom:2px solid #e4e2da;font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+.matrix td{padding:9px 12px;color:#736f5e;border-bottom:.5px solid #f2f1ed;}
+.matrix tr:last-child td{border-bottom:none;}
+.matrix tr:nth-child(even) td{background:#fafaf8;}
+.pill{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 9px;border-radius:9999px;border:1px solid;white-space:nowrap;}
+.pill-gray{background:#f2f1ed;border-color:#ccc9bc;color:#565244;}
+.pill-blue{background:#ebf8ff;border-color:#63b3ed;color:#2c5282;}
+.pill-orange{background:#feebc8;border-color:#dd6b20;color:#7b341e;}
+.pill-green{background:#f0faf0;border-color:#aadcaa;color:#1f6e1f;}
+
+/* Stage pipeline */
+.stage-pipeline{display:flex;align-items:stretch;margin-bottom:12px;gap:0;}
+.stage-box{flex:1;padding:14px;display:flex;flex-direction:column;}
+.stage-dot{width:8px;height:8px;border-radius:50%;margin-bottom:6px;}
+.stage-label{font-size:12px;font-weight:700;margin-bottom:2px;}
+.stage-sub{font-size:9px;margin-bottom:6px;}
+.stage-note{font-size:10px;line-height:1.5;}
+.stage-arrow{display:flex;align-items:center;padding:0 4px;background:#f2f1ed;color:#b0ac9c;font-size:16px;}
+
+/* Quick path */
+.quickpath{background:#f0faf0;border:1px solid #aadcaa;border-radius:14px;padding:16px 20px;margin-bottom:20px;}
+.quickpath-steps{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.qp-step{display:flex;align-items:center;gap:5px;font-size:12px;color:#1f6e1f;}
+.qp-num{width:18px;height:18px;border-radius:50%;background:#2d8c2d;color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qp-arrow{color:#aadcaa;font-size:14px;}
+
+/* Reviewer cards */
+.reviewer-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-bottom:7px;}
+.reviewer-name{font-size:13px;font-weight:700;color:#201e18;margin-bottom:2px;}
+.reviewer-role{font-size:11px;color:#b0ac9c;font-style:italic;margin-bottom:8px;}
+.reviewer-li{font-size:11px;color:#736f5e;display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;line-height:1.4;}
+.reviewer-li::before{content:"→";color:#b0ac9c;flex-shrink:0;}
+.section-label{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.section-label-line{flex:1;height:.5px;background:#e4e2da;}
+.section-label-text{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#b0ac9c;}
+
+/* Checklist */
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid #e4e2da;border-radius:10px;background:#fff;margin-bottom:7px;}
+.check-box{width:15px;height:15px;border:1.5px solid #ccc9bc;border-radius:4px;flex-shrink:0;margin-top:1px;}
+.check-label{font-size:12px;color:#3a372e;line-height:1.5;}
+.check-sub{font-size:11px;color:#928e7c;margin-top:2px;}
+
+/* Tips */
+.tip-card{background:#fff;border:1px solid #e4e2da;border-radius:14px;padding:14px;break-inside:avoid;}
+.tip-num{font-size:10px;font-weight:700;color:#b0ac9c;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em;}
+.tip-title{font-size:13px;font-weight:700;color:#201e18;margin-bottom:5px;}
+.tip-body{font-size:12px;color:#736f5e;line-height:1.6;}
+
+/* Tables */
+table.std{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
+table.std th{padding:9px 12px;text-align:left;font-weight:700;color:#928e7c;background:#f2f1ed;border-bottom:2px solid #e4e2da;font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+table.std td{padding:9px 12px;color:#736f5e;border-bottom:.5px solid #f2f1ed;}
+table.std tr:nth-child(even) td{background:#fafaf8;}
+
+/* Print */
+@media print{
+  body{background:#fff;}
+  .page{max-width:100%;}
+  .page-section{padding:20px 32px;}
+  .hero{padding:24px 32px;}
+  h2.sec-h{page-break-before:always;}
+  h2.sec-h:first-child{page-break-before:avoid;}
+  .no-break{page-break-inside:avoid;}
+}
+
+/* Bullet lists */
+.bl{list-style:none;display:flex;flex-direction:column;gap:4px;}
+.bl li{font-size:12px;color:#736f5e;display:flex;gap:6px;align-items:flex-start;line-height:1.4;}
+.bl li::before{content:"·";color:#b0ac9c;font-size:16px;line-height:.9;flex-shrink:0;}
+
+/* Footer */
+.footer{text-align:center;padding:24px 0 8px;font-size:12px;color:#b0ac9c;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Grove · Developer Guide</div>
+  <div class="hero-title">Build it right, ship it safely</div>
+  <div class="hero-sub">Everything you need to know before, during, and after building an AI or internal tool at Sprout — from first idea to go-live in Grove.</div>
+  <div class="hero-tags">
+    <span class="hero-tag">Philippines &amp; Thailand</span>
+    <span class="hero-tag">June 2026</span>
+    <span class="hero-tag">All tiers</span>
+  </div>
+</div>
+
+<!-- ── SECTION 1: OVERVIEW ─────────────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">1. Overview</h2>
+
+  <div class="card-grid-3">
+    <div class="card"><div class="card-title">Capture ideas</div><div class="card-body">Submit seed ideas to the Wishlist. Teammates upvote the ones they want built.</div></div>
+    <div class="card"><div class="card-title">Track projects</div><div class="card-body">Document AI initiatives as they're being built — stage, tools used, who's building.</div></div>
+    <div class="card"><div class="card-title">Stay safe</div><div class="card-body">Classify by tier so DevOps, IS, and leadership know when to review before you ship.</div></div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Project Stages</h3>
+  <p style="font-size:12px;color:#736f5e;line-height:1.6;margin-bottom:14px;">Every project in Grove moves through four stages as it matures from an idea to a live product.</p>
+
+  <div class="stage-pipeline no-break">
+    <div class="stage-box" style="background:#f0faf0;border:1.5px solid #aadcaa;border-radius:14px 0 0 14px;">
+      <div class="stage-dot" style="background:#2d8c2d;"></div>
+      <div class="stage-label" style="color:#1f6e1f;">Sprout</div>
+      <div class="stage-sub" style="color:#2d8c2d;">Early idea</div>
+      <div class="stage-note" style="color:#1f6e1f;opacity:.8;">Register your project and begin classifying.</div>
+    </div>
+    <div class="stage-arrow">›</div>
+    <div class="stage-box" style="background:#fefcbf;border:1.5px solid #d69e2e;border-radius:0;">
+      <div class="stage-dot" style="background:#b7791f;"></div>
+      <div class="stage-label" style="color:#744210;">Growing</div>
+      <div class="stage-sub" style="color:#b7791f;">In development</div>
+      <div class="stage-note" style="color:#744210;opacity:.8;">Actively being built. IS/Execom approval required here.</div>
+    </div>
+    <div class="stage-arrow">›</div>
+    <div class="stage-box" style="background:#feebc8;border:1.5px solid #dd6b20;border-radius:0;">
+      <div class="stage-dot" style="background:#c05621;"></div>
+      <div class="stage-label" style="color:#7b341e;">Blooming</div>
+      <div class="stage-sub" style="color:#c05621;">Live &amp; used</div>
+      <div class="stage-note" style="color:#7b341e;opacity:.8;">Live and being used. Tier 2 &amp; 3 need RM review to reach this.</div>
+    </div>
+    <div class="stage-arrow">›</div>
+    <div class="stage-box" style="background:#ebf8ff;border:1.5px solid #63b3ed;border-radius:0 14px 14px 0;">
+      <div class="stage-dot" style="background:#3182ce;"></div>
+      <div class="stage-label" style="color:#2c5282;">Thriving</div>
+      <div class="stage-sub" style="color:#3182ce;">Fully deployed</div>
+      <div class="stage-note" style="color:#2c5282;opacity:.8;">Full Sprout portfolio product. Highest standard for Tier 3.</div>
+    </div>
+  </div>
+
+  <div style="padding:10px 14px;background:#f2f1ed;border-radius:10px;font-size:12px;color:#736f5e;margin-bottom:20px;">
+    Stage changes move <strong>one step at a time</strong> for builders. Tier 2 and 3 projects require a release review gate before Blooming and Thriving. Admins can skip stages in any direction.
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Quick path to go-live</h3>
+  <div class="quickpath">
+    <div class="quickpath-steps">
+      <div class="qp-step"><span class="qp-num">1</span>Classify</div>
+      <span class="qp-arrow">›</span>
+      <div class="qp-step"><span class="qp-num">2</span>Register in Grove</div>
+      <span class="qp-arrow">›</span>
+      <div class="qp-step"><span class="qp-num">3</span>Build &amp; fill Technical tab</div>
+      <span class="qp-arrow">›</span>
+      <div class="qp-step"><span class="qp-num">4</span>Secure IS/Execom approval</div>
+      <span class="qp-arrow">›</span>
+      <div class="qp-step"><span class="qp-num">5</span>Release review (Tier 2/3)</div>
+      <span class="qp-arrow">›</span>
+      <div class="qp-step"><span class="qp-num">6</span>Go live</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 2: GETTING STARTED ──────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">2. Getting Started</h2>
+
+  <div class="step no-break">
+    <div class="step-num" style="background:#f0faf0;border:2px solid #aadcaa;color:#2d8c2d;">1</div>
+    <div class="step-body" style="background:#f0faf0;border:1px solid #aadcaa;">
+      <div class="step-title">Classify before you build</div>
+      <div class="step-text">One question determines your tier: does the app have a backend? No backend = Tier 1, regardless of who uses it. Backend + internal only = Tier 2. Backend + external or mixed = Tier 3.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#faf5ff;border:2px solid #c4b5fd;color:#805ad5;">2</div>
+    <div class="step-body" style="background:#faf5ff;border:1px solid #c4b5fd;">
+      <div class="step-title">Register in Grove early</div>
+      <div class="step-text">Add your project as soon as the idea is real. Log in at grove.sprout.solutions → click <strong>Add Plant</strong>. Fill in the name, description, problem space, tools, and data sources.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#ebf8ff;border:2px solid #63b3ed;color:#3182ce;">3</div>
+    <div class="step-body" style="background:#ebf8ff;border:1px solid #63b3ed;">
+      <div class="step-title">Fill in the Technical tab</div>
+      <div class="step-text">Answer the classification questions to lock in your tier. Then complete the per-tier checklist (hosting, auth, database, repo). Mandatory before any stage change.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#e6fffa;border:2px solid #38b2ac;color:#2c7a7b;">4</div>
+    <div class="step-body" style="background:#e6fffa;border:1px solid #38b2ac;">
+      <div class="step-title">Declare your approver &amp; secure IS/Execom sign-off</div>
+      <div class="step-text">Every project needs a named approver — your IS contact or an Execom member. Record the name and email in the Overview tab. Optional at Sprout — mandatory before advancing to Blooming.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#feebc8;border:2px solid #dd6b20;color:#c05621;">5</div>
+    <div class="step-body" style="background:#feebc8;border:1px solid #dd6b20;">
+      <div class="step-title">Submit for release review (Tier 2 &amp; 3)</div>
+      <div class="step-text">When ready to go live, click <strong>Submit for Release Review</strong>. Belle Asis reviews your classification, data sources, and tech stack. Tier 3 gets a Jira DevOps ticket. Wait for approval before advancing.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#f0faf0;border:2px solid #aadcaa;color:#2d8c2d;">6</div>
+    <div class="step-body" style="background:#f0faf0;border:1px solid #aadcaa;">
+      <div class="step-title">Move stages &amp; go live</div>
+      <div class="step-text">Advance one stage at a time — Sprout → Growing → Blooming → Thriving. Click the stage card on your project overview. Blooming = live. Thriving = full Sprout portfolio product.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 3: CLASSIFY ─────────────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">3. Classify Your Project</h2>
+
+  <div class="card-grid-2">
+    <div class="card" style="border-color:#c4b5fd;background:#faf5ff;">
+      <div class="card-title" style="color:#805ad5;">Does it have a backend?</div>
+      <div class="card-body" style="margin-top:6px;">Any code running outside the browser — APIs, servers, data pipelines, scheduled jobs, databases. <strong>No backend = Tier 1, no matter who uses it.</strong></div>
+    </div>
+    <div class="card" style="border-color:#c4b5fd;background:#faf5ff;">
+      <div class="card-title" style="color:#805ad5;">Who uses it? (backend projects only)</div>
+      <div class="card-body" style="margin-top:6px;">Only relevant if the project has a backend. Internal = Sprout employees only → Tier 2. External or Both = clients, partners, public, or mixed → Tier 3.</div>
+    </div>
+  </div>
+
+  <h3 class="sec-h2">Tier Matrix</h3>
+  <div class="matrix no-break">
+    <table>
+      <tr><th>Backend?</th><th>Users</th><th>Label</th><th>Tier</th></tr>
+      <tr><td>No</td><td>Internal, External, or Both</td><td>Static / Markup</td><td><span class="pill pill-gray">Tier 1</span></td></tr>
+      <tr><td>Yes</td><td>Internal only</td><td>Internal App</td><td><span class="pill pill-blue">Tier 2</span></td></tr>
+      <tr><td>Yes</td><td>External or Both</td><td>External-Facing</td><td><span class="pill pill-orange">Tier 3</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card-grid-3">
+    <div class="tier-box tier-box-1">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#565244;margin-bottom:3px;">Tier 1</div>
+      <div style="font-size:13px;font-weight:700;color:#565244;margin-bottom:8px;">Static / Markup</div>
+      <ul class="bl"><li>No backend — any users</li><li>Prompt libraries, templates</li><li>Hosted on Markup by you</li><li>No infra migration needed</li></ul>
+    </div>
+    <div class="tier-box tier-box-2">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#2c5282;margin-bottom:3px;">Tier 2</div>
+      <div style="font-size:13px;font-weight:700;color:#2c5282;margin-bottom:8px;">Internal App</div>
+      <ul class="bl" style="color:#2c5282;"><li style="color:#2c5282;">Backend + internal users</li><li style="color:#2c5282;">HR/payroll tools, chatbots</li><li style="color:#2c5282;">Sprout Vercel or Azure at go-live</li><li style="color:#2c5282;">IS/Execom approval needed</li></ul>
+    </div>
+    <div class="tier-box tier-box-3">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#7b341e;margin-bottom:3px;">Tier 3</div>
+      <div style="font-size:13px;font-weight:700;color:#7b341e;margin-bottom:8px;">External-Facing</div>
+      <ul class="bl" style="color:#7b341e;"><li style="color:#7b341e;">Backend + external or both</li><li style="color:#7b341e;">Client portals, partner tools</li><li style="color:#7b341e;">Keycloak auth required</li><li style="color:#7b341e;">Full DevOps + RM review</li></ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Security Questions (Technical tab)</h3>
+  <p style="font-size:12px;color:#736f5e;line-height:1.6;margin-bottom:12px;">Answer all 5 questions before any stage change. YES to Q2 or Q4 auto-escalates to Tier 3.</p>
+  <div>
+    <div class="check-item no-break"><div style="width:22px;height:22px;border-radius:50%;background:#805ad5;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Q1</div><div><div class="check-label">Does this tool require user login / authentication?</div><div class="check-sub">If YES → access control layer needed</div></div></div>
+    <div class="check-item no-break" style="border-color:#dd6b20;"><div style="width:22px;height:22px;border-radius:50%;background:#dd6b20;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Q2</div><div><div class="check-label">Does it access external APIs or third-party services?</div><div class="check-sub" style="color:#c05621;font-weight:600;">If YES → data egress risk · auto-escalates to Tier 3</div></div></div>
+    <div class="check-item no-break"><div style="width:22px;height:22px;border-radius:50%;background:#805ad5;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Q3</div><div><div class="check-label">Does it handle or display sensitive employee/client data?</div><div class="check-sub">If YES → PDPA / Data Privacy Act compliance required</div></div></div>
+    <div class="check-item no-break" style="border-color:#dd6b20;"><div style="width:22px;height:22px;border-radius:50%;background:#dd6b20;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Q4</div><div><div class="check-label">Does it send data to an external AI service?</div><div class="check-sub" style="color:#c05621;font-weight:600;">If YES → data-sharing policy review required · auto-escalates to Tier 3</div></div></div>
+    <div class="check-item no-break"><div style="width:22px;height:22px;border-radius:50%;background:#805ad5;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Q5</div><div><div class="check-label">Does it store user inputs in a database?</div><div class="check-sub">If YES → data retention policy applies</div></div></div>
+  </div>
+</div>
+
+<!-- ── SECTION 4: DEV STANDARDS ────────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">4. Dev Standards</h2>
+
+  <h3 class="sec-h2">Authentication</h3>
+  <div class="alert alert-green no-break"><div class="alert-title">Tier 1 — no authentication required</div>No login or session management needed for static tools, regardless of who accesses them.</div>
+  <div class="alert alert-blue no-break"><div class="alert-title">Tier 2 — internal auth is sufficient</div>Sprout Google email is the standard for internal apps. No Keycloak required at this tier.</div>
+  <div class="alert alert-orange no-break"><div class="alert-title">Tier 3 — Keycloak is required</div>External-facing apps must use Keycloak. Coordinate with Coleen Bartido (DevOps) before setting up auth. Read the Keycloak setup guide first.</div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Database</h3>
+  <div class="card-grid-2">
+    <div class="card">
+      <div class="card-title" style="color:#1f6e1f;">✓ Preferred</div>
+      <ul class="bl" style="margin-top:8px;"><li>Supabase — preferred for most app databases</li><li>PostgreSQL / Azure SQL for complex needs</li><li>Move DB to Sprout ownership at go-live (Tier 2/3)</li><li>No credentials hardcoded in the repo</li></ul>
+    </div>
+    <div class="card" style="border-color:#dd6b20;">
+      <div class="card-title" style="color:#c05621;">✗ Avoid in production</div>
+      <ul class="bl" style="margin-top:8px;"><li>Airtable — not suitable for production</li><li>Google Sheets — fine for prototypes only</li><li>Personal Supabase / Firebase at go-live</li><li>Secrets stored in plain text / committed to git</li></ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Hosting</h3>
+  <div class="alert alert-green no-break"><div class="alert-title">Tier 1 — Markup</div>Upload directly to Markup. No deployment infrastructure required.</div>
+  <div class="alert alert-blue no-break">
+    <div class="alert-title">Tier 2 &amp; 3 — Personal repo is fine during development</div>
+    You can develop in your own personal repository. However, <strong>before going live</strong>, all assets — repository, hosting, database, configs, and secrets — must be transferred to the <strong>Company Repository</strong> (Sprout Vercel or Sprout Azure). Raise a DevOps ticket for Coleen Bartido once IS/Execom approval is in place.
+  </div>
+  <div style="background:#fff;border:1px solid #63b3ed;border-radius:10px;padding:10px 14px;display:flex;gap:10px;margin-bottom:20px;">
+    <span style="color:#b0ac9c;flex-shrink:0;">→</span>
+    <div style="font-size:12px;color:#736f5e;line-height:1.55;"><strong>Development</strong> — personal GitHub repo, personal Vercel, local DB: all fine.<br><strong>Go-live (Blooming)</strong> — everything must move to Sprout-owned accounts. IS/Execom approval must come <em>before</em> the DevOps ticket.</div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Who to Route To</h3>
+
+  <div class="section-label"><span class="pill pill-orange">Tier 3</span><span class="section-label-text">DevOps &amp; go-live support</span><div class="section-label-line"></div></div>
+  <div class="card-grid-2" style="margin-bottom:14px;">
+    <div class="card no-break">
+      <div class="reviewer-avatar" style="background:#EEEDFE;color:#534AB7;">BB</div>
+      <div class="reviewer-name">Blaise Brandon Solis Cosico</div>
+      <div class="reviewer-role">Python standards review</div>
+      <span class="pill pill-orange" style="margin-bottom:8px;display:inline-block;">Tier 3</span>
+      <div class="reviewer-li">Python app review before deploy</div>
+      <div class="reviewer-li">Run standard checklist first, then escalate</div>
+      <div class="reviewer-li">IS/Execom approval must be secured first</div>
+    </div>
+    <div class="card no-break">
+      <div class="reviewer-avatar" style="background:#E1F5EE;color:#0F6E56;">CB</div>
+      <div class="reviewer-name">Coleen Bartido</div>
+      <div class="reviewer-role">C# / .NET · DevOps &amp; deployment</div>
+      <span class="pill pill-orange" style="margin-bottom:8px;display:inline-block;">Tier 3</span>
+      <div class="reviewer-li">C# / .NET app review</div>
+      <div class="reviewer-li">Deployment &amp; environment migration</div>
+      <div class="reviewer-li">DevOps tickets — after IS/Execom approval only</div>
+      <div class="reviewer-li">Grove site feedback and improvement requests</div>
+    </div>
+  </div>
+
+  <div class="section-label"><span class="pill pill-blue">Tier 2</span><span class="section-label-text">Internal product sign-off</span><div class="section-label-line"></div></div>
+  <div class="card-grid-2" style="margin-bottom:14px;">
+    <div class="card no-break">
+      <div class="reviewer-avatar" style="background:#FAECE7;color:#993C1D;">RE</div>
+      <div class="reviewer-name">Raphael Enriquez</div>
+      <div class="reviewer-role">Internal product sign-off</div>
+      <span class="pill pill-blue" style="margin-bottom:8px;display:inline-block;">Tier 2</span>
+      <div class="reviewer-li">Internal product movement &amp; go-live sign-off</div>
+      <div class="reviewer-li">IS/Execom approval must be secured first</div>
+    </div>
+    <div class="card no-break">
+      <div class="reviewer-avatar" style="background:#FAECE7;color:#993C1D;">RQ</div>
+      <div class="reviewer-name">Remedios Monica Quitasol</div>
+      <div class="reviewer-role">Internal product sign-off</div>
+      <span class="pill pill-blue" style="margin-bottom:8px;display:inline-block;">Tier 2</span>
+      <div class="reviewer-li">Internal product movement &amp; go-live sign-off</div>
+      <div class="reviewer-li">IS/Execom approval must be secured first</div>
+    </div>
+  </div>
+
+  <div class="section-label"><span class="pill pill-green">Release Manager</span><span class="section-label-text">Grove oversight</span><div class="section-label-line"></div></div>
+  <div style="max-width:calc(50% - 5px);">
+    <div class="card no-break">
+      <div class="reviewer-avatar" style="background:#d6f0d6;color:#1f6e1f;">BA</div>
+      <div class="reviewer-name">Belle Asis</div>
+      <div class="reviewer-role">Release Manager</div>
+      <span class="pill pill-green" style="margin-bottom:8px;display:inline-block;">Release Manager</span>
+      <div class="reviewer-li">Manages release process</div>
+      <div class="reviewer-li">Grove site feedback and improvement requests</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Data Sensitivity</h3>
+  <table class="std no-break">
+    <tr><th>Level</th><th>Examples</th><th>Action required</th></tr>
+    <tr><td>None</td><td>Public content, anonymised summaries</td><td>No special handling</td></tr>
+    <tr><td>Internal (non-sensitive)</td><td>Meeting notes, process docs</td><td>Access control recommended</td></tr>
+    <tr><td>Sensitive (PII, HR, payroll)</td><td>Employee records, salary data</td><td>PDPA / Data Privacy Act compliance</td></tr>
+    <tr><td>Highly sensitive</td><td>Health, financial, legal data</td><td>DPO review + Legal sign-off required</td></tr>
+  </table>
+  <div class="alert alert-amber no-break"><div class="alert-title">Sensitive data + external AI</div>If your project sends sensitive or PII data to an external AI model — a DPO/privacy review is required before launch. Coordinate with Belle Asis.</div>
+</div>
+
+<!-- ── SECTION 5: REGISTER ─────────────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">5. Register in Grove</h2>
+
+  <div class="step no-break">
+    <div class="step-num" style="background:#f0faf0;border:2px solid #aadcaa;color:#2d8c2d;">1</div>
+    <div class="step-body" style="background:#f0faf0;border:1px solid #aadcaa;">
+      <div class="step-title">Log in to Grove</div>
+      <div class="step-text">Go to <strong>grove.sprout.solutions</strong>. Sign in with your Sprout Google account (<code>@sprout.ph</code> or <code>@sproutsolutions.io</code>). Your country is auto-set and cannot be changed.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#faf5ff;border:2px solid #c4b5fd;color:#805ad5;">2</div>
+    <div class="step-body" style="background:#faf5ff;border:1px solid #c4b5fd;">
+      <div class="step-title">Click "Add Plant"</div>
+      <div class="step-text">From the Garden view, click <strong>Add Plant</strong>. Fill in: project name, description, problem space, department, tools used, and data sources.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#ebf8ff;border:2px solid #63b3ed;color:#3182ce;">3</div>
+    <div class="step-body" style="background:#ebf8ff;border:1px solid #63b3ed;">
+      <div class="step-title">Complete the Technical tab</div>
+      <div class="step-text">Answer all 5 security questions — tier is computed automatically. Then fill the per-tier checklist that appears.</div>
+    </div>
+  </div>
+  <div class="step no-break">
+    <div class="step-num" style="background:#e6fffa;border:2px solid #38b2ac;color:#2c7a7b;">4</div>
+    <div class="step-body" style="background:#e6fffa;border:1px solid #38b2ac;">
+      <div class="step-title">Declare your approver</div>
+      <div class="step-text">In the <strong>Overview tab</strong>, find the <strong>Approver</strong> section. Enter the name and email of your IS contact or Execom member. Click <strong>Send Approval Request</strong>.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Per-Tier Checklist Fields</h3>
+  <div class="tier-box tier-box-1 no-break" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="pill pill-gray">Tier 1</span><span style="font-size:12px;font-weight:600;color:#565244;">Static / Markup</span></div>
+    <ul class="bl"><li>Live URL (optional)</li><li>Version control — repo URL if applicable</li></ul>
+  </div>
+  <div class="tier-box tier-box-2 no-break" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="pill pill-blue">Tier 2</span><span style="font-size:12px;font-weight:600;color:#2c5282;">Internal App</span></div>
+    <ul class="bl" style="color:#2c5282;"><li style="color:#2c5282;">Live URL</li><li style="color:#2c5282;">Hosting platform</li><li style="color:#2c5282;">Version control — repo URL if applicable</li><li style="color:#2c5282;">Authentication — type if yes</li><li style="color:#2c5282;">Database — platform + does it connect to Sprout DB?</li></ul>
+  </div>
+  <div class="tier-box tier-box-3 no-break">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="pill pill-orange">Tier 3</span><span style="font-size:12px;font-weight:600;color:#7b341e;">External-Facing</span></div>
+    <ul class="bl" style="color:#7b341e;"><li style="color:#7b341e;">Live URL</li><li style="color:#7b341e;">Hosting platform</li><li style="color:#7b341e;">Version control — repo URL if applicable</li><li style="color:#7b341e;">Authentication — Keycloak is required</li><li style="color:#7b341e;">Database — platform + connects to Sprout DB?</li><li style="color:#7b341e;">Data sensitivity level</li><li style="color:#7b341e;">Does it send data to an external AI model?</li></ul>
+  </div>
+  <div class="alert alert-amber no-break" style="margin-top:12px;"><div class="alert-title">Existing tools not yet in Grove</div>If your tool is already live and used by more than 3 people, register it in Grove immediately at the correct current stage. Belle Asis will review retroactively if Tier 2 or 3.</div>
+</div>
+
+<!-- ── SECTION 6: GO-LIVE & REVIEW ─────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">6. Go-Live &amp; Review</h2>
+
+  <h3 class="sec-h2">Stage Gates</h3>
+  <table class="std no-break">
+    <tr><th>Transition</th><th>Tier 1</th><th>Tier 2</th><th>Tier 3</th></tr>
+    <tr><td><strong>Growing → Blooming</strong></td><td style="color:#1f6e1f;">Free — no RM review</td><td>RM review required</td><td>Full RM sign-off required</td></tr>
+    <tr><td><strong>Blooming → Thriving</strong></td><td style="color:#1f6e1f;">No additional gate</td><td>RM final approval required</td><td>RM approval + compliance checklist</td></tr>
+  </table>
+  <div class="alert alert-teal no-break"><div class="alert-title">IS / Execom approval gate</div>Required before any ticket is raised for Blaise, Coleen, Raphael, or Remedios. Optional at Sprout — mandatory by Growing.</div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Submitting for Release Review (Tier 2 &amp; 3)</h3>
+  <div class="check-item no-break"><div class="check-box"></div><div><div class="check-label">Open your project page → find the Release Gate Banner</div></div></div>
+  <div class="check-item no-break"><div class="check-box"></div><div><div class="check-label">Click "Submit for Release Review"</div><div class="check-sub">Status changes to pending — Belle Asis is notified</div></div></div>
+  <div class="check-item no-break"><div class="check-box"></div><div><div class="check-label">For Tier 3: a Jira DevOps ticket is created automatically</div></div></div>
+  <div class="check-item no-break"><div class="check-box"></div><div><div class="check-label">Wait for RM outcome — banner updates in real time</div><div class="check-sub">Approved → stage button unlocked. Rejected → read comment, fix, resubmit.</div></div></div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Tier 3 Compliance Checklist (required before Thriving)</h3>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">Data Minimization — only collecting what is strictly necessary</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">Access Control — restricted to authorized users only</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">No hardcoded credentials or API keys in source code</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">No PII stored in application logs</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">Compliant with PH Data Privacy Act and/or TH PDPA</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">Reviewed by at least one person who is not the builder</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">DevOps infrastructure confirmed — GitHub repo, hosting, database</div></div>
+  <div class="check-item no-break" style="border-color:#dd6b20;"><div class="check-box" style="border-color:#dd6b20;"></div><div class="check-label">Release Manager (Belle Asis) has reviewed and signed off</div></div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Moving Assets to Sprout at Go-Live</h3>
+  <div class="alert alert-amber no-break"><div class="alert-title">Required for Tier 2 &amp; 3 before Blooming</div>Personal accounts are fine during development. Before going live, transfer the repository, hosting environment, database, configuration, and secrets to Sprout-owned accounts. Tier 1 apps are exempt.</div>
+</div>
+
+<!-- ── SECTION 7: TIPS ─────────────────────────────────────────────── -->
+<div class="page-section">
+  <h2 class="sec-h">7. Tips &amp; Gotchas</h2>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+    <div class="tip-card"><div class="tip-num">Tip 1</div><div class="tip-title">Classify before you build, not after</div><div class="tip-body">One question tells you most of what you need: does it have a backend? No backend = Tier 1, no matter who uses it. This saves rearchitecting later.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 2</div><div class="tip-title">Register early — stages are just a label</div><div class="tip-body">You don't need to finish building before registering. Add a plant as soon as the idea is real. It lets you track progress and start the approval clock early.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 3</div><div class="tip-title">Secure your approver during Sprout</div><div class="tip-body">IS/Execom approval is required before any DevOps ticket. If you wait until Growing, you might block yourself from Blooming. Get the approval early.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 4</div><div class="tip-title">Read the Keycloak guide before asking Coleen</div><div class="tip-body">There's an existing Keycloak setup guide. Work through it first. Coleen Bartido is available for escalations — not setup walkthroughs.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 5</div><div class="tip-title">Supabase for databases — not Airtable</div><div class="tip-body">Airtable and Sheets are fine for prototyping. For a production tool used by real users, use Supabase. It avoids a painful migration at go-live review.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 6</div><div class="tip-title">If it's used by 3+ people, it belongs in Grove</div><div class="tip-body">Any internal tool accessed by more than 3 people, or that connects to a company system, must be registered. Don't wait to be asked.</div></div>
+    <div class="tip-card"><div class="tip-num">Tip 7</div><div class="tip-title">A rejection is not the end</div><div class="tip-body">If your release review is rejected, read the comment carefully, fix the flagged issue, and resubmit. The review queue moves quickly once resolved.</div></div>
+  </div>
+
+  <div class="divider"></div>
+  <h3 class="sec-h2">Common Mistakes</h3>
+  <table class="std no-break">
+    <tr><th>Mistake</th><th>What to do instead</th></tr>
+    <tr><td>Waiting until launch to register in Grove</td><td>Register early — even when the idea is rough</td></tr>
+    <tr><td>Using Airtable or Sheets as a production DB</td><td>Switch to Supabase before go-live</td></tr>
+    <tr><td>Raising a DevOps ticket before IS/Execom approval</td><td>Get approval first, then raise the ticket</td></tr>
+    <tr><td>Hardcoding API keys or credentials</td><td>Use environment variables; never commit secrets</td></tr>
+    <tr><td>Building Tier 3 auth without Keycloak</td><td>Keycloak is mandatory for external-facing apps</td></tr>
+    <tr><td>Skipping the Technical tab classification</td><td>No stage changes are possible without a tier</td></tr>
+    <tr><td>Keeping the repo on personal accounts at go-live</td><td>Move all assets to Sprout-owned accounts before Blooming</td></tr>
+    <tr><td>Sending sensitive PII to an external AI without review</td><td>Check Q4; get DPO review if needed</td></tr>
+  </table>
+</div>
+
+<div class="footer">Grove Developer Guide · June 2026 · Questions? Reach out to Belle Asis.</div>
+
+</div>
+</body>
+</html>
