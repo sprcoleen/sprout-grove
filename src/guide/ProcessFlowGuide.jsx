@@ -1,9 +1,9 @@
 /**
  * src/guide/ProcessFlowGuide.jsx
- * Grove Developer Guide — single-page scrolling layout with sticky anchor nav.
+ * Grove Developer Guide — single-page layout with left sidebar nav.
  * Receives design-system tokens (C, FF, DS) as props from GuideView in App.jsx.
  */
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 
 export default function ProcessFlowGuide({ C, FF, DS }) {
   const PURPLE    = "#805ad5";
@@ -14,6 +14,9 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
   const TEAL_BD   = "#38b2ac";
   const BLUE_TEXT = "#2c5282";
   const OG_TEXT   = "#7b341e";
+
+  const [activeSection, setActiveSection] = useState("overview");
+  const scrollContainerRef = useRef(null);
 
   // ── Section refs for smooth scroll ────────────────────────────────────────
   const refs = {
@@ -26,17 +29,43 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
     tips:      useRef(null),
   };
 
-  const scrollTo = (key) =>
-    refs[key]?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const NAV_KEYS = ["overview","start","classify","standards","register","golive","tips"];
+
+  const scrollTo = (key) => {
+    const el = refs[key]?.current;
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    const offset = el.offsetTop - container.offsetTop - 24;
+    container.scrollTo({ top: offset, behavior: "smooth" });
+  };
+
+  const onScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const scrollTop = container.scrollTop + 80;
+    let current = "overview";
+    for (const key of NAV_KEYS) {
+      const el = refs[key]?.current;
+      if (el && el.offsetTop - container.offsetTop <= scrollTop) current = key;
+    }
+    setActiveSection(current);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
 
   const NAV = [
-    { key: "overview",  label: "Overview" },
-    { key: "start",     label: "Getting started" },
-    { key: "classify",  label: "Classify" },
-    { key: "standards", label: "Dev standards" },
-    { key: "register",  label: "Register" },
-    { key: "golive",    label: "Go-live & Review" },
-    { key: "tips",      label: "Tips & Gotchas" },
+    { key: "overview",  label: "Overview",         num: "1" },
+    { key: "start",     label: "Getting started",  num: "2" },
+    { key: "classify",  label: "Classify",         num: "3" },
+    { key: "standards", label: "Dev standards",    num: "4" },
+    { key: "register",  label: "Register",         num: "5" },
+    { key: "golive",    label: "Go-live & Review", num: "6" },
+    { key: "tips",      label: "Tips & Gotchas",   num: "7" },
   ];
 
   // ── Shared primitives ──────────────────────────────────────────────────────
@@ -188,27 +217,46 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
   );
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden" }}>
 
-      {/* ── Sticky anchor nav ───────────────────────────────────────────────── */}
-      <div style={{ background: C.white, borderBottom: "1px solid " + C.mushroom200,
-        padding: "0 48px", display: "flex", gap: 0, overflowX: "auto", flexShrink: 0,
-        position: "sticky", top: 0, zIndex: 10 }}>
-        {NAV.map(item => (
-          <button key={item.key} onClick={() => scrollTo(item.key)}
-            style={{ fontFamily: FF, fontSize: 12, fontWeight: 500, color: C.mushroom500,
-              background: "none", border: "none", borderBottom: "2.5px solid transparent",
-              padding: "11px 14px", cursor: "pointer", whiteSpace: "nowrap",
-              transition: "all 0.15s" }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.mushroom900; }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.mushroom500; }}>
-            {item.label}
-          </button>
-        ))}
+      {/* ── Left sidebar nav ────────────────────────────────────────────────── */}
+      <div style={{ width: 192, flexShrink: 0, background: C.white,
+        borderRight: "1px solid " + C.mushroom200, display: "flex", flexDirection: "column",
+        overflowY: "auto", padding: "24px 0 32px" }}>
+        <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.1em", color: C.mushroom400, padding: "0 20px", marginBottom: 12 }}>
+          On this page
+        </div>
+        {NAV.map(item => {
+          const isActive = activeSection === item.key;
+          return (
+            <button key={item.key} onClick={() => scrollTo(item.key)}
+              style={{ display: "flex", alignItems: "center", gap: 9, width: "100%",
+                background: isActive ? C.kangkong50 : "none",
+                border: "none", borderLeft: "3px solid " + (isActive ? C.kangkong500 : "transparent"),
+                padding: "8px 20px 8px 17px", cursor: "pointer", textAlign: "left",
+                transition: "all 0.15s" }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.mushroom50; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "none"; }}>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                background: isActive ? C.kangkong500 : C.mushroom200,
+                color: isActive ? C.white : C.mushroom500,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, fontWeight: 800, fontFamily: FF, transition: "all 0.15s" }}>
+                {item.num}
+              </div>
+              <span style={{ fontFamily: FF, fontSize: 12, fontWeight: isActive ? 700 : 500,
+                color: isActive ? C.kangkong700 : C.mushroom600, lineHeight: 1.3,
+                transition: "all 0.15s" }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Scrolling body ──────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", background: C.mushroom50 }}>
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", background: C.mushroom50 }}>
 
         {/* ── Hero ── */}
         <div style={{ background: "linear-gradient(135deg," + C.kangkong700 + " 0%," + C.kangkong500 + " 100%)",
