@@ -6,8 +6,32 @@
 // POST { token, reason }         → record rejection, return confirmation HTML
 
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
 
 const RELEASE_MANAGER_EMAIL = "cbasis@sprout.ph";
+const GROVE_URL = "https://grove.sprout.solutions";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
+async function sendEmail(to, subject, html, replyTo) {
+  try {
+    await transporter.sendMail({
+      from:    `"Grove by Sprout" <${process.env.GMAIL_USER}>`,
+      to,
+      ...(replyTo ? { replyTo } : {}),
+      subject,
+      html,
+    });
+  } catch (e) {
+    console.error("Gmail error:", e.message);
+  }
+}
 
 const page = (title, body) => `<!DOCTYPE html>
 <html>
@@ -20,8 +44,8 @@ const page = (title, body) => `<!DOCTYPE html>
     body{background:#fafaf8;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
     .card{background:#fff;border-radius:14px;border:1px solid #e4e2da;max-width:480px;width:100%;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
     .header{background:#1f6e1f;padding:22px 28px}
-    .header .eyebrow{color:#d6f0d6;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px}
-    .header h1{color:#fff;font-size:18px;font-weight:700}
+    .eyebrow{color:#d6f0d6;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px}
+    h1{color:#fff;font-size:18px;font-weight:700}
     .body{padding:28px}
     p{color:#3a372e;font-size:15px;line-height:1.6;margin-bottom:14px}
     .sub{color:#928e7c;font-size:13px;margin-bottom:0}
@@ -42,26 +66,7 @@ const page = (title, body) => `<!DOCTYPE html>
 </body>
 </html>`;
 
-async function sendEmail(to, subject, html, replyTo) {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type":  "application/json",
-    },
-    body: JSON.stringify({
-      from:     "Grove by Sprout <grove@sprout.solutions>",
-      to,
-      ...(replyTo ? { reply_to: replyTo } : {}),
-      subject,
-      html,
-    }),
-  });
-  if (!res.ok) console.error("Resend error:", res.status, await res.text());
-}
-
 export default async function handler(req, res) {
-  const groveUrl = "https://grove.sprout.solutions";
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -112,7 +117,7 @@ export default async function handler(req, res) {
               <div style="color:#3a372e;font-size:14px;line-height:1.5">${reason.trim()}</div>
             </div>
             <p style="color:#928e7c;font-size:13px;line-height:1.6">Please review the feedback, update your project, and send a new approval request when ready.</p>
-            <a href="${groveUrl}" style="display:inline-block;margin-top:16px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Open Grove</a>
+            <a href="${GROVE_URL}" style="display:inline-block;margin-top:16px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Open Grove</a>
           </div>
         </div></body></html>`
       );
@@ -170,7 +175,7 @@ export default async function handler(req, res) {
           <p style="color:#3a372e;font-size:15px;line-height:1.6;margin-bottom:12px">
             <strong>${project.name}</strong> has received sign-off from <strong>${project.approver_name}</strong> and is ready for your release review on Grove.
           </p>
-          <a href="${groveUrl}" style="display:inline-block;margin-top:8px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Review on Grove</a>
+          <a href="${GROVE_URL}" style="display:inline-block;margin-top:8px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Review on Grove</a>
         </div>
       </div></body></html>`,
       project.builder_email || undefined

@@ -1,9 +1,17 @@
 // api/send-approval-email.js — Vercel serverless function
-// Called by the Grove app when a project owner sends an approval request.
-// Env vars needed in Vercel: RESEND_API_KEY, SUPABASE_SERVICE_ROLE_KEY,
-//   VITE_SUPABASE_URL (already set for the frontend)
+// Vercel env vars needed: GMAIL_USER, GMAIL_APP_PASSWORD,
+//   VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -27,8 +35,8 @@ export default async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const token = crypto.randomUUID();
-  const now   = new Date().toISOString();
+  const token  = crypto.randomUUID();
+  const now    = new Date().toISOString();
   const groveUrl = "https://grove.sprout.solutions";
 
   const { error: dbError } = await supabase
@@ -53,17 +61,12 @@ export default async function handler(req, res) {
   const approveUrl = `${groveUrl}/api/handle-approval?token=${token}&action=approve`;
   const rejectUrl  = `${groveUrl}/api/handle-approval?token=${token}&action=reject`;
 
-  const emailRes = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type":  "application/json",
-    },
-    body: JSON.stringify({
-      from:     "Grove by Sprout <grove@sprout.solutions>",
-      to:       approverEmail,
-      reply_to: builderEmail,
-      subject:  `Approval needed: ${projectName} on Grove`,
+  try {
+    await transporter.sendMail({
+      from:    `"Grove by Sprout" <${process.env.GMAIL_USER}>`,
+      to:      approverEmail,
+      replyTo: builderEmail,
+      subject: `Approval needed: ${projectName} on Grove`,
       html: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -107,13 +110,10 @@ export default async function handler(req, res) {
   </div>
 </body>
 </html>`,
-    }),
-  });
-
-  if (!emailRes.ok) {
-    const errBody = await emailRes.text();
-    console.error("Resend error:", emailRes.status, errBody);
-    return res.status(500).json({ error: `Email failed: ${emailRes.status}` });
+    });
+  } catch (emailErr) {
+    console.error("Gmail error:", emailErr);
+    return res.status(500).json({ error: `Email failed: ${emailErr.message}` });
   }
 
   return res.status(200).json({ success: true, sentAt: now });
