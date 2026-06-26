@@ -4185,15 +4185,20 @@ const ProjectDetailPage = ({
     setApprovalError(null);
     setApprovalSending(true);
     try {
-      await callEdgeFunction("send-approval-email", {
-        projectId:          project.id,
-        projectName:        project.name,
-        approverName:       name,
-        approverEmail:      email,
-        builderName:        authUser.displayName,
-        builderEmail:       authUser.email,
-        projectDescription: project.description,
+      const emailRes = await fetch("/api/send-approval-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId:          project.id,
+          projectName:        project.name,
+          approverName:       name,
+          approverEmail:      email,
+          builderName:        authUser.displayName,
+          builderEmail:       authUser.email,
+          projectDescription: project.description,
+        }),
       });
+      if (!emailRes.ok) throw new Error(`HTTP ${emailRes.status}`);
       await onUpdateProject?.({ ...project, approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
     } catch (e) {
       setApprovalError("Failed to send email. Please try again.");
