@@ -8534,7 +8534,7 @@ export default function SproutAIGarden() {
   const [contributeInitialFlow, setContributeInitialFlow] = useState(null);
 
   const [editingProject, setEditingProject] = useState(null);
-  const [gardenNav, setGardenNav] = useState({key:0, viewMode:"directory", stageFilter:"All"});
+  const [gardenNav, setGardenNav] = useState({key:0, viewMode:"grouped", stageFilter:"All"});
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
