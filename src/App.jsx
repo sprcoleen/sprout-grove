@@ -8762,6 +8762,20 @@ export default function SproutAIGarden() {
     loadNotifications().then(data => setNotifications(data));
   }, [authUser?.email]);
 
+  // ── Deep-link: ?project=ID opens project detail directly ─────────────────
+  useEffect(() => {
+    if (!authUser || projects.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("project");
+    if (!pid) return;
+    const target = projects.find(p => String(p.id) === String(pid));
+    if (target) {
+      setDetailProject(target);
+      setView("project-detail");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [authUser?.email, projects.length]);
+
   // ── DevOps request handlers ────────────────────────────────────────────────
   const handleCreateDevopsRequest = async (req) => {
     let jiraTicketKey = null;

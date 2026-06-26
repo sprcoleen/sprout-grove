@@ -60,6 +60,7 @@ export default async function handler(req, res) {
 
   const approveUrl = `${groveUrl}/api/handle-approval?token=${token}&action=approve`;
   const rejectUrl  = `${groveUrl}/api/handle-approval?token=${token}&action=reject`;
+  const projectUrl = `${groveUrl}/?project=${projectId}`;
 
   try {
     await transporter.sendMail({
@@ -87,8 +88,11 @@ export default async function handler(req, res) {
         <div style="color:#928e7c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">About the project</div>
         <div style="color:#565244;font-size:14px;line-height:1.6;">${projectDescription}</div>
       </div>` : ""}
-      <p style="margin:0 0 20px;color:#565244;font-size:14px;line-height:1.6;">
+      <p style="margin:0 0 16px;color:#565244;font-size:14px;line-height:1.6;">
         Please review and let ${builderName} know your decision:
+      </p>
+      <p style="margin:0 0 20px;">
+        <a href="${projectUrl}" style="display:inline-block;padding:9px 18px;background:#fafaf8;color:#1f6e1f;text-decoration:none;border-radius:8px;font-weight:600;font-size:13px;border:1.5px solid #aadcaa;">View project on Grove →</a>
       </p>
       <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
         <tr>
