@@ -4268,7 +4268,6 @@ const ProjectDetailPage = ({
       approverEmail:      project.approverEmail      || '',
     });
     setFormDirty(false);
-    setDetailTab("overview");
     setActiveSection("project");
   }, [project.id]);
 
