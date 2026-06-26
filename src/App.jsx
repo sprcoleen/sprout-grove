@@ -1922,6 +1922,16 @@ function IcoTrash({size=16, color=C.tomato500}) {
   );
 }
 
+function IcoViewGrouped({size=16, color=C.mushroom500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2.5" width="12" height="3" rx="1" stroke={color} strokeWidth="1.2" fill={color} fillOpacity="0.12"/>
+      <line x1="4" y1="8"  x2="12" y2="8"  stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      <line x1="4" y1="10.5" x2="10" y2="10.5" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      <line x1="4" y1="13" x2="8" y2="13" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
 function IcoViewList({size=16, color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -2113,7 +2123,11 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
   };
 
 
+  const [collapsedStages, setCollapsedStages] = useState({sprout:false,growing:false,blooming:false,thriving:false});
+  const toggleStage = (s) => setCollapsedStages(prev => ({...prev, [s]:!prev[s]}));
+
   const VIEW_MODES = [
+    {id:"grouped",   label:"Stages",    Icon:IcoViewGrouped},
     {id:"directory", label:"Directory", Icon:IcoViewGrid},
     {id:"list",      label:"List",      Icon:IcoViewList},
     {id:"board",     label:"Board",     Icon:IcoViewBoard},
@@ -2128,7 +2142,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
       <div style={{padding:"10px 20px",background:C.white,borderBottom:"1px solid "+C.mushroom200,display:"flex",gap:10,alignItems:"center",zIndex:20,flexShrink:0}}>
 
         {/* Search */}
-        {(viewMode === "directory" || viewMode === "list") && (
+        {(viewMode === "directory" || viewMode === "list" || viewMode === "grouped") && (
           <div style={{position:"relative",flex:"1",minWidth:160,maxWidth:280}}>
             <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}>
               <IcoSearch size={14} color={C.mushroom400}/>
@@ -2639,6 +2653,145 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           </div>
         </div>
       )}
+
+      {/* ── Grouped (Stages) View ── */}
+      {viewMode === "grouped" && (() => {
+        const recentlyAdded   = [...filtered].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)).slice(0,3);
+        const recentlyUpdated = [...filtered].sort((a,b) => (a.lastUpdated??999)-(b.lastUpdated??999)).slice(0,3);
+        const fmtAdded = p => { const d=Math.floor((Date.now()-new Date(p.createdAt).getTime())/86400000); return d===0?"Today":d===1?"Yesterday":`${d}d ago`; };
+        const fmtUpdated = p => { const d=p.lastUpdated??0; return d===0?"Today":d===1?"Yesterday":`${d}d ago`; };
+        const STAGE_CFG = {
+          sprout:   {label:"Sprout",   sub:"Early idea",     dot:C.mushroom500, cntBg:C.mushroom200, cntText:C.mushroom700},
+          growing:  {label:"Growing",  sub:"In development", dot:"#b7791f",     cntBg:"#f6e05e",     cntText:"#744210"},
+          blooming: {label:"Blooming", sub:"Live & used",    dot:"#c05621",     cntBg:"#fbd38d",     cntText:"#7b341e"},
+          thriving: {label:"Thriving", sub:"Fully deployed", dot:C.blueberry500,cntBg:C.blueberry100,cntText:C.blueberry500},
+        };
+
+        const RecentCard = ({p, fmtFn}) => {
+          const sc = STAGE_CFG[p.stage]||STAGE_CFG.sprout;
+          const initials = (p.builder||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+          const deptColor = DEPT_COLORS[builtForArr(p.builtFor)[0]] || {bg:C.mushroom100, text:C.mushroom600};
+          return (
+            <div onClick={()=>onViewDetail(p)} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"12px 14px",cursor:"pointer",transition:"box-shadow 0.15s",boxShadow:"none"}}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow=DS.shadow.sm}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                <span style={{fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom500}}>{sc.label}</span>
+              </div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.description||"—"}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:deptColor.bg,color:deptColor.text,whiteSpace:"nowrap"}}>{builtForArr(p.builtFor)[0]||"—"}</span>
+                {p.tier&&<span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:p.tier===1?C.mushroom100:p.tier===2?"#fefcbf":"#feebc8",color:p.tier===1?C.mushroom700:p.tier===2?"#744210":"#7b341e"}}>T{p.tier}</span>}
+                <span style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginLeft:"auto"}}>{fmtFn(p)}</span>
+                <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,color:C.kangkong700,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,fontFamily:FF,flexShrink:0}}>{initials}</div>
+              </div>
+            </div>
+          );
+        };
+
+        const StageSection = ({stageKey}) => {
+          const sc = STAGE_CFG[stageKey];
+          const stageProjects = filtered.filter(p=>p.stage===stageKey).sort((a,b)=>(a.lastUpdated??999)-(b.lastUpdated??999));
+          const isOpen = !collapsedStages[stageKey];
+          const ChevSvg = () => (
+            <svg width={16} height={16} viewBox="0 0 16 16" fill="none" style={{transition:"transform 0.2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)"}}>
+              <path d="M4 6l4 4 4-4" stroke={C.mushroom400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          );
+          return (
+            <div style={{marginBottom:8,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,overflow:"hidden"}}>
+              <div onClick={()=>toggleStage(stageKey)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",background:C.mushroom50,transition:"background 0.12s",userSelect:"none"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.mushroom100}
+                onMouseLeave={e=>e.currentTarget.style.background=C.mushroom50}>
+                <div style={{width:9,height:9,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{sc.label}</span>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>{sc.sub}</span>
+                <div style={{flex:1}}/>
+                <span style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:DS.radius.full,background:sc.cntBg,color:sc.cntText}}>{stageProjects.length}</span>
+                <ChevSvg/>
+              </div>
+              {isOpen&&(
+                <div style={{padding:"12px 16px 16px",borderTop:"1px solid "+C.mushroom200,background:C.white}}>
+                  {stageProjects.length===0?(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,textAlign:"center",padding:"20px 0"}}>No projects at this stage.</div>
+                  ):(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                      {stageProjects.map(p => {
+                        const initials=(p.builder||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                        const deptColor=DEPT_COLORS[builtForArr(p.builtFor)[0]]||{bg:C.mushroom100,text:C.mushroom600};
+                        return (
+                          <div key={p.id} onClick={()=>onViewDetail(p)} style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"12px",cursor:"pointer",transition:"all 0.15s"}}
+                            onMouseEnter={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.boxShadow=DS.shadow.sm;}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.boxShadow="none";}}>
+                            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.description||"—"}</div>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:deptColor.bg,color:deptColor.text,whiteSpace:"nowrap",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis"}}>{builtForArr(p.builtFor)[0]||"—"}</span>
+                              {p.tier&&<span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:p.tier===1?C.mushroom100:p.tier===2?"#fefcbf":"#feebc8",color:p.tier===1?C.mushroom700:p.tier===2?"#744210":"#7b341e",flexShrink:0}}>T{p.tier}</span>}
+                              <div style={{flex:1}}/>
+                              <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,color:C.kangkong700,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,fontFamily:FF,flexShrink:0}}>{initials}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const SectionLabel = ({children}) => (
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:C.mushroom400,whiteSpace:"nowrap"}}>{children}</span>
+            <div style={{flex:1,height:1,background:C.mushroom200}}/>
+          </div>
+        );
+
+        return (
+          <div style={{flex:1,overflowY:"auto",padding:"20px 28px"}}>
+            <div style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <IcoGarden size={18} color={C.kangkong600}/>
+                <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1}}>Garden</div>
+              </div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,fontWeight:600}}>
+                {filtered.length} plant{filtered.length!==1?"s":""} across PH &amp; TH
+              </div>
+            </div>
+
+            {recentlyAdded.length>0&&(
+              <div style={{marginBottom:20}}>
+                <SectionLabel>Recently added</SectionLabel>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                  {recentlyAdded.map(p=><RecentCard key={p.id} p={p} fmtFn={fmtAdded}/>)}
+                </div>
+              </div>
+            )}
+
+            {recentlyUpdated.length>0&&(
+              <div style={{marginBottom:24}}>
+                <SectionLabel>Recently updated</SectionLabel>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                  {recentlyUpdated.map(p=><RecentCard key={p.id} p={p} fmtFn={fmtUpdated}/>)}
+                </div>
+              </div>
+            )}
+
+            <SectionLabel>All projects by stage</SectionLabel>
+            {["sprout","growing","blooming","thriving"].map(s=><StageSection key={s} stageKey={s}/>)}
+
+            {filtered.length===0&&(
+              <div style={{padding:"48px 24px",textAlign:"center",fontFamily:FF,fontSize:14,color:C.mushroom400}}>
+                Nothing growing here — try different filters, or be the first to plant one.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Board (Kanban) View ── */}
       {viewMode === "board" && (
