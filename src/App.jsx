@@ -4170,8 +4170,43 @@ const ProjectDetailPage = ({
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
   const setEF = (k, v) => { setEditForm(p=>({...p, [k]:v})); setFormDirty(true); };
-  const [detailTab, setDetailTab] = useState("overview");
   const [showDevopsModal, setShowDevopsModal] = useState(false);
+
+  const sectionRefs = {
+    project:  useRef(null),
+    stage:    useRef(null),
+    tier:     useRef(null),
+    approver: useRef(null),
+  };
+  const [activeSection, setActiveSection] = useState("project");
+  const detailScrollRef = useRef(null);
+
+  useEffect(() => {
+    const container = detailScrollRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const keys = ["project","stage","tier","approver"];
+      for (const key of [...keys].reverse()) {
+        const el = sectionRefs[key]?.current;
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        if (rect.top - containerRect.top < 100) { setActiveSection(key); break; }
+      }
+    };
+    container.addEventListener("scroll", onScroll);
+    return () => container.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToSection = (key) => {
+    const el = sectionRefs[key]?.current;
+    const container = detailScrollRef.current;
+    if (!el || !container) return;
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const offset = elRect.top - containerRect.top + container.scrollTop - 24;
+    container.scrollTo({ top: offset, behavior: "smooth" });
+  };
 
   // Approval request state
   const [approvalSending,    setApprovalSending]    = useState(false);
@@ -4234,11 +4269,18 @@ const ProjectDetailPage = ({
     });
     setFormDirty(false);
     setDetailTab("overview");
+    setActiveSection("project");
   }, [project.id]);
 
   const handleOverviewSave = async () => {
     if (!canEdit || formSaving) return;
     setFormSaving(true);
+    if (computedTier === null) {
+      setApprovalError("Please complete the Tier Classification before saving.");
+      scrollToSection("tier");
+      setFormSaving(false);
+      return;
+    }
     await onUpdateProject?.({ ...project, ...editForm });
     setFormDirty(false);
     setFormSaving(false);
@@ -4321,7 +4363,7 @@ const ProjectDetailPage = ({
 
   return (
     <>
-    <div style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
+    <div ref={detailScrollRef} style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
 
       {/* Top nav */}
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 28px",background:sc.bg,borderBottom:"1px solid "+sc.border,flexShrink:0,position:"sticky",top:0,zIndex:10}}>
@@ -4338,9 +4380,43 @@ const ProjectDetailPage = ({
         <div style={{flex:1}}/>
       </div>
 
-      {/* Centred content column */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"36px 24px 56px"}}>
-        <div style={{width:"100%",maxWidth:760}}>
+      {/* Sidebar + main content */}
+      <div style={{flex:1,display:"flex",flexDirection:"row",alignItems:"flex-start",padding:"0"}}>
+
+        {/* Sticky left sidebar */}
+        <div style={{
+          width:176, flexShrink:0, position:"sticky", top:0,
+          height:"100vh", overflowY:"auto",
+          padding:"28px 0 28px 20px",
+          borderRight:"1px solid "+C.mushroom200,
+          background:C.white,
+        }}>
+          {[
+            {key:"project", label:"The project"},
+            {key:"stage",   label:"Stage"},
+            {key:"tier",    label:"Tier & Tools"},
+            {key:"approver",label:"Approver"},
+          ].map(({key,label}) => {
+            const active = activeSection===key;
+            return (
+              <button key={key} onClick={()=>scrollToSection(key)} style={{
+                display:"block", width:"100%", textAlign:"left",
+                padding:"7px 12px", marginBottom:2,
+                background:"none", border:"none",
+                borderLeft: active?"3px solid "+C.kangkong500:"3px solid transparent",
+                fontFamily:FF, fontSize:12, fontWeight:active?700:400,
+                color:active?C.kangkong700:C.mushroom500,
+                cursor:"pointer", transition:"all 0.15s",
+                borderRadius:"0 6px 6px 0",
+              }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Main content */}
+        <div style={{flex:1, minWidth:0, padding:"36px 32px 56px", maxWidth:760}}>
 
           {/* Hero */}
           <div style={{marginBottom:24}}>
@@ -4381,7 +4457,7 @@ const ProjectDetailPage = ({
                       <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
                       <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
                     </div>
-                    <button onClick={()=>setDetailTab("technical")}
+                    <button onClick={()=>scrollToSection("tier")}
                       style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
                       onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
                       onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
@@ -4416,27 +4492,14 @@ const ProjectDetailPage = ({
             </div>
           )}
 
-          <div style={{display:"flex",gap:2,marginBottom:20,background:C.mushroom100,borderRadius:DS.radius.md,padding:2}}>
-            {[{k:"overview",l:"Overview"},{k:"technical",l:"Technical"}].map(({k,l})=>(
-              <button key={k} onClick={()=>setDetailTab(k)} style={{
-                flex:1,padding:"7px 0",borderRadius:DS.radius.sm,border:"none",cursor:"pointer",
-                fontFamily:FF,fontSize:13,fontWeight:detailTab===k?600:400,
-                background:detailTab===k?C.white:"transparent",
-                color:detailTab===k?C.kangkong700:C.mushroom500,
-                boxShadow:detailTab===k?DS.shadow.sm:"none",transition:"all 0.15s",
-              }}>{l}</button>
-            ))}
-          </div>
-
           <>
 
           {/* ── Owner editable form (overview) ── */}
           {canEdit ? (
             <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
-              {detailTab==="overview"&&<>
 
               {/* ── Section: The project ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+              <div ref={sectionRefs.project} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                 <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>The project</div>
                 <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -4485,7 +4548,7 @@ const ProjectDetailPage = ({
               </div>
 
               {/* ── Section: Stage ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+              <div ref={sectionRefs.stage} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                 <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                   {STAGES.filter(s=>s!=='nursery').map(s=>{
@@ -4541,8 +4604,6 @@ const ProjectDetailPage = ({
                 })()}
 
               </div>
-              </>}
-              {detailTab==="technical"&&<>
 
               {/* ── Section: Tier classification ── */}
               {(()=>{
@@ -4584,8 +4645,8 @@ const ProjectDetailPage = ({
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                 return (<>
                   {/* Tier classification card — Q1 + Q2 + tier pill only */}
-                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification</div>
+                  <div ref={sectionRefs.tier} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification<span style={{color:C.tomato500,marginLeft:4}}>*</span></div>
                     <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
                       {/* Q1 — backend */}
@@ -4790,7 +4851,6 @@ const ProjectDetailPage = ({
                 Request DevOps Setup
               </button>
               )}
-              </>}
 
               {/* ── Approver Section (Tier 2 & 3 only) ── */}
               {computedTier>=2&&(()=>{
@@ -4798,7 +4858,7 @@ const ProjectDetailPage = ({
                 const canAct = canEdit || authUser?.isAdmin;
                 const fmtTs  = ts => ts ? new Date(ts).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "";
                 return (
-                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"16px",marginTop:4}}>
+                  <div ref={sectionRefs.approver} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"16px",marginTop:4}}>
                     <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:C.mushroom400,marginBottom:12}}>Approver</div>
 
                     {/* Name + Email inputs — editable when no pending/approved status */}
@@ -4910,10 +4970,9 @@ const ProjectDetailPage = ({
               const sTitle = {fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14};
               return (
                 <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
-                  {detailTab==="overview"&&<>
 
                   {/* The project */}
-                  <div style={sCard}>
+                  <div ref={sectionRefs.project} style={sCard}>
                     <div style={sTitle}>The project</div>
                     <div style={{marginBottom:12}}>
                       <label style={roLabel}>Project Name</label>
@@ -4961,7 +5020,7 @@ const ProjectDetailPage = ({
                   </div>
 
                   {/* Stage */}
-                  <div style={sCard}>
+                  <div ref={sectionRefs.stage} style={sCard}>
                     <div style={sTitle}>Stage</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                       {STAGES.filter(s=>s!=="nursery").map(s=>{
@@ -4985,8 +5044,6 @@ const ProjectDetailPage = ({
                       })}
                     </div>
                   </div>
-                  </>}
-                  {detailTab==="technical"&&<>
 
                   {/* Tier classification */}
                   {(()=>{
@@ -4996,7 +5053,7 @@ const ProjectDetailPage = ({
                       project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                        [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                     return(
-                      <div style={sCard}>
+                      <div ref={sectionRefs.tier} style={sCard}>
                         <div style={sTitle}>Tier Classification</div>
                         {project.tier?(
                           <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
@@ -5064,14 +5121,11 @@ const ProjectDetailPage = ({
                       </div>
                     </div>
                   </div>
-                  </>}
 
                 </div>
               );
             })()
           )}
-
-          {detailTab==="overview"&&<>
 
           {/* Seedling submission zone */}
           {project.stage==="seedling"&&(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
@@ -5315,8 +5369,6 @@ const ProjectDetailPage = ({
               <button onClick={()=>{if(noteText.trim()){onNote(project.id,noteText);setNoteText("");}}} style={{padding:"9px 18px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600}}>+</button>
             </div>
           </div>
-
-          </>}
 
           </>
 
