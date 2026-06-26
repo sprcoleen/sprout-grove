@@ -302,34 +302,39 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
 
           <SubH>Project Stages</SubH>
           <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 14 }}>
-            Every project moves through four stages as it matures from an idea to a live product.
+            Every project grows through five stages — starting as a <strong>Seed</strong> in the Wishlist, then maturing from a claimed idea to a live, thriving product.
           </div>
 
           {/* Stage pipeline */}
           <div style={{ display: "flex", alignItems: "stretch", marginBottom: 12 }}>
             {[
-              { label: "Sprout",   sub: "Early idea",     note: "Register your project and begin classifying.",
-                bg: "#f0faf0", bd: "#aadcaa", dot: "#2d8c2d", text: "#1f6e1f", first: true },
-              { label: "Growing",  sub: "In development", note: "Actively being built. IS/Execom approval required here.",
+              { label: "Seed",     sub: "Wishlist idea",        note: "An idea or wish anyone can plant. Lives in the Wishlist until someone claims it.",
+                bg: "#f2f1ed", bd: "#b0ac9c", dot: "#928e7c", text: "#565244", first: true, dashed: true },
+              { label: "Seedling", sub: "Someone's building it", note: "Claimed and actively built — a working prototype and a short deck come together here.",
+                bg: "#f2f1ed", bd: "#ccc9bc", dot: "#b0ac9c", text: "#736f5e" },
+              { label: "Rooting",  sub: "Leadership review",     note: "Leadership reviews the prototype and deck before you scale — guidance, not gatekeeping.",
                 bg: "#fefcbf", bd: "#d69e2e", dot: "#b7791f", text: "#744210" },
-              { label: "Blooming", sub: "Live & used",     note: "Live and being used. Tier 2 & 3 need RM review to reach this.",
-                bg: "#feebc8", bd: "#dd6b20", dot: "#c05621", text: "#7b341e" },
-              { label: "Thriving", sub: "Fully deployed",  note: "Full Sprout portfolio product. Highest standard for Tier 3.",
+              { label: "Sprout",   sub: "Full speed ahead",      note: "Approved by leadership — building the full product with momentum and company backing.",
+                bg: "#e6fffa", bd: "#38b2ac", dot: "#2c7a7b", text: "#285e5e" },
+              { label: "Bloom",    sub: "Live & used",           note: "Live with real users. Tier 2 & 3 need RM review to reach this.",
+                bg: "#d6f0d6", bd: "#aadcaa", dot: "#2d8c2d", text: "#1f6e1f" },
+              { label: "Thriving", sub: "Making an impact",      note: "Fully rolled out, delivering real, measurable value. Tier 3 needs full sign-off.",
                 bg: "#ebf8ff", bd: "#63b3ed", dot: "#3182ce", text: "#2c5282", last: true },
             ].map((s, i, arr) => (
               <React.Fragment key={s.label}>
-                <div style={{ flex: 1, background: s.bg, border: "1.5px solid " + s.bd, padding: "14px",
+                <div style={{ flex: 1, background: s.bg,
+                  border: (s.dashed ? "1.5px dashed " : "1.5px solid ") + s.bd, padding: "12px 10px",
                   borderRadius: s.first ? DS.radius.lg + " 0 0 " + DS.radius.lg : s.last ? "0 " + DS.radius.lg + " " + DS.radius.lg + " 0" : 0,
                   display: "flex", flexDirection: "column" }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.dot, marginBottom: 6 }} />
-                  <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: s.text, marginBottom: 2 }}>{s.label}</div>
-                  <div style={{ fontFamily: FF, fontSize: 10, color: s.dot, marginBottom: 8 }}>{s.sub}</div>
-                  <div style={{ fontFamily: FF, fontSize: 11, color: s.text, opacity: 0.8, lineHeight: 1.5 }}>{s.note}</div>
+                  <div style={{ fontFamily: FF, fontSize: 12, fontWeight: 700, color: s.text, marginBottom: 2 }}>{s.label}</div>
+                  <div style={{ fontFamily: FF, fontSize: 9, color: s.dot, marginBottom: 7 }}>{s.sub}</div>
+                  <div style={{ fontFamily: FF, fontSize: 10, color: s.text, opacity: 0.82, lineHeight: 1.5 }}>{s.note}</div>
                 </div>
                 {i < arr.length - 1 && (
-                  <div style={{ display: "flex", alignItems: "center", padding: "0 4px",
-                    background: C.mushroom100 }}>
-                    <span style={{ color: C.mushroom400, fontSize: 16 }}>›</span>
+                  <div style={{ display: "flex", alignItems: "center", padding: "0 3px",
+                    background: s.first ? "transparent" : C.mushroom100 }}>
+                    <span style={{ color: C.mushroom400, fontSize: 15 }}>›</span>
                   </div>
                 )}
               </React.Fragment>
@@ -339,7 +344,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
           <div style={{ padding: "10px 14px", background: C.mushroom100, borderRadius: DS.radius.md,
             fontFamily: FF, fontSize: 12, color: C.mushroom600, marginBottom: 20 }}>
             Stage changes move <strong>one step at a time</strong> for builders.
-            Tier 2 and 3 projects require a release review gate before Blooming and Thriving.
+            Leadership signs off at <strong>Rooting</strong>; Tier 2 and 3 projects also need a Release Manager review gate before <strong>Bloom</strong> and <strong>Thriving</strong>.
             Admins can skip stages in any direction.
           </div>
 
@@ -380,13 +385,13 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             body="Answer the classification questions to lock in your tier. Then complete the per-tier checklist (hosting, auth, database, repo). Mandatory before any stage change." />
           <Step num="4" numColor={TEAL} numBg={TEAL_BG} numBd={TEAL_BD}
             title="Declare your approver & secure IS/Execom sign-off"
-            body="Every project needs a named approver — your IS contact or an Execom member. Record the name and email in the Overview tab. Optional at Sprout — mandatory before advancing to Blooming." />
+            body="Every project needs a named approver — your IS contact or an Execom member. Record the name and email in the Overview tab. Optional early on — mandatory before going live (Bloom)." />
           <Step num="5" numColor={C.carrot500} numBg={C.carrot100} numBd={C.carrot500}
             title="Submit for release review (Tier 2 & 3)"
             body="When ready to go live, click <strong>Submit for Release Review</strong>. Belle Asis reviews your classification, data sources, and tech stack. Tier 3 gets a Jira DevOps ticket. Wait for approval before advancing." />
           <Step num="6" numColor={C.kangkong500} numBg={C.kangkong50} numBd={C.kangkong200}
             title="Move stages & go live"
-            body="Advance one stage at a time — Sprout → Growing → Blooming → Thriving. Click the stage card on your project overview. Blooming = live. Thriving = full Sprout portfolio product." />
+            body="Advance one stage at a time — Seedling → Rooting → Sprout → Bloom → Thriving. Click the stage card on your project overview. Bloom = live. Thriving = full Sprout portfolio product." />
 
           <Divider />
 
@@ -510,7 +515,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
             <span style={{ fontSize: 16, flexShrink: 0, color: C.mushroom400 }}>→</span>
             <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.55 }}>
               <strong>Development</strong> — personal GitHub repo, personal Vercel, local DB: all fine.<br />
-              <strong>Go-live (Blooming)</strong> — everything must move to Sprout-owned accounts. IS/Execom approval must come <em>before</em> the DevOps ticket.
+              <strong>Go-live (Bloom)</strong> — everything must move to Sprout-owned accounts. IS/Execom approval must come <em>before</em> the DevOps ticket.
             </div>
           </div>
 
@@ -611,12 +616,12 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
           <StdTable
             headers={["Transition", "Tier 1", "Tier 2", "Tier 3"]}
             rows={[
-              ["<strong>Growing → Blooming</strong>", `<span style="color:#1f6e1f">Free — no RM review</span>`, "RM review required", "Full RM sign-off required"],
-              ["<strong>Blooming → Thriving</strong>", `<span style="color:#1f6e1f">No additional gate</span>`, "RM final approval required", "RM approval + compliance checklist"],
+              ["<strong>Sprout → Bloom</strong>", `<span style="color:#1f6e1f">Free — no RM review</span>`, "RM review required", "Full RM sign-off required"],
+              ["<strong>Bloom → Thriving</strong>", `<span style="color:#1f6e1f">No additional gate</span>`, "RM final approval required", "RM approval + compliance checklist"],
             ]}
           />
           <Alert title="IS / Execom approval gate"
-            body="Required before any ticket is raised for Blaise, Coleen, Raphael, or Remedios. Optional at Sprout — mandatory by Growing."
+            body="Required before any ticket is raised for Blaise, Coleen, Raphael, or Remedios. Optional early on — mandatory before going live (Bloom)."
             color={TEAL} bg={TEAL_BG} border={TEAL_BD} />
 
           <SubH>Submitting for Release Review (Tier 2 &amp; 3)</SubH>
@@ -638,7 +643,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
           ].map((item, i) => <CheckItem key={i} label={item} border={C.carrot500} />)}
 
           <SubH>Moving Assets to Sprout at Go-Live</SubH>
-          <Alert title="Required for Tier 2 & 3 before Blooming"
+          <Alert title="Required for Tier 2 & 3 before Bloom"
             body="Personal accounts are fine during development. Before going live, transfer the repository, hosting environment, database, configuration, and secrets to Sprout-owned accounts. Tier 1 apps are exempt."
             color={C.mango600} bg={C.mango100} border={C.mango500} />
 
@@ -655,8 +660,8 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
                 body: "One question tells you most of what you need: does it have a backend? No backend = Tier 1, no matter who uses it. This saves rearchitecting later." },
               { title: "Register early — stages are just a label",
                 body: "You don't need to finish building before registering. Add a plant as soon as the idea is real. It lets you track progress and start the approval clock early." },
-              { title: "Secure your approver during Sprout",
-                body: "IS/Execom approval is required before any DevOps ticket. If you wait until Growing, you might block yourself from Blooming. Get the approval early." },
+              { title: "Secure your approver early",
+                body: "IS/Execom approval is required before any DevOps ticket. If you wait too long, you might block yourself from Bloom. Get the approval early." },
               { title: "Read the Keycloak guide before asking Coleen",
                 body: "There's an existing Keycloak setup guide. Work through it first. Coleen Bartido is available for escalations — not setup walkthroughs." },
               { title: "Supabase for databases — not Airtable",
@@ -685,7 +690,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
               ["Hardcoding API keys or credentials", "Use environment variables; never commit secrets"],
               ["Building Tier 3 auth without Keycloak", "Keycloak is mandatory for external-facing apps"],
               ["Skipping the Technical tab classification", "No stage changes are possible without a tier"],
-              ["Keeping the repo on personal accounts at go-live", "Move all assets to Sprout-owned accounts before Blooming"],
+              ["Keeping the repo on personal accounts at go-live", "Move all assets to Sprout-owned accounts before Bloom"],
               ["Sending sensitive PII to an external AI without review", "Check Q4; get DPO review if needed"],
             ]}
           />
