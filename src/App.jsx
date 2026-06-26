@@ -200,7 +200,7 @@ const STAGE_GUIDE = [
         bg: C.mango100, border: C.mango500, textColor: C.mango700,
         icon: "📋",
         title: "What you need at this stage",
-        body: "A working prototype (something people can try) and a short deck explaining what you're building and its impact. Both are required before moving to Nursery.",
+        body: "A working prototype (something people can try) and a short deck explaining what you're building and its impact. Both are required before moving to Rooting.",
       },
       {
         id: "ai-help",
@@ -219,7 +219,7 @@ const STAGE_GUIDE = [
     ],
   },
   {
-    key: "nursery", emoji: "🌿", label: "Nursery",
+    key: "nursery", emoji: "🌿", label: "Rooting",
     borderColor: STAGE_COLORS.nursery.border, textColor: STAGE_COLORS.nursery.text,
     desc: "Before spending more time building, leadership reviews your prototype and deck. The goal isn't to gatekeep — it's to make sure you get the right guidance, connections, and resources before you invest more time.",
     gardenBadge: true,
