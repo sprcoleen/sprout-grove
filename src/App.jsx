@@ -4173,6 +4173,42 @@ const ProjectDetailPage = ({
   const [detailTab, setDetailTab] = useState("overview");
   const [showDevopsModal, setShowDevopsModal] = useState(false);
 
+  // Approval request state
+  const [approvalSending,    setApprovalSending]    = useState(false);
+  const [approvalCancelling, setApprovalCancelling] = useState(false);
+  const [approvalError,      setApprovalError]      = useState(null);
+
+  const handleSendApprovalRequest = async () => {
+    const name  = editForm.approverName?.trim();
+    const email = editForm.approverEmail?.trim();
+    if (!name || !email) { setApprovalError("Please enter the approver's name and email first."); return; }
+    setApprovalError(null);
+    setApprovalSending(true);
+    try {
+      await callEdgeFunction("send-approval-email", {
+        projectId:          project.id,
+        projectName:        project.name,
+        approverName:       name,
+        approverEmail:      email,
+        builderName:        authUser.displayName,
+        builderEmail:       authUser.email,
+        projectDescription: project.description,
+      });
+      await onUpdateProject?.({ ...project, approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+    } catch (e) {
+      setApprovalError("Failed to send email. Please try again.");
+      console.error("send-approval-email:", e);
+    } finally {
+      setApprovalSending(false);
+    }
+  };
+
+  const handleCancelApproval = async () => {
+    setApprovalCancelling(true);
+    await onUpdateProject?.({ ...project, approvalStatus: null, approvalRequestedAt: null, approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+    setApprovalCancelling(false);
+  };
+
   // Sync edit form when project prop changes (e.g. after related project nav)
   useEffect(() => {
     setEditForm({
@@ -4201,30 +4237,6 @@ const ProjectDetailPage = ({
     await onUpdateProject?.({ ...project, ...editForm });
     setFormDirty(false);
     setFormSaving(false);
-  };
-
-  const [approvalSending, setApprovalSending] = useState(false);
-
-  const handleSendApprovalRequest = async () => {
-    if (!editForm.approverEmail?.trim() || approvalSending) return;
-    setApprovalSending(true);
-    await onUpdateProject?.({
-      ...project,
-      approverName: editForm.approverName,
-      approverEmail: editForm.approverEmail,
-      approvalStatus: 'pending',
-      approvalRequestedAt: new Date().toISOString(),
-    });
-    setApprovalSending(false);
-  };
-
-  const handleMarkApproved = async () => {
-    if (!authUser?.isAdmin) return;
-    await onUpdateProject?.({
-      ...project,
-      approvalStatus: 'approved',
-      approvedAt: new Date().toISOString(),
-    });
   };
 
   const interestedUsers = project.interestedUsers || [];
@@ -4853,6 +4865,98 @@ const ProjectDetailPage = ({
               </button>
               )}
               </>}
+
+              {/* ── Approver Section (Tier 2 & 3 only) ── */}
+              {computedTier>=2&&(()=>{
+                const status = project.approvalStatus;
+                const canAct = canEdit || authUser?.isAdmin;
+                const fmtTs  = ts => ts ? new Date(ts).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "";
+                return (
+                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"16px",marginTop:4}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:C.mushroom400,marginBottom:12}}>Approver</div>
+
+                    {/* Name + Email inputs — editable when no pending/approved status */}
+                    {status!=="approved"&&(
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                        {[{label:"Name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
+                          <div key={k}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                            <input
+                              type="text"
+                              value={editForm[k]||""}
+                              onChange={e=>setEF(k,e.target.value)}
+                              placeholder={ph}
+                              disabled={status==="pending"||!canAct}
+                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(status==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:status==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:status==="pending"?0.7:1}}
+                              onFocus={e=>{ if(status!=="pending") e.target.style.borderColor=C.kangkong500; }}
+                              onBlur={e=>e.target.style.borderColor=status==="pending"?C.mushroom200:C.mushroom300}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Approved view */}
+                    {status==="approved"&&(
+                      <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{project.approverName}</div>
+                          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{project.approverEmail}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status banner */}
+                    {status==="pending"&&(
+                      <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Approval request sent</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:"#744210"}}>
+                          An email was sent to {project.approverEmail}{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.&nbsp;Waiting for their response.
+                        </div>
+                        {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:4}}>{approvalSending?"Sending…":"Resend email"}</button>}
+                      </div>
+                    )}
+                    {status==="approved"&&(
+                      <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,marginBottom:2}}>Approved</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:C.kangkong700}}>
+                          Approved by {project.approverName}{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+                        </div>
+                      </div>
+                    )}
+                    {status==="rejected"&&(
+                      <div style={{background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:2}}>Approval rejected{project.approvalRejectedAt?` — ${fmtTs(project.approvalRejectedAt)}`:""}</div>
+                        {project.approvalRejectionReason&&<div style={{fontFamily:FF,fontSize:11,color:"#744210",marginBottom:4}}>{project.approvalRejectionReason}</div>}
+                        <div style={{fontFamily:FF,fontSize:11,color:"#928e7c"}}>Update the project details and send a new request.</div>
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {approvalError&&<div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginBottom:8}}>{approvalError}</div>}
+
+                    {/* Action buttons */}
+                    {canAct&&(
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        {/* Send / resend */}
+                        {(status===null||status==="rejected")&&(
+                          <button onClick={handleSendApprovalRequest} disabled={approvalSending||!editForm.approverName?.trim()||!editForm.approverEmail?.trim()}
+                            style={{flex:2,padding:"9px",background:approvalSending?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:approvalSending?"not-allowed":"pointer",transition:"all 0.15s"}}>
+                            {approvalSending?"Sending…":status==="rejected"?"Send new request →":"Send approval request →"}
+                          </button>
+                        )}
+                        {/* Cancel */}
+                        {(status==="pending"||status==="rejected")&&(
+                          <button onClick={handleCancelApproval} disabled={approvalCancelling}
+                            style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
+                            {approvalCancelling?"…":"Cancel request"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Save / Cancel */}
               {formDirty&&(
