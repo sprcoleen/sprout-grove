@@ -6229,8 +6229,8 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
                 Where is this project right now?
               </label>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-                {STAGES.filter(s=>s!=="nursery").map(s=>{
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+                {STAGES.map(s=>{
                   const sc=STAGE_COLORS[s]; const active=plant.stage===s;
                   return (
                     <button key={s} type="button" onClick={()=>setP("stage",s)} style={{
@@ -7206,8 +7206,8 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
         {/* Stage selector */}
         <div style={{marginBottom:16}}>
           <label style={{display:"block",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,marginBottom:8}}>Where is this project right now?</label>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-            {STAGES.filter(s => s !== 'nursery').map(s=>{
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+            {STAGES.map(s=>{
               const sc = STAGE_COLORS[s];
               const active = form.stage===s;
               return (
