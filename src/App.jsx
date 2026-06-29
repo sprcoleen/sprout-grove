@@ -116,11 +116,11 @@ const STAGE_LABELS = {
   seedling:"Seedling", nursery:"Rooting", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving",
 };
 const STAGE_DESC = {
-  seedling: "Someone's building this!",
-  nursery:  "Taking Root — leadership review before scaling",
+  seedling: "Someone's building it",
+  nursery:  "Leadership review",
   sprout:   "Full speed ahead",
-  bloom:    "Real people, real feedback",
-  thriving: "Live, loved, and making an impact",
+  bloom:    "Live & used",
+  thriving: "Making an impact",
 };
 const STAGE_FLORA = STAGE_DESC;
 const STAGE_ORDER = {seedling:0,nursery:1,sprout:2,bloom:3,thriving:4};
@@ -4500,17 +4500,16 @@ const ProjectDetailPage = ({
               {/* ── Section: Stage ── */}
               <div ref={sectionRefs.stage} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                 <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                  {STAGES.filter(s=>s!=='nursery').map(s=>{
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+                  {STAGES.map(s=>{
                     const sc=STAGE_COLORS[s];
                     const active=project.stage===s;
-                    const stagesArr=STAGES.filter(x=>x!=='nursery');
-                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
-                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
+                    const isPast=STAGES.indexOf(s)<STAGES.indexOf(project.stage);
+                    const isFuture=STAGES.indexOf(s)>STAGES.indexOf(project.stage);
                     const sOrder=STAGE_ORDER[s];
                     const curOrder=STAGE_ORDER[project.stage];
                     const isAdjFwd=sOrder===curOrder+1;
-                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||isAdjFwd);
+                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||(isAdjFwd&&s!=='nursery'));
                     return(
                       <div key={s}
                         onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
@@ -5021,8 +5020,8 @@ const ProjectDetailPage = ({
                   {/* Stage */}
                   <div ref={sectionRefs.stage} style={sCard}>
                     <div style={sTitle}>Stage</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                      {STAGES.filter(s=>s!=="nursery").map(s=>{
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+                      {STAGES.map(s=>{
                         const sc2=STAGE_COLORS[s];
                         const active=project.stage===s;
                         return(
