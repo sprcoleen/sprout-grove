@@ -118,7 +118,7 @@ const STAGE_LABELS = {
 const STAGE_DESC = {
   seedling: "Someone's building it",
   nursery:  "Leadership review",
-  sprout:   "Full speed ahead",
+  sprout:   "Readying to go live",
   bloom:    "Live & used",
   thriving: "Making an impact",
 };
