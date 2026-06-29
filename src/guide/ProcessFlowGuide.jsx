@@ -312,7 +312,7 @@ export default function ProcessFlowGuide({ C, FF, DS }) {
                 bg: "#f2f1ed", bd: "#b0ac9c", dot: "#928e7c", text: "#565244", first: true, dashed: true },
               { label: "Seedling", sub: "Someone's building it", note: "Claimed and actively built — a working prototype and a short deck come together here.",
                 bg: "#f2f1ed", bd: "#ccc9bc", dot: "#b0ac9c", text: "#736f5e" },
-              { label: "Rooting",  sub: "Leadership review",     note: "Leadership reviews the prototype and deck before you scale — guidance, not gatekeeping.",
+              { label: "Rooting",  sub: "Leadership review",     note: "Taking Root — Leadership reviews the prototype and deck before you scale — guidance, not gatekeeping.",
                 bg: "#fefcbf", bd: "#d69e2e", dot: "#b7791f", text: "#744210" },
               { label: "Sprout",   sub: "Full speed ahead",      note: "Approved by leadership — building the full product with momentum and company backing.",
                 bg: "#e6fffa", bd: "#38b2ac", dot: "#2c7a7b", text: "#285e5e" },
