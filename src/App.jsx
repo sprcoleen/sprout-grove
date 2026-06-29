@@ -113,11 +113,11 @@ const getCountry   = (email="") => {
 // ── Stage constants ────────────────────────────────────────────────────────────
 const STAGES      = ["seedling","nursery","sprout","bloom","thriving"];
 const STAGE_LABELS = {
-  seedling:"Seedling", nursery:"Nursery", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving",
+  seedling:"Seedling", nursery:"Rooting", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving",
 };
 const STAGE_DESC = {
   seedling: "Someone's building this!",
-  nursery:  "Getting leadership love before scaling",
+  nursery:  "Taking Root — leadership review before scaling",
   sprout:   "Full speed ahead",
   bloom:    "Real people, real feedback",
   thriving: "Live, loved, and making an impact",
@@ -4391,9 +4391,9 @@ const ProjectDetailPage = ({
           background:C.white,
         }}>
           {[
+            {key:"stage",   label:"Stage"},
             {key:"project", label:"The project"},
             {key:"tier",    label:"Tier & Tools"},
-            {key:"stage",   label:"Stage"},
             {key:"approver",label:"Approver"},
           ].map(({key,label}) => {
             const active = activeSection===key;
@@ -4496,6 +4496,64 @@ const ProjectDetailPage = ({
           {/* ── Owner editable form (overview) ── */}
           {canEdit ? (
             <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
+
+              {/* ── Section: Stage ── */}
+              <div ref={sectionRefs.stage} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                  {STAGES.filter(s=>s!=='nursery').map(s=>{
+                    const sc=STAGE_COLORS[s];
+                    const active=project.stage===s;
+                    const stagesArr=STAGES.filter(x=>x!=='nursery');
+                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
+                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
+                    const sOrder=STAGE_ORDER[s];
+                    const curOrder=STAGE_ORDER[project.stage];
+                    const isAdjFwd=sOrder===curOrder+1;
+                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||isAdjFwd);
+                    return(
+                      <div key={s}
+                        onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
+                        style={{
+                          padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
+                          border:"2px solid "+(active?sc.dot:C.mushroom200),
+                          background:active?sc.bg:isPast?C.mushroom50:C.white,
+                          opacity:isFuture&&!authUser?.isAdmin?0.4:1,
+                          cursor:isClickable?"pointer":"default",
+                          transition:"all 0.15s",
+                        }}
+                        onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
+                        onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
+                      >
+                        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+                          <StageIcon stage={s} size={14}/>
+                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
+                          {active&&<IcoCheck size={11} color={sc.dot}/>}
+                        </div>
+                        <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Validation: T2/T3 at advanced stages require tech stack */}
+                {['sprout','bloom','thriving'].includes(project.stage)&&project.tier>=2&&(()=>{
+                  const missing=[];
+                  if(!editForm.toolUsed?.length)                                        missing.push("Tools used");
+                  if(!project.hosting?.length)                                           missing.push("Hosting platform");
+                  if(!project.authType?.length)                                          missing.push("Authentication");
+                  if(project.tier===3&&!project.authType?.includes('Keycloak'))          missing.push("Keycloak (required for Tier 3)");
+                  if(!project.database?.length)                                          missing.push("Database");
+                  if(!missing.length) return null;
+                  return(
+                    <div style={{marginTop:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Tech Stack required for Tier {project.tier} projects</div>
+                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>Complete these in the Technical tab: {missing.join(", ")}</div>
+                    </div>
+                  );
+                })()}
+
+              </div>
 
               {/* ── Section: The project ── */}
               <div ref={sectionRefs.project} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
@@ -4777,64 +4835,6 @@ const ProjectDetailPage = ({
                   )}
                 </>);
               })()}
-
-              {/* ── Section: Stage ── */}
-              <div ref={sectionRefs.stage} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                  {STAGES.filter(s=>s!=='nursery').map(s=>{
-                    const sc=STAGE_COLORS[s];
-                    const active=project.stage===s;
-                    const stagesArr=STAGES.filter(x=>x!=='nursery');
-                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
-                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
-                    const sOrder=STAGE_ORDER[s];
-                    const curOrder=STAGE_ORDER[project.stage];
-                    const isAdjFwd=sOrder===curOrder+1;
-                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||isAdjFwd);
-                    return(
-                      <div key={s}
-                        onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
-                        style={{
-                          padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
-                          border:"2px solid "+(active?sc.dot:C.mushroom200),
-                          background:active?sc.bg:isPast?C.mushroom50:C.white,
-                          opacity:isFuture&&!authUser?.isAdmin?0.4:1,
-                          cursor:isClickable?"pointer":"default",
-                          transition:"all 0.15s",
-                        }}
-                        onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
-                        onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
-                      >
-                        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
-                          <StageIcon stage={s} size={14}/>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                          {active&&<IcoCheck size={11} color={sc.dot}/>}
-                        </div>
-                        <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Validation: T2/T3 at advanced stages require tech stack */}
-                {['sprout','bloom','thriving'].includes(project.stage)&&project.tier>=2&&(()=>{
-                  const missing=[];
-                  if(!editForm.toolUsed?.length)                                        missing.push("Tools used");
-                  if(!project.hosting?.length)                                           missing.push("Hosting platform");
-                  if(!project.authType?.length)                                          missing.push("Authentication");
-                  if(project.tier===3&&!project.authType?.includes('Keycloak'))          missing.push("Keycloak (required for Tier 3)");
-                  if(!project.database?.length)                                          missing.push("Database");
-                  if(!missing.length) return null;
-                  return(
-                    <div style={{marginTop:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
-                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Tech Stack required for Tier {project.tier} projects</div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>Complete these in the Technical tab: {missing.join(", ")}</div>
-                    </div>
-                  );
-                })()}
-
-              </div>
 
               {computedTier>=2&&(
               <button onClick={()=>setShowDevopsModal(true)} style={{
