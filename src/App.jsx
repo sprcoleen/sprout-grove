@@ -4392,8 +4392,8 @@ const ProjectDetailPage = ({
         }}>
           {[
             {key:"project", label:"The project"},
-            {key:"stage",   label:"Stage"},
             {key:"tier",    label:"Tier & Tools"},
+            {key:"stage",   label:"Stage"},
             {key:"approver",label:"Approver"},
           ].map(({key,label}) => {
             const active = activeSection===key;
