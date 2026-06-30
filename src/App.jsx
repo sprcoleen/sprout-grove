@@ -4657,40 +4657,6 @@ const ProjectDetailPage = ({
                         </div>
                       </div>
 
-                      {/* Stage card */}
-                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{marginBottom:16}}>
-                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Stage</div>
-                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Move the project forward as it grows.</div>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-                          {STAGES.map(s=>{
-                            const sc=STAGE_COLORS[s];
-                            const active=project.stage===s;
-                            const isPast=STAGES.indexOf(s)<STAGES.indexOf(project.stage);
-                            const isFuture=STAGES.indexOf(s)>STAGES.indexOf(project.stage);
-                            const sOrder=STAGE_ORDER[s];
-                            const curOrder=STAGE_ORDER[project.stage];
-                            const isAdjFwd=sOrder===curOrder+1;
-                            const isClickable=canEdit&&!active&&(authUser?.isAdmin||(isAdjFwd&&s!=='nursery'));
-                            return(
-                              <div key={s}
-                                onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
-                                style={{padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",border:"2px solid "+(active?sc.dot:C.mushroom200),background:active?sc.bg:isPast?C.mushroom50:C.white,opacity:isFuture&&!authUser?.isAdmin?0.4:1,cursor:isClickable?"pointer":"default",transition:"all 0.15s"}}
-                                onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
-                                onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
-                              >
-                                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
-                                  <StageIcon stage={s} size={14}/>
-                                  <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                                  {active&&<IcoCheck size={11} color={sc.dot}/>}
-                                </div>
-                                <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
 
                     </>)}
 
