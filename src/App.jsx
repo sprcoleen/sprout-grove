@@ -3823,129 +3823,28 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
           </a>
         )}
 
-        {/* ── Seedling: Submission Requirements ──────────────────────────────── */}
-        {project.stage==="seedling" && (authUser?.email===project.builderEmail||authUser?.isAdmin) && (
-          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg}}>
-            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10}}>
-              Nursery Submission Requirements
-            </div>
-            <div style={{marginBottom:8}}>
-              <label style={{fontFamily:FF,fontSize:11,color:C.mushroom500,display:"block",marginBottom:3}}>Prototype Link *</label>
-              <input value={prototypeLink} onChange={e=>setPrototypeLink(e.target.value)}
-                placeholder="https://your-deployed-prototype.com"
-                style={{width:"100%",padding:"7px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-              />
-            </div>
-            <div style={{marginBottom:12}}>
-              <label style={{fontFamily:FF,fontSize:11,color:C.mushroom500,display:"block",marginBottom:3}}>Deck Link *</label>
-              <input value={deckLink} onChange={e=>setDeckLink(e.target.value)}
-                placeholder="https://docs.google.com/presentation/..."
-                style={{width:"100%",padding:"7px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-              />
-            </div>
-            {!showSubmitConfirm ? (
-              <button onClick={()=>setShowSubmitConfirm(true)}
-                disabled={!isValidUrl(prototypeLink)||!isValidUrl(deckLink)}
-                style={{
-                  width:"100%",padding:"9px",
-                  background:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.kangkong500:C.mushroom200,
-                  color:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.white:C.mushroom400,
-                  border:"none",borderRadius:DS.radius.lg,
-                  cursor:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?"pointer":"not-allowed",
-                  fontFamily:FF,fontSize:12,fontWeight:600,transition:"all 0.15s",
-                }}
-              >Submit for Nursery Review &#x2192;</button>
-            ) : (
-              <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg,padding:"12px"}}>
-                <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango700,marginBottom:8}}>Confirm Submission</div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginBottom:8,wordBreak:"break-all"}}>
-                  <div><strong>Prototype:</strong> <a href={prototypeLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{prototypeLink}</a></div>
-                  <div><strong>Deck:</strong> <a href={deckLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{deckLink}</a></div>
-                </div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.mango600,marginBottom:10,padding:"6px 8px",background:C.mango100,borderRadius:DS.radius.sm}}>
-                  Once submitted, you won't be able to edit this plant until an Approver makes a decision.
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setShowSubmitConfirm(false)} style={{flex:1,padding:"7px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                  <button onClick={()=>{onSubmitToNursery(project.id,prototypeLink,deckLink);setShowSubmitConfirm(false);}}
-                    style={{flex:1,padding:"7px",background:C.mango500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}
-                  >Confirm Submission</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Seedling: Needs Rework feedback banner (builder only) ───────────── */}
         {project.stage==="seedling" && project.reviewStatus==="needs_rework" && authUser?.email===project.builderEmail && (
           <FeedbackBanner reviewComment={project.reviewComment} reviewedBy={project.reviewedBy} reviewedAt={project.reviewedAt}/>
         )}
 
-        {/* ── Nursery: Locked state + ExCom decision zone ────────────────────── */}
+        {/* ── Nursery: Rooting Review pending state ──────────────────────────── */}
         {project.stage==="nursery" && (
           <div style={{marginBottom:16,padding:"12px 14px",background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg}}>
-            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:10}}>Under Review</div>
-            {project.prototypeLink&&(
-              <a href={project.prototypeLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.kangkong600,textDecoration:"none",marginBottom:6}}>
-                View Prototype
-              </a>
-            )}
-            {project.deckLink&&(
-              <a href={project.deckLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.kangkong600,textDecoration:"none",marginBottom:8}}>
-                View Deck
-              </a>
-            )}
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:6}}>Rooting Review Pending</div>
             <div style={{fontFamily:FF,fontSize:12,color:C.mango700,marginBottom:2}}>
-              Submitted for review{project.submittedAt ? ` — ${new Date(project.submittedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}
+              Awaiting approver sign-off{project.approvalRequestedAt ? ` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}.
             </div>
-            {!authUser?.isApprover && (
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,fontStyle:"italic",marginTop:4}}>Under review by Approver.</div>
-            )}
-
-            {/* ExCom decision zone */}
-            {authUser?.isApprover && (
-              <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid "+C.mango200}}>
-                <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,marginBottom:8,textTransform:"uppercase",letterSpacing:0.8}}>Approver Decision</div>
-                {!showReworkInput ? (
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>onApproveProject?.(project.id)} style={{flex:1,padding:"8px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                      &#x2713; Approve
-                    </button>
-                    <button onClick={()=>setShowReworkInput(true)} style={{flex:1,padding:"8px",background:C.white,color:C.mango600,border:"1.5px solid "+C.mango400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                      &#x21A9; Needs Rework
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <textarea value={reworkComment} onChange={e=>setReworkComment(e.target.value)}
-                      placeholder="What needs to be reworked? (required)"
-                      rows={3}
-                      style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mango300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",marginBottom:8,boxSizing:"border-box"}}
-                    />
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"7px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                      <button disabled={!reworkComment.trim()}
-                        onClick={()=>{onNeedsRework?.(project.id,reworkComment);setShowReworkInput(false);setReworkComment("");}}
-                        style={{flex:1,padding:"7px",background:reworkComment.trim()?C.mango500:C.mushroom200,color:reworkComment.trim()?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:reworkComment.trim()?"pointer":"not-allowed"}}
-                      >Send Feedback</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
+            {project.approverName&&<div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginTop:2}}>Reviewer: {project.approverName}</div>}
             {/* Withdraw button — builder or Admin */}
             {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
               <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{
-                width:"100%",padding:"7px",marginTop:12,
+                width:"100%",padding:"7px",marginTop:10,
                 background:"transparent",border:"1px solid "+C.mushroom300,
                 borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,
                 color:C.mushroom500,cursor:"pointer",transition:"all 0.15s",
-              }}>Withdraw Submission</button>
+              }}>Withdraw from Review</button>
             )}
           </div>
         )}
@@ -4241,7 +4140,19 @@ const ProjectDetailPage = ({
         }),
       });
       if (!emailRes.ok) throw new Error(`HTTP ${emailRes.status}`);
-      await onUpdateProject?.({ ...project, approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+      await onUpdateProject?.({ ...project, stage: "nursery", approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+      // Insert rooting_reviews ticket for Tool Shed tracking
+      await supabase
+        .from("rooting_reviews")
+        .insert({
+          project_id:     String(project.id),
+          project_name:   project.name,
+          builder_name:   project.builder || authUser?.displayName || authUser?.email,
+          builder_email:  project.builderEmail || authUser?.email,
+          reviewer_name:  name,
+          reviewer_email: email,
+          country:        project.country || null,
+        });
     } catch (e) {
       setApprovalError("Failed to send email. Please try again.");
       console.error("send-approval-email:", e);
@@ -4968,7 +4879,7 @@ const ProjectDetailPage = ({
                     {/* Status banner */}
                     {status==="pending"&&(
                       <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Approval request sent</div>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Rooting Review pending</div>
                         <div style={{fontFamily:FF,fontSize:11,color:"#744210"}}>
                           An email was sent to {project.approverEmail}{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.&nbsp;Waiting for their response.
                         </div>
@@ -5001,7 +4912,7 @@ const ProjectDetailPage = ({
                         {(status===null||status==="rejected")&&(
                           <button onClick={handleSendApprovalRequest} disabled={approvalSending||!editForm.approverName?.trim()||!editForm.approverEmail?.trim()}
                             style={{flex:2,padding:"9px",background:approvalSending?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:approvalSending?"not-allowed":"pointer",transition:"all 0.15s"}}>
-                            {approvalSending?"Sending…":status==="rejected"?"Send new request →":"Send approval request →"}
+                            {approvalSending?"Sending…":status==="rejected"?"Send new request →":"Submit for Rooting Review →"}
                           </button>
                         )}
                         {/* Cancel */}
@@ -5200,101 +5111,21 @@ const ProjectDetailPage = ({
             })()
           )}
 
-          {/* Seedling submission zone */}
-          {project.stage==="seedling"&&(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
-            <div style={{marginBottom:24,padding:"16px 18px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:12}}>Nursery Submission Requirements</div>
-              <div style={{marginBottom:10}}>
-                <label style={{fontFamily:FF,fontSize:12,color:C.mushroom500,display:"block",marginBottom:4}}>Prototype Link *</label>
-                <input value={prototypeLink} onChange={e=>setPrototypeLink(e.target.value)}
-                  placeholder="https://your-deployed-prototype.com"
-                  style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                />
-              </div>
-              <div style={{marginBottom:14}}>
-                <label style={{fontFamily:FF,fontSize:12,color:C.mushroom500,display:"block",marginBottom:4}}>Deck Link *</label>
-                <input value={deckLink} onChange={e=>setDeckLink(e.target.value)}
-                  placeholder="https://docs.google.com/presentation/..."
-                  style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                />
-              </div>
-              {!showSubmitConfirm?(
-                <button onClick={()=>setShowSubmitConfirm(true)}
-                  disabled={!isValidUrl(prototypeLink)||!isValidUrl(deckLink)}
-                  style={{width:"100%",padding:"10px",background:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.kangkong500:C.mushroom200,color:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,cursor:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?"pointer":"not-allowed",fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.15s"}}
-                >Submit for Nursery Review →</button>
-              ):(
-                <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg,padding:"14px"}}>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mango700,marginBottom:10}}>Confirm Submission</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.mushroom600,marginBottom:10,wordBreak:"break-all"}}>
-                    <div><strong>Prototype:</strong> <a href={prototypeLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{prototypeLink}</a></div>
-                    <div><strong>Deck:</strong> <a href={deckLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{deckLink}</a></div>
-                  </div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.mango600,marginBottom:12,padding:"7px 10px",background:C.mango100,borderRadius:DS.radius.sm}}>
-                    Once submitted, you won't be able to edit this plant until an Approver makes a decision.
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>setShowSubmitConfirm(false)} style={{flex:1,padding:"8px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                    <button onClick={()=>{onSubmitToNursery(project.id,prototypeLink,deckLink);setShowSubmitConfirm(false);}} style={{flex:1,padding:"8px",background:C.mango500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>Confirm Submission</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Needs Rework banner */}
           {project.stage==="seedling"&&project.reviewStatus==="needs_rework"&&authUser?.email===project.builderEmail&&(
             <FeedbackBanner reviewComment={project.reviewComment} reviewedBy={project.reviewedBy} reviewedAt={project.reviewedAt}/>
           )}
 
-          {/* Nursery zone */}
+          {/* Nursery zone — Rooting Review pending */}
           {project.stage==="nursery"&&(
             <div style={{marginBottom:24,padding:"16px 18px",background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.xl}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:12}}>Under Review</div>
-              <div style={{display:"flex",gap:8,marginBottom:10}}>
-                {project.prototypeLink&&(
-                  <a href={project.prototypeLink} target="_blank" rel="noreferrer" style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong600,textDecoration:"none"}}>
-                    <IcoLink size={14} color={C.kangkong600}/> View Prototype
-                  </a>
-                )}
-                {project.deckLink&&(
-                  <a href={project.deckLink} target="_blank" rel="noreferrer" style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong600,textDecoration:"none"}}>
-                    <IcoLink size={14} color={C.kangkong600}/> View Deck
-                  </a>
-                )}
-              </div>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:8}}>Rooting Review Pending</div>
               <div style={{fontFamily:FF,fontSize:13,color:C.mango700,marginBottom:4}}>
-                Submitted for review{project.submittedAt?` — ${new Date(project.submittedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}`:""}
+                Awaiting approver sign-off{project.approvalRequestedAt?` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}`:""}
               </div>
-              {!authUser?.isApprover&&<div style={{fontFamily:FF,fontSize:13,color:C.mushroom500,fontStyle:"italic",marginTop:4}}>Under review by Approver.</div>}
-              {authUser?.isApprover&&(
-                <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid "+C.mango200}}>
-                  <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,marginBottom:10,textTransform:"uppercase",letterSpacing:0.8}}>Approver Decision</div>
-                  {!showReworkInput?(
-                    <div style={{display:"flex",gap:10}}>
-                      <button onClick={()=>onApproveProject?.(project.id)} style={{flex:1,padding:"10px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>&#x2713; Approve</button>
-                      <button onClick={()=>setShowReworkInput(true)} style={{flex:1,padding:"10px",background:C.white,color:C.mango600,border:"1.5px solid "+C.mango400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>&#x21A9; Needs Rework</button>
-                    </div>
-                  ):(
-                    <div>
-                      <textarea value={reworkComment} onChange={e=>setReworkComment(e.target.value)}
-                        placeholder="What needs to be reworked? (required)" rows={3}
-                        style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mango300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",marginBottom:10,boxSizing:"border-box"}}
-                      />
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>{setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"8px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                        <button disabled={!reworkComment.trim()} onClick={()=>{onNeedsRework?.(project.id,reworkComment);setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"8px",background:reworkComment.trim()?C.mango500:C.mushroom200,color:reworkComment.trim()?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:reworkComment.trim()?"pointer":"not-allowed"}}>Send Feedback</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {project.approverName&&<div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Reviewer: {project.approverName}</div>}
               {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
-                <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{width:"100%",padding:"8px",marginTop:14,background:"transparent",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}>Withdraw Submission</button>
+                <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{width:"100%",padding:"8px",marginTop:14,background:"transparent",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}>Withdraw from Review</button>
               )}
             </div>
           )}
@@ -8292,7 +8123,7 @@ const JIRA_COLS = [
   { id:'checking',    label:'For Checking',   statuses:['Ready for Checking','Ready for checking','For Checking'], color:C.blueberry500, bg:C.blueberry100,  border:C.blueberry400 },
   { id:'done',        label:'Done',           statuses:['Done','Closed','Resolved'],              color:C.kangkong600,  bg:C.kangkong50,    border:C.kangkong200  },
 ];
-function DevopsBoard({ authUser }) {
+function DevopsBoard({ authUser, rootingReviews }) {
   const [tickets,  setTickets]  = React.useState([]);
   const [loading,  setLoading]  = React.useState(true);
   const [error,    setError]    = React.useState(null);
@@ -8367,6 +8198,59 @@ function DevopsBoard({ authUser }) {
           ⚠ {error}
         </div>
       )}
+
+      {/* ── Rooting Reviews (internal Grove tracking) ── */}
+      <div style={{flexShrink:0,maxHeight:320,overflowY:'auto',padding:'16px 28px 0',borderBottom:'1px solid '+C.mushroom200}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+          <svg width={15} height={15} viewBox="0 0 20 20" fill="none" stroke={C.kangkong500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 18c0-4-4-7-4-11a4 4 0 0 1 8 0c0 4-4 7-4 11z"/><path d="M10 7v5"/>
+          </svg>
+          <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom800}}>Rooting Reviews</span>
+          <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Internal tracking — not a Jira ticket</span>
+          {rootingReviews&&rootingReviews.length>0&&(
+            <span style={{marginLeft:'auto',fontFamily:FF,fontSize:11,fontWeight:700,background:C.mango100,color:C.mango600,border:'1px solid '+C.mango300,borderRadius:DS.radius.full,padding:'1px 8px'}}>
+              {rootingReviews.filter(r=>r.status==='pending').length} pending
+            </span>
+          )}
+        </div>
+        {(!rootingReviews||rootingReviews.length===0) ? (
+          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,padding:'12px 0 16px',fontStyle:'italic'}}>No rooting reviews yet.</div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:8,paddingBottom:16}}>
+            {rootingReviews.map(r => {
+              const statusColor = r.status==='approved'?C.kangkong600:r.status==='rejected'?'#c53030':C.mango600;
+              const statusBg    = r.status==='approved'?C.kangkong100:r.status==='rejected'?'#fed7d7':C.mango100;
+              const statusBorder= r.status==='approved'?C.kangkong200:r.status==='rejected'?'#fc8181':C.mango300;
+              const fmtDate = ts => ts ? new Date(ts).toLocaleDateString('en-PH',{day:'numeric',month:'short',year:'numeric'}) : '—';
+              return (
+                <div key={r.id} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'12px 14px',display:'flex',alignItems:'flex-start',gap:12,boxShadow:DS.shadow.sm}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.project_name}</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:2}}>
+                      Submitted by <strong style={{color:C.mushroom700}}>{r.builder_name||r.builder_email}</strong>
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>
+                      Reviewer: <strong style={{color:C.mushroom700}}>{r.reviewer_name||r.reviewer_email}</strong>
+                    </div>
+                    {r.rejection_reason&&(
+                      <div style={{fontFamily:FF,fontSize:11,color:'#c53030',marginTop:6,padding:'5px 8px',background:'#fff5f5',borderRadius:DS.radius.sm,border:'1px solid #fc8181',lineHeight:1.5}}>
+                        Reason: {r.rejection_reason}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:DS.radius.full,background:statusBg,color:statusColor,border:'1px solid '+statusBorder,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>
+                      {r.status}
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400}}>{fmtDate(r.created_at)}</div>
+                    {r.resolved_at&&<div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:1}}>Resolved {fmtDate(r.resolved_at)}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Kanban columns */}
       <div style={{flex:1,overflowX:'auto',overflowY:'hidden',padding:'20px 28px'}}>
@@ -8698,6 +8582,7 @@ export default function SproutAIGarden() {
   const [view, setView]         = useState("dashboard");
   const [devopsRequests, setDevopsRequests] = useState([]);
   const [devopsRequestProject, setDevopsRequestProject] = useState(null);
+  const [rootingReviews, setRootingReviews] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detailProject, setDetailProject] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -8895,6 +8780,12 @@ export default function SproutAIGarden() {
       setDeleteRequests(delReqs);
       setDataLoading(false);
     });
+    // Load rooting reviews independently
+    supabase
+      .from("rooting_reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data: rvData }) => { if (rvData) setRootingReviews(rvData); });
   }, [authUser?.email]);
 
   // ── Load notifications ──────────────────────────────────────────────────────
@@ -9789,7 +9680,7 @@ export default function SproutAIGarden() {
           {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={visibleProjects} wishes={visibleWishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
-          {view==="devops"    && <DevopsBoard authUser={authUser}/>}
+          {view==="devops"    && <DevopsBoard authUser={authUser} rootingReviews={rootingReviews}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
           {view==="project-detail"&&detailProject&&!approvedDeleteIds.has(String(detailProject.id))&&(

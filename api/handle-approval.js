@@ -96,12 +96,18 @@ export default async function handler(req, res) {
       ));
     }
 
+    const rejectedAt = new Date().toISOString();
     await supabase.from("projects").update({
       approval_status:           "rejected",
-      approval_rejected_at:      new Date().toISOString(),
+      approval_rejected_at:      rejectedAt,
       approval_rejection_reason: reason.trim(),
       approval_token:            null,
     }).eq("id", project.id);
+
+    await supabase.from("rooting_reviews")
+      .update({ status: "rejected", resolved_at: rejectedAt, rejection_reason: reason.trim() })
+      .eq("project_id", String(project.id))
+      .eq("status", "pending");
 
     if (project.builder_email) {
       await sendEmail(
@@ -159,11 +165,17 @@ export default async function handler(req, res) {
 
   // ── Approve ───────────────────────────────────────────────────────────────
   if (action === "approve") {
+    const approvedAt = new Date().toISOString();
     await supabase.from("projects").update({
       approval_status: "approved",
-      approved_at:     new Date().toISOString(),
+      approved_at:     approvedAt,
       approval_token:  null,
     }).eq("id", project.id);
+
+    await supabase.from("rooting_reviews")
+      .update({ status: "approved", resolved_at: approvedAt })
+      .eq("project_id", String(project.id))
+      .eq("status", "pending");
 
     await sendEmail(
       RELEASE_MANAGER_EMAIL,
