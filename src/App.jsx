@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
 import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo, loadDeleteRequests, toDeleteRequest } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
@@ -4064,48 +4064,34 @@ const ProjectDetailPage = ({
     problem:            project.problem            || '',
     built:              project.built              || '',
     betterNow:          project.betterNow          || '',
+    prototypeLink:              project.prototypeLink              || '',
+    deckLink:                   project.deckLink                   || '',
+    docsLink:                   project.docsLink                   || '',
+    aiAssistant:                project.aiAssistant                || [],
+    builderTools:               project.builderTools               || [],
+    hostingAccount:             project.hostingAccount             || null,
+    versionControl:             project.versionControl             || [],
+    versionControlAccount:      project.versionControlAccount      || null,
+    databaseAccount:            project.databaseAccount            || null,
+    screenshotUrls:             project.screenshotUrls             || [],
+    productionHosting:          project.productionHosting          || null,
+    productionHostingUrl:       project.productionHostingUrl       || '',
+    productionHostingAccount:   project.productionHostingAccount   || null,
+    productionVersionControl:   project.productionVersionControl   || null,
+    productionVersionControlUrl:project.productionVersionControlUrl|| '',
+    productionVersionControlAccount:project.productionVersionControlAccount||null,
+    productionDatabase:         project.productionDatabase         || null,
+    productionDatabaseUrl:      project.productionDatabaseUrl      || '',
+    productionDatabaseAccount:  project.productionDatabaseAccount  || null,
+    releaseDate:                project.releaseDate                || '',
+    announcementDate:           project.announcementDate           || '',
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
   const setEF = (k, v) => { setEditForm(p=>({...p, [k]:v})); setFormDirty(true); };
   const [showDevopsModal, setShowDevopsModal] = useState(false);
 
-  const sectionRefs = {
-    stage:    useRef(null),
-    project:  useRef(null),
-    about:    useRef(null),
-    tier:     useRef(null),
-    approver: useRef(null),
-  };
-  const [activeSection, setActiveSection] = useState("project");
-  const detailScrollRef = useRef(null);
-
-  useEffect(() => {
-    const container = detailScrollRef.current;
-    if (!container) return;
-    const onScroll = () => {
-      const keys = ["stage","project","about","tier","approver"];
-      for (const key of [...keys].reverse()) {
-        const el = sectionRefs[key]?.current;
-        if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        if (rect.top - containerRect.top < 100) { setActiveSection(key); break; }
-      }
-    };
-    container.addEventListener("scroll", onScroll);
-    return () => container.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const scrollToSection = (key) => {
-    const el = sectionRefs[key]?.current;
-    const container = detailScrollRef.current;
-    if (!el || !container) return;
-    const elRect = el.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    const offset = elRect.top - containerRect.top + container.scrollTop - 24;
-    container.scrollTo({ top: offset, behavior: "smooth" });
-  };
+  const [activeTab, setActiveTab] = useState("seedling");
 
   // Approval request state
   const [approvalSending,    setApprovalSending]    = useState(false);
@@ -4192,9 +4178,27 @@ const ProjectDetailPage = ({
       problem:            project.problem            || '',
       built:              project.built              || '',
       betterNow:          project.betterNow          || '',
+      aiAssistant:                project.aiAssistant                || [],
+      builderTools:               project.builderTools               || [],
+      hostingAccount:             project.hostingAccount             || null,
+      versionControl:             project.versionControl             || [],
+      versionControlAccount:      project.versionControlAccount      || null,
+      databaseAccount:            project.databaseAccount            || null,
+      screenshotUrls:             project.screenshotUrls             || [],
+      productionHosting:          project.productionHosting          || null,
+      productionHostingUrl:       project.productionHostingUrl       || '',
+      productionHostingAccount:   project.productionHostingAccount   || null,
+      productionVersionControl:   project.productionVersionControl   || null,
+      productionVersionControlUrl:project.productionVersionControlUrl|| '',
+      productionVersionControlAccount:project.productionVersionControlAccount||null,
+      productionDatabase:         project.productionDatabase         || null,
+      productionDatabaseUrl:      project.productionDatabaseUrl      || '',
+      productionDatabaseAccount:  project.productionDatabaseAccount  || null,
+      releaseDate:                project.releaseDate                || '',
+      announcementDate:           project.announcementDate           || '',
     });
     setFormDirty(false);
-    setActiveSection("project");
+    setActiveTab("seedling");
   }, [project.id]);
 
   const handleOverviewSave = async () => {
@@ -4202,12 +4206,45 @@ const ProjectDetailPage = ({
     setFormSaving(true);
     if (computedTier === null) {
       setApprovalError("Please complete the Tier Classification before saving.");
-      scrollToSection("tier");
+      setActiveTab("seedling");
       setFormSaving(false);
       return;
     }
     await onUpdateProject?.({ ...project, ...editForm });
     setFormDirty(false);
+    setFormSaving(false);
+  };
+
+  const handleSaveAll = async () => {
+    if (formSaving || classSaving) return;
+    setFormSaving(true);
+    if (computedTier === null) {
+      setApprovalError("Please complete the Tier Classification (Seedling tab) before saving.");
+      setActiveTab("seedling");
+      setFormSaving(false);
+      return;
+    }
+    if (formDirty) {
+      await onUpdateProject?.({ ...project, ...editForm });
+      setFormDirty(false);
+    }
+    if (classIsDirty) {
+      setClassSaving(true);
+      const connectsSprout = SPROUT_SYSTEMS.some(s => cDbPlatform.includes(s));
+      await onSaveClassification?.(project.id, {
+        hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
+        githubRepo: cRepoUrl,
+        hosting: cHostingPlatform,
+        requiresAuth: cRequiresAuth ?? (cAuthType.length > 0), authType: cAuthType,
+        hasDatabase: cDbPlatform.length > 0, database: cDbPlatform,
+        connectsSproutDb: connectsSprout,
+        sproutDbDetails: connectsSprout ? cSproutDbDetails : '',
+        dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
+        hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
+        storesUserInputs: cStoresInputs,
+      });
+      setClassSaving(false);
+    }
     setFormSaving(false);
   };
 
@@ -4292,7 +4329,7 @@ const ProjectDetailPage = ({
 
   return (
     <>
-    <div ref={detailScrollRef} style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
+    <div style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
 
       {/* Top nav */}
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 28px",background:sc.bg,borderBottom:"1px solid "+sc.border,flexShrink:0,position:"sticky",top:0,zIndex:10}}>
@@ -4313,37 +4350,70 @@ const ProjectDetailPage = ({
       <div style={{flex:1,display:"flex",flexDirection:"row",alignItems:"flex-start",padding:"0"}}>
 
         {/* Sticky left sidebar */}
-        <div style={{
-          width:176, flexShrink:0, position:"sticky", top:0,
-          height:"100vh", overflowY:"auto",
-          padding:"28px 0 28px 20px",
-          borderRight:"1px solid "+C.mushroom200,
-          background:C.white,
-        }}>
-          {[
-            {key:"stage",   label:"Stage"},
-            {key:"project", label:"The project"},
-            {key:"about",   label:"About"},
-            {key:"tier",    label:"Tier & Tools"},
-            {key:"approver",label:"Approver"},
-          ].map(({key,label}) => {
-            const active = activeSection===key;
-            return (
-              <button key={key} onClick={()=>scrollToSection(key)} style={{
+        {canEdit ? (
+          <div style={{
+            width:196, flexShrink:0, position:"sticky", top:0,
+            height:"100vh", overflowY:"auto",
+            padding:"16px 10px",
+            borderRight:"1px solid "+C.mushroom200,
+            background:C.mushroom50,
+          }}>
+            <div style={{fontFamily:FF,fontSize:9,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:C.mushroom400,marginBottom:10,padding:"0 6px"}}>By stage</div>
+            {[
+              {key:"seedling", n:1, label:"Seedling",  sub:"Basics, story & tier",       dotColor:C.kangkong500},
+              {key:"nursery",  n:2, label:"Rooting",   sub:"Review submission",          dotColor:"#d69e2e"},
+              {key:"sprout",   n:3, label:"Sprout",    sub:"Tech stack & security",      dotColor:C.mushroom400},
+              {key:"bloom",    n:4, label:"Bloom",     sub:"Production environment",     dotColor:"#dd6b20"},
+              {key:"thriving", n:5, label:"Thriving",  sub:"Impact notes",               dotColor:"#63b3ed"},
+            ].map(({key, n, label, sub, dotColor}, idx, arr) => {
+              const active = activeTab === key;
+              const isCurrent = project.stage === key;
+              return (
+                <button key={key} onClick={()=>setActiveTab(key)} style={{
+                  display:"flex", alignItems:"flex-start", gap:9, padding:8, width:"100%",
+                  borderRadius:8, border:"1px solid "+(active?"#e4e2da":"transparent"),
+                  cursor:"pointer", transition:"all 0.15s", marginBottom:1,
+                  background:active?C.white:"transparent", textAlign:"left",
+                  boxShadow:active?"0 1px 4px rgba(32,30,24,.06)":"none",
+                  fontFamily:FF,
+                }}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:3}}>
+                    <div style={{
+                      width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:9, fontWeight:600, flexShrink:0,
+                      border:"1.5px solid "+(active?dotColor:"#ccc9bc"),
+                      color:active?C.white:"#928e7c",
+                      background:active?dotColor:C.white,
+                    }}>{n}</div>
+                    {idx < arr.length - 1 && <div style={{width:1,height:18,background:"#e4e2da",margin:"2px auto 0"}}/>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:active?600:500,color:active?C.mushroom900:C.mushroom600}}>{label}</div>
+                    <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:1}}>{sub}</div>
+                    {isCurrent && <div style={{display:"inline-flex",alignItems:"center",gap:3,marginTop:4,padding:"1px 7px",borderRadius:9999,fontSize:9,fontWeight:600,letterSpacing:"0.04em",background:"#f0faf0",border:"1px solid #aadcaa",color:"#1f6e1f"}}>current</div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{
+            width:176, flexShrink:0, position:"sticky", top:0,
+            height:"100vh", overflowY:"auto",
+            padding:"28px 0 28px 20px",
+            borderRight:"1px solid "+C.mushroom200,
+            background:C.white,
+          }}>
+            {["Stage","The project","About","Tier & Tools"].map(label => (
+              <div key={label} style={{
                 display:"block", width:"100%", textAlign:"left",
                 padding:"7px 12px", marginBottom:2,
-                background:"none", border:"none",
-                borderLeft: active?"3px solid "+C.kangkong500:"3px solid transparent",
-                fontFamily:FF, fontSize:12, fontWeight:active?700:400,
-                color:active?C.kangkong700:C.mushroom500,
-                cursor:"pointer", transition:"all 0.15s",
-                borderRadius:"0 6px 6px 0",
-              }}>
-                {label}
-              </button>
-            );
-          })}
-        </div>
+                fontFamily:FF, fontSize:12, fontWeight:400,
+                color:C.mushroom500,
+              }}>{label}</div>
+            ))}
+          </div>
+        )}
 
         {/* Main content */}
         <div style={{flex:1, minWidth:0, padding:"36px 32px 56px", maxWidth:760}}>
@@ -4387,7 +4457,7 @@ const ProjectDetailPage = ({
                       <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
                       <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
                     </div>
-                    <button onClick={()=>scrollToSection("tier")}
+                    <button onClick={()=>setActiveTab("seedling")}
                       style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
                       onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
                       onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
@@ -4426,138 +4496,31 @@ const ProjectDetailPage = ({
 
           {/* ── Owner editable form (overview) ── */}
           {canEdit ? (
-            <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{position:"relative"}}>
 
-              {/* ── Section: Stage ── */}
-              <div ref={sectionRefs.stage} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
-                  {STAGES.map(s=>{
-                    const sc=STAGE_COLORS[s];
-                    const active=project.stage===s;
-                    const isPast=STAGES.indexOf(s)<STAGES.indexOf(project.stage);
-                    const isFuture=STAGES.indexOf(s)>STAGES.indexOf(project.stage);
-                    const sOrder=STAGE_ORDER[s];
-                    const curOrder=STAGE_ORDER[project.stage];
-                    const isAdjFwd=sOrder===curOrder+1;
-                    const isClickable=canEdit&&!active&&(authUser?.isAdmin||(isAdjFwd&&s!=='nursery'));
-                    return(
-                      <div key={s}
-                        onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
-                        style={{
-                          padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
-                          border:"2px solid "+(active?sc.dot:C.mushroom200),
-                          background:active?sc.bg:isPast?C.mushroom50:C.white,
-                          opacity:isFuture&&!authUser?.isAdmin?0.4:1,
-                          cursor:isClickable?"pointer":"default",
-                          transition:"all 0.15s",
-                        }}
-                        onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
-                        onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
-                      >
-                        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
-                          <StageIcon stage={s} size={14}/>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                          {active&&<IcoCheck size={11} color={sc.dot}/>}
-                        </div>
-                        <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                      </div>
-                    );
-                  })}
+              {/* ── Sticky save bar ── */}
+              {(formDirty||classIsDirty)&&(
+                <div style={{position:"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1.5px solid "+C.mushroom200,padding:"10px 0",marginBottom:16,display:"flex",gap:8}}>
+                  <button
+                    onClick={()=>{
+                      setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],githubRepo:project.githubRepo||'',hosting:project.hosting||[],database:project.database||[],approverName:project.approverName||'',approverEmail:project.approverEmail||'',problem:project.problem||'',built:project.built||'',betterNow:project.betterNow||'',prototypeLink:project.prototypeLink||null,deckLink:project.deckLink||null,docsLink:project.docsLink||null,aiAssistant:project.aiAssistant||[],builderTools:project.builderTools||[],hostingAccount:project.hostingAccount||null,versionControl:project.versionControl||[],versionControlAccount:project.versionControlAccount||null,databaseAccount:project.databaseAccount||null,screenshotUrls:project.screenshotUrls||[],productionHosting:project.productionHosting||null,productionHostingUrl:project.productionHostingUrl||null,productionHostingAccount:project.productionHostingAccount||null,productionVersionControl:project.productionVersionControl||null,productionVersionControlUrl:project.productionVersionControlUrl||null,productionVersionControlAccount:project.productionVersionControlAccount||null,productionDatabase:project.productionDatabase||null,productionDatabaseUrl:project.productionDatabaseUrl||null,productionDatabaseAccount:project.productionDatabaseAccount||null,releaseDate:project.releaseDate||null,announcementDate:project.announcementDate||null});
+                      setFormDirty(false);
+                      setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                      setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
+                      setCAuthType(projArr(project.authType));setCDbPlatform(projArr(project.database));
+                      setCSpfroutDbDetails(project.sproutDbDetails||'');setCDataSensitivity(project.dataSensitivity||'');
+                      setCendsToExtAI(project.sendsToExternalAI??null);setCRequiresAuth(project.requiresAuth??null);
+                      setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
+                    }}
+                    style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}
+                  >Discard</button>
+                  <button onClick={handleSaveAll} disabled={formSaving||classSaving}
+                    style={{flex:2,padding:"9px",background:formSaving||classSaving?C.mushroom300:C.kangkong500,color:formSaving||classSaving?C.mushroom500:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:formSaving||classSaving?"not-allowed":"pointer"}}
+                  >{formSaving||classSaving?"Saving…":"Save changes"}</button>
                 </div>
+              )}
 
-                {/* Validation: T2/T3 at advanced stages require tech stack */}
-                {['sprout','bloom','thriving'].includes(project.stage)&&project.tier>=2&&(()=>{
-                  const missing=[];
-                  if(!editForm.toolUsed?.length)                                        missing.push("Tools used");
-                  if(!project.hosting?.length)                                           missing.push("Hosting platform");
-                  if(!project.authType?.length)                                          missing.push("Authentication");
-                  if(project.tier===3&&!project.authType?.includes('Keycloak'))          missing.push("Keycloak (required for Tier 3)");
-                  if(!project.database?.length)                                          missing.push("Database");
-                  if(!missing.length) return null;
-                  return(
-                    <div style={{marginTop:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
-                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Tech Stack required for Tier {project.tier} projects</div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>Complete these in the Technical tab: {missing.join(", ")}</div>
-                    </div>
-                  );
-                })()}
-
-              </div>
-
-              {/* ── Section: The project ── */}
-              <div ref={sectionRefs.project} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>The project</div>
-                <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS_LIST} form={editForm} onChange={setEF}/>
-                  <MultiSelect
-                    label="For" required
-                    opts={DEPTS_LIST}
-                    value={editForm.builtFor||[]}
-                    onChange={v=>setEF("builtFor",v)}
-                    placeholder="Search departments…"
-                  />
-                </div>
-                <CollaboratorInput
-                  selected={editForm.collaboratorEmails}
-                  onChange={v=>setEF("collaboratorEmails",v)}
-                  selfEmail={authUser?.email||""}
-                />
-              </div>
-
-              {/* ── Section: About ── */}
-              <div ref={sectionRefs.about} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>About</div>
-                <div style={{marginBottom:12}}>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
-                  <textarea rows={4} value={editForm.description} onChange={e=>setEF("description",e.target.value)}
-                    placeholder="Describe your project…"
-                    style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                  />
-                </div>
-                {/* Story expander */}
-                <div style={{marginTop:4}}>
-                  <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
-                    Tell the story behind this project
-                    <span style={{fontFamily:FF,fontSize:10,fontWeight:400,color:C.mushroom400,marginLeft:6}}>(optional)</span>
-                  </div>
-                  {[
-                    {k:"problem",  label:"What problem are you solving?",  ph:"e.g. Our team spends 3 hours a week manually..."},
-                    {k:"built",    label:"What are you building?",         ph:"e.g. An AI assistant that automatically..."},
-                    {k:"betterNow",label:"What will be better?",           ph:"e.g. The team gets those 3 hours back..."},
-                  ].map(({k,label,ph})=>(
-                    <div key={k} style={{marginBottom:8}}>
-                      <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
-                      <textarea
-                        value={editForm[k]||""}
-                        onChange={e=>setEF(k,e.target.value)}
-                        placeholder={ph}
-                        rows={2}
-                        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,resize:"vertical",outline:"none",boxSizing:"border-box",background:C.white}}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
-                    Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
-                  </label>
-                  <div style={{position:"relative"}}>
-                    <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><IcoLink size={13} color={C.mushroom400}/></span>
-                    <input type="text" value={editForm.demoLink} onChange={e=>setEF("demoLink",e.target.value)}
-                      placeholder="Prototype, internal tool, or live product"
-                      style={{width:"100%",padding:"9px 12px 9px 30px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                      onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                      onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Section: Tier classification ── */}
+              {/* ── Panel content (uses IIFE to define shared helpers in scope) ── */}
               {(()=>{
                 const YesNo = ({value, onYes, onNo}) => (
                   <div style={{display:"flex",gap:8}}>
@@ -4568,8 +4531,6 @@ const ProjectDetailPage = ({
                           background:value===opt.v?C.kangkong50:C.white,
                           fontFamily:FF,fontSize:13,fontWeight:value===opt.v?700:400,
                           color:value===opt.v?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
-                        onMouseOver={e=>{if(value!==opt.v){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
-                        onMouseOut={e=>{if(value!==opt.v){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
                       >{opt.l}</button>
                     ))}
                   </div>
@@ -4583,399 +4544,461 @@ const ProjectDetailPage = ({
                         background:active?C.kangkong50:C.white,
                         fontFamily:FF,fontSize:13,fontWeight:active?700:400,
                         color:active?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
-                      onMouseOver={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
-                      onMouseOut={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
                     >{label}</button>
                   );
                 };
                 const inputStyle = {width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"};
-                const selectStyle = (hasVal) => ({...inputStyle, color:hasVal?C.mushroom800:C.mushroom400});
+                const AccountSelect = ({value, onChange}) => (
+                  <select value={value||""} onChange={e=>onChange(e.target.value||null)}
+                    style={{padding:"9px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:value?C.mushroom800:C.mushroom400,background:C.white,outline:"none",flexShrink:0,width:130}}>
+                    <option value="">Account</option>
+                    <option value="personal">Personal</option>
+                    <option value="company">Company</option>
+                  </select>
+                );
                 const [tc,tb,tbr,tl]=
                   computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                   computedTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
                   computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
-                return (<>
-                  {/* Tier classification card — Q1 + Q2 + tier pill only */}
-                  <div ref={sectionRefs.tier} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification<span style={{color:C.tomato500,marginLeft:4}}>*</span></div>
-                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                const fmtTs = ts => ts ? new Date(ts).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "";
+                const canAct = canEdit || authUser?.isAdmin;
+                const approvalStatus = project.approvalStatus;
 
-                      {/* Q1 — backend */}
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
-                        <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
-                        <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
+                return (
+                  <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:56}}>
+
+                    {/* ══════════════ SEEDLING PANEL ══════════════ */}
+                    {activeTab==="seedling"&&(<>
+
+                      {/* Project card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project</div>
+                        <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                          <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS_LIST} form={editForm} onChange={setEF}/>
+                          <MultiSelect label="For" required opts={DEPTS_LIST} value={editForm.builtFor||[]} onChange={v=>setEF("builtFor",v)} placeholder="Search departments…"/>
+                        </div>
+                        <CollaboratorInput selected={editForm.collaboratorEmails} onChange={v=>setEF("collaboratorEmails",v)} selfEmail={authUser?.email||""}/>
                       </div>
 
-                      {/* Q2 — target users */}
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
-                        <div style={{display:"flex",gap:8}}>
-                          <TU val="internal" label="Internal only"/>
-                          <TU val="external" label="External only"/>
-                          <TU val="both"     label="Both"/>
-                        </div>
-                      </div>
-
-                      {/* Tier result pill */}
-                      {computedTier!==null&&(
-                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
-                          <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Tech Stack card — tools, framework, + all project detail fields */}
-                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                      <MultiSelect
-                        label="Tools you're using" required
-                        opts={TOOLS}
-                        value={editForm.toolUsed}
-                        onChange={v=>setEF("toolUsed",v)}
-                        placeholder="Search tools…"
-                        palette="green"
-                      />
-                      <MultiSelect
-                        label="Agentic framework" optional
-                        opts={AGENTIC_FRAMEWORKS}
-                        value={editForm.agenticFramework||[]}
-                        onChange={v=>setEF("agenticFramework",v)}
-                        placeholder="Search frameworks…"
-                        palette="purple"
-                      />
-
-                      {/* Project detail fields — shown once tier is set */}
-                      {computedTier!==null&&(<>
-
-                        {/* Hosting — T2/T3 */}
-                        {computedTier>=2&&(
-                          <MultiSelect
-                            label="Hosting platform" optional
-                            opts={["AWS","Azure","Google Cloud","Internal server","Vercel","Other"]}
-                            value={cHostingPlatform}
-                            onChange={v=>setCHostingPlatform(v)}
-                            placeholder="Search platforms…"
-                            palette="green"
-                          />
-                        )}
-
-                        {/* Version control — all tiers */}
-                        <div>
-                          <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
-                          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Repository URL, if the code is in GitHub or a similar platform (optional)</div>
-                          <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
-                            placeholder="github.com/org/repo"
-                            style={inputStyle}
+                      {/* Story card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Story</div>
+                        <div style={{marginBottom:12}}>
+                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
+                          <textarea rows={4} value={editForm.description} onChange={e=>setEF("description",e.target.value)}
+                            placeholder="Describe your project…"
+                            style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}}
                             onFocus={e=>e.target.style.borderColor=C.kangkong500}
                             onBlur={e=>e.target.style.borderColor=C.mushroom300}
                           />
                         </div>
-
-                        {/* Auth — T2/T3 */}
-                        {computedTier>=2&&(
-                          <div>
-                            <MultiSelect
-                              label="User authentication"
-                              optional
-                              opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]}
-                              value={cAuthType}
-                              onChange={v=>setCAuthType(v)}
-                              placeholder="Search auth types…"
-                              palette="green"
-                            />
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>
-                              How users log in, if the project requires authentication (leave blank if none).
-                              {computedTier===3&&<span style={{color:C.mango600,fontWeight:700}}> Keycloak is required for Tier 3 projects.</span>}
-                            </div>
-                            {computedTier===3&&!cAuthType.includes('Keycloak')&&cAuthType.length>0&&(
-                              <div style={{marginTop:6,padding:"6px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,color:C.mango600}}>
-                                Keycloak must be included for Tier 3 projects. Please add it above.
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Database — T2/T3 */}
-                        {computedTier>=2&&(
-                          <div>
-                            <MultiSelect
-                              label="Database &amp; data sources"
-                              optional
-                              opts={DB_AND_SOURCES}
-                              value={cDbPlatform}
-                              onChange={v=>setCDbPlatform(v)}
-                              placeholder="Search databases &amp; data sources…"
-                              palette="blue"
-                            />
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:4}}>Database platform(s) and any Sprout systems this project reads from (leave blank if none)</div>
-                            {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
-                              <div style={{marginTop:10}}>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
-                                <textarea
-                                  value={cSproutDbDetails}
-                                  onChange={e=>setCSpfroutDbDetails(e.target.value)}
-                                  placeholder="e.g. Employee list from Sprout HR to pre-populate user profiles"
-                                  rows={3}
-                                  style={{...inputStyle,resize:"vertical",minHeight:64}}
-                                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Data & Security — T3 only */}
-                        {computedTier===3&&(
-                          <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
-                            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
-                            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
-                                <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
-                                  <option value="">Select…</option>
-                                  {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
-                                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
-                                <YesNo value={cSendsToExtAI}
-                                  onYes={()=>setCendsToExtAI(true)}
-                                  onNo={()=>setCendsToExtAI(false)}
-                                />
-                              </div>
-                              {securityFlags.aiDataRisk&&(
-                                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                                  <span style={{fontSize:14}}>🔒</span>
-                                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                                </div>
-                              )}
-                              {securityFlags.noAuthRisk&&(
-                                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                                  <span style={{fontSize:14}}>⚠️</span>
-                                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </>)}
-                    </div>
-                  </div>
-
-                  {/* Security card */}
-                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Security &amp; data</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user login or authentication?</div>
-                        <YesNo value={cRequiresAuth} onYes={()=>setCRequiresAuth(true)} onNo={()=>setCRequiresAuth(false)}/>
-                      </div>
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it handle or process sensitive data? <span style={{fontFamily:FF,fontSize:10,fontWeight:400,color:C.mushroom400}}>(PII, payroll, HR records)</span></div>
-                        <YesNo value={cHasSensitiveData} onYes={()=>setCHasSensitiveData(true)} onNo={()=>setCHasSensitiveData(false)}/>
-                      </div>
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it send employee or company data to external AI models?</div>
-                        <YesNo value={cSendsToExtAI} onYes={()=>setCendsToExtAI(true)} onNo={()=>setCendsToExtAI(false)}/>
-                      </div>
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it store or log user inputs / outputs persistently?</div>
-                        <YesNo value={cStoresInputs} onYes={()=>setCStoresInputs(true)} onNo={()=>setCStoresInputs(false)}/>
-                      </div>
-                      {/* Warning banners */}
-                      {cHasSensitiveData===true&&cSendsToExtAI===true&&(
-                        <div style={{padding:"10px 14px",background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.lg}}>
-                          <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:3}}>Privacy review needed</div>
-                          <div style={{fontFamily:FF,fontSize:11,color:"#c53030"}}>Sending sensitive data to external AI triggers a DPO/privacy review before going live.</div>
-                        </div>
-                      )}
-                      {cRequiresAuth===false&&(cHasSensitiveData===true||cSendsToExtAI===true)&&(
-                        <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
-                          <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Access control warning</div>
-                          <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>This project handles sensitive data but has no authentication. Consider adding login.</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Save / Cancel — covers both tier + tech stack fields */}
-                  {classIsDirty&&(
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{
-                        setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                        setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
-                        setCAuthType(projArr(project.authType));
-                        setCDbPlatform(projArr(project.database));
-                        setCSpfroutDbDetails(project.sproutDbDetails||'');
-                        setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
-                        setCRequiresAuth(project.requiresAuth??null);setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
-                      }}
-                        style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
-                      <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
-                        style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
-                      >{classSaving?"Saving…":"Save classification"}</button>
-                    </div>
-                  )}
-                </>);
-              })()}
-
-              {computedTier>=2&&(
-              <button onClick={()=>setShowDevopsModal(true)} style={{
-                width:"100%",padding:"11px",background:C.carrot500,color:C.white,
-                border:"none",borderRadius:DS.radius.lg,cursor:"pointer",
-                fontFamily:FF,fontSize:13,fontWeight:700,display:"flex",
-                alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.15s",
-              }}
-                onMouseOver={e=>e.currentTarget.style.background=C.carrot600||"#c05621"}
-                onMouseOut={e=>e.currentTarget.style.background=C.carrot500}
-              >
-                <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Request DevOps Setup
-              </button>
-              )}
-
-              {/* ── Approver Section (Tier 2 & 3 only) ── */}
-              {computedTier>=2&&(()=>{
-                const status = project.approvalStatus;
-                const canAct = canEdit || authUser?.isAdmin;
-                const fmtTs  = ts => ts ? new Date(ts).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "";
-                return (
-                  <div ref={sectionRefs.approver} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"16px",marginTop:4}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:C.mushroom400,marginBottom:12}}>Approver</div>
-
-                    {/* Name + Email inputs — editable when no pending/approved status */}
-                    {status!=="approved"&&(
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-                        {[{label:"Name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
-                          <div key={k}>
-                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
-                            <input
-                              type="text"
-                              value={editForm[k]||""}
-                              onChange={e=>setEF(k,e.target.value)}
-                              placeholder={ph}
-                              disabled={status==="pending"||!canAct}
-                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(status==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:status==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:status==="pending"?0.7:1}}
-                              onFocus={e=>{ if(status!=="pending") e.target.style.borderColor=C.kangkong500; }}
-                              onBlur={e=>e.target.style.borderColor=status==="pending"?C.mushroom200:C.mushroom300}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Review material links */}
-                    {status!=="approved"&&(
-                      <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
                         {[
-                          {k:"prototypeLink", label:"Prototype / demo site", ph:"https://...", note:"The live or staging URL where the approver can try the project"},
-                          {k:"deckLink",      label:"Presentation deck",     ph:"https://docs.google.com/...", note:"Google Slides, Notion, or any link to your pitch or walkthrough deck"},
-                          {k:"docsLink",      label:"Documentation / guide", ph:"https://...", note:"User guide, README, Confluence page, or supporting documentation"},
-                        ].map(({k,label,ph,note})=>(
-                          <div key={k}>
-                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:3}}>
-                              {label} <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:C.mushroom400}}>— optional</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={editForm[k]||""}
-                              onChange={e=>setEF(k,e.target.value)}
-                              placeholder={ph}
-                              disabled={status==="pending"||!canAct}
-                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(status==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:status==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:status==="pending"?0.7:1}}
-                              onFocus={e=>{if(status!=="pending")e.target.style.borderColor=C.kangkong500;}}
-                              onBlur={e=>e.target.style.borderColor=status==="pending"?C.mushroom200:C.mushroom300}
+                          {k:"problem",  label:"What problem are you solving?",  ph:"e.g. Our team spends 3 hours a week manually…"},
+                          {k:"built",    label:"What are you building?",          ph:"e.g. An AI assistant that automatically…"},
+                          {k:"betterNow",label:"What will be better?",            ph:"e.g. The team gets those 3 hours back…"},
+                        ].map(({k,label,ph})=>(
+                          <div key={k} style={{marginBottom:8}}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                            <textarea value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph} rows={2}
+                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,resize:"vertical",outline:"none",boxSizing:"border-box",background:C.white}}
                             />
-                            <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:3,lineHeight:1.4}}>{note}</div>
                           </div>
                         ))}
-                      </div>
-                    )}
-
-                    {/* Approved view */}
-                    {status==="approved"&&(
-                      <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{project.approverName}</div>
-                          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{project.approverEmail}</div>
+                        <div style={{marginTop:4}}>
+                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
+                            Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
+                          </label>
+                          <div style={{position:"relative"}}>
+                            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><IcoLink size={13} color={C.mushroom400}/></span>
+                            <input type="text" value={editForm.demoLink} onChange={e=>setEF("demoLink",e.target.value)}
+                              placeholder="Prototype, internal tool, or live product"
+                              style={{width:"100%",padding:"9px 12px 9px 30px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                              onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                            />
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* Status banner */}
-                    {status==="pending"&&(
-                      <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Rooting Review pending</div>
-                        <div style={{fontFamily:FF,fontSize:11,color:"#744210"}}>
-                          An email was sent to {project.approverEmail}{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.&nbsp;Waiting for their response.
+                      {/* Tier classification card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification<span style={{color:C.tomato500,marginLeft:4}}>*</span></div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
+                            <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <TU val="internal" label="Internal only"/>
+                              <TU val="external" label="External only"/>
+                              <TU val="both"     label="Both"/>
+                            </div>
+                          </div>
+                          {computedTier!==null&&(
+                            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
+                              <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
+                              <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
+                            </div>
+                          )}
                         </div>
-                        {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:4}}>{approvalSending?"Sending…":"Resend email"}</button>}
                       </div>
-                    )}
-                    {status==="approved"&&(
-                      <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,marginBottom:2}}>Approved</div>
-                        <div style={{fontFamily:FF,fontSize:11,color:C.kangkong700}}>
-                          Approved by {project.approverName}{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+
+                      {/* Stage card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+                          {STAGES.map(s=>{
+                            const sc=STAGE_COLORS[s];
+                            const active=project.stage===s;
+                            const isPast=STAGES.indexOf(s)<STAGES.indexOf(project.stage);
+                            const isFuture=STAGES.indexOf(s)>STAGES.indexOf(project.stage);
+                            const sOrder=STAGE_ORDER[s];
+                            const curOrder=STAGE_ORDER[project.stage];
+                            const isAdjFwd=sOrder===curOrder+1;
+                            const isClickable=canEdit&&!active&&(authUser?.isAdmin||(isAdjFwd&&s!=='nursery'));
+                            return(
+                              <div key={s}
+                                onClick={isClickable?()=>onMoveStage?.(project,s):undefined}
+                                style={{padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",border:"2px solid "+(active?sc.dot:C.mushroom200),background:active?sc.bg:isPast?C.mushroom50:C.white,opacity:isFuture&&!authUser?.isAdmin?0.4:1,cursor:isClickable?"pointer":"default",transition:"all 0.15s"}}
+                                onMouseOver={e=>{if(isClickable){e.currentTarget.style.borderColor=sc.dot;e.currentTarget.style.background=sc.bg;}}}
+                                onMouseOut={e=>{if(isClickable){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=isPast?C.mushroom50:C.white;}}}
+                              >
+                                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+                                  <StageIcon stage={s} size={14}/>
+                                  <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
+                                  {active&&<IcoCheck size={11} color={sc.dot}/>}
+                                </div>
+                                <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    )}
-                    {status==="rejected"&&(
-                      <div style={{background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
-                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:2}}>Approval rejected{project.approvalRejectedAt?` — ${fmtTs(project.approvalRejectedAt)}`:""}</div>
-                        {project.approvalRejectionReason&&<div style={{fontFamily:FF,fontSize:11,color:"#744210",marginBottom:4}}>{project.approvalRejectionReason}</div>}
-                        <div style={{fontFamily:FF,fontSize:11,color:"#928e7c"}}>Update the project details and send a new request.</div>
-                      </div>
-                    )}
 
-                    {/* Error */}
-                    {approvalError&&<div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginBottom:8}}>{approvalError}</div>}
+                    </>)}
 
-                    {/* Action buttons */}
-                    {canAct&&(
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                        {/* Send / resend */}
-                        {(status===null||status==="rejected")&&(
-                          <button onClick={handleSendApprovalRequest} disabled={approvalSending||!editForm.approverName?.trim()||!editForm.approverEmail?.trim()}
-                            style={{flex:2,padding:"9px",background:approvalSending?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:approvalSending?"not-allowed":"pointer",transition:"all 0.15s"}}>
-                            {approvalSending?"Sending…":status==="rejected"?"Send new request →":"Submit for Rooting Review →"}
-                          </button>
+                    {/* ══════════════ NURSERY PANEL ══════════════ */}
+                    {activeTab==="nursery"&&(<>
+
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Rooting Review</div>
+
+                        {approvalStatus!=="approved"&&(
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                            {[{label:"Approver name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Approver email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
+                              <div key={k}>
+                                <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                                <input type="text" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph}
+                                  disabled={approvalStatus==="pending"||!canAct}
+                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(approvalStatus==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:approvalStatus==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:approvalStatus==="pending"?0.7:1}}
+                                  onFocus={e=>{if(approvalStatus!=="pending")e.target.style.borderColor=C.kangkong500;}}
+                                  onBlur={e=>e.target.style.borderColor=approvalStatus==="pending"?C.mushroom200:C.mushroom300}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         )}
-                        {/* Cancel */}
-                        {(status==="pending"||status==="rejected")&&(
-                          <button onClick={handleCancelApproval} disabled={approvalCancelling}
-                            style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
-                            {approvalCancelling?"…":"Cancel request"}
-                          </button>
+
+                        {approvalStatus!=="approved"&&(
+                          <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
+                            {[
+                              {k:"prototypeLink",label:"Prototype / demo site",ph:"https://...",note:"The live or staging URL where the approver can try the project"},
+                              {k:"deckLink",     label:"Presentation deck",    ph:"https://docs.google.com/...",note:"Google Slides, Notion, or any link to your pitch or walkthrough deck"},
+                              {k:"docsLink",     label:"Documentation / guide",ph:"https://...",note:"User guide, README, Confluence page, or supporting documentation"},
+                            ].map(({k,label,ph,note})=>(
+                              <div key={k}>
+                                <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:3}}>
+                                  {label} <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:C.mushroom400}}>— optional</span>
+                                </label>
+                                <input type="text" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph}
+                                  disabled={approvalStatus==="pending"||!canAct}
+                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(approvalStatus==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:approvalStatus==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:approvalStatus==="pending"?0.7:1}}
+                                  onFocus={e=>{if(approvalStatus!=="pending")e.target.style.borderColor=C.kangkong500;}}
+                                  onBlur={e=>e.target.style.borderColor=approvalStatus==="pending"?C.mushroom200:C.mushroom300}
+                                />
+                                <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:3,lineHeight:1.4}}>{note}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {approvalStatus==="approved"&&(
+                          <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{project.approverName}</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{project.approverEmail}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {approvalStatus==="pending"&&(
+                          <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Rooting Review pending</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210"}}>An email was sent to {project.approverEmail}{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.&nbsp;Waiting for their response.</div>
+                            {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:4}}>{approvalSending?"Sending…":"Resend email"}</button>}
+                          </div>
+                        )}
+                        {approvalStatus==="approved"&&(
+                          <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,marginBottom:2}}>Approved</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.kangkong700}}>Approved by {project.approverName}{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+                            </div>
+                          </div>
+                        )}
+                        {approvalStatus==="rejected"&&(
+                          <div style={{background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:2}}>Approval rejected{project.approvalRejectedAt?` — ${fmtTs(project.approvalRejectedAt)}`:""}</div>
+                            {project.approvalRejectionReason&&<div style={{fontFamily:FF,fontSize:11,color:"#744210",marginBottom:4}}>{project.approvalRejectionReason}</div>}
+                            <div style={{fontFamily:FF,fontSize:11,color:"#928e7c"}}>Update the project details and send a new request.</div>
+                          </div>
+                        )}
+
+                        {approvalError&&<div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginBottom:8}}>{approvalError}</div>}
+
+                        {canAct&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                            {(approvalStatus===null||approvalStatus==="rejected")&&(
+                              <button onClick={handleSendApprovalRequest} disabled={approvalSending||!editForm.approverName?.trim()||!editForm.approverEmail?.trim()}
+                                style={{flex:2,padding:"9px",background:approvalSending?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:approvalSending?"not-allowed":"pointer",transition:"all 0.15s"}}>
+                                {approvalSending?"Sending…":approvalStatus==="rejected"?"Send new request →":"Submit for Rooting Review →"}
+                              </button>
+                            )}
+                            {(approvalStatus==="pending"||approvalStatus==="rejected")&&(
+                              <button onClick={handleCancelApproval} disabled={approvalCancelling}
+                                style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
+                                {approvalCancelling?"…":"Cancel request"}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+
+                    </>)}
+
+                    {/* ══════════════ SPROUT PANEL ══════════════ */}
+                    {activeTab==="sprout"&&(<>
+
+                      {/* Tech stack card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                          <MultiSelect label="AI assistant" optional opts={["Claude","ChatGPT","Gemini","Copilot","Grok","Llama","Mistral","Other"]} value={editForm.aiAssistant||[]} onChange={v=>setEF("aiAssistant",v)} placeholder="Search AI assistants…" palette="purple"/>
+
+                          <MultiSelect label="Builder tools" optional opts={["Claude Code","Cursor","Windsurf","Replit","Bolt","V0","Lovable","Other"]} value={editForm.builderTools||[]} onChange={v=>setEF("builderTools",v)} placeholder="Search builder tools…" palette="purple"/>
+
+                          <MultiSelect label="Tools used" required opts={TOOLS} value={editForm.toolUsed} onChange={v=>setEF("toolUsed",v)} placeholder="Search tools…" palette="green"/>
+
+                          <MultiSelect label="Agentic framework" optional opts={AGENTIC_FRAMEWORKS} value={editForm.agenticFramework||[]} onChange={v=>setEF("agenticFramework",v)} placeholder="Search frameworks…" palette="purple"/>
+
+                          {computedTier>=2&&(<>
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting</div>
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <div style={{flex:1}}>
+                                  <MultiSelect opts={["AWS","Azure","Google Cloud","Internal server","Vercel","Other"]} value={cHostingPlatform} onChange={v=>setCHostingPlatform(v)} placeholder="Search platforms…" palette="green"/>
+                                </div>
+                                <AccountSelect value={editForm.hostingAccount} onChange={v=>setEF("hostingAccount",v)}/>
+                              </div>
+                            </div>
+                          </>)}
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Version control</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                                placeholder="github.com/org/repo"
+                                style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                              />
+                              <AccountSelect value={editForm.versionControlAccount} onChange={v=>setEF("versionControlAccount",v)}/>
+                            </div>
+                          </div>
+
+                          {computedTier>=2&&(<>
+                            <div>
+                              <MultiSelect label="User authentication" optional opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]} value={cAuthType} onChange={v=>setCAuthType(v)} placeholder="Search auth types…" palette="green"/>
+                              {computedTier===3&&!cAuthType.includes('Keycloak')&&cAuthType.length>0&&(
+                                <div style={{marginTop:6,padding:"6px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,color:C.mango600}}>Keycloak must be included for Tier 3 projects.</div>
+                              )}
+                            </div>
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database &amp; data sources</div>
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <div style={{flex:1}}>
+                                  <MultiSelect opts={DB_AND_SOURCES} value={cDbPlatform} onChange={v=>setCDbPlatform(v)} placeholder="Search databases &amp; data sources…" palette="blue"/>
+                                </div>
+                                <AccountSelect value={editForm.databaseAccount} onChange={v=>setEF("databaseAccount",v)}/>
+                              </div>
+                              {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
+                                <div style={{marginTop:10}}>
+                                  <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
+                                  <textarea value={cSproutDbDetails} onChange={e=>setCSpfroutDbDetails(e.target.value)} placeholder="e.g. Employee list from Sprout HR…" rows={3}
+                                    style={{...inputStyle,resize:"vertical",minHeight:64}}
+                                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </>)}
+                        </div>
+                      </div>
+
+                      {/* Security card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Security &amp; data</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user login or authentication?</div>
+                            <YesNo value={cRequiresAuth} onYes={()=>setCRequiresAuth(true)} onNo={()=>setCRequiresAuth(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it handle or process sensitive data? <span style={{fontSize:10,fontWeight:400,color:C.mushroom400}}>(PII, payroll, HR records)</span></div>
+                            <YesNo value={cHasSensitiveData} onYes={()=>setCHasSensitiveData(true)} onNo={()=>setCHasSensitiveData(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it send employee or company data to external AI models?</div>
+                            <YesNo value={cSendsToExtAI} onYes={()=>setCendsToExtAI(true)} onNo={()=>setCendsToExtAI(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it store or log user inputs / outputs persistently?</div>
+                            <YesNo value={cStoresInputs} onYes={()=>setCStoresInputs(true)} onNo={()=>setCStoresInputs(false)}/>
+                          </div>
+                          {cHasSensitiveData===true&&cSendsToExtAI===true&&(
+                            <div style={{padding:"10px 14px",background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.lg}}>
+                              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:3}}>Privacy review needed</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:"#c53030"}}>Sending sensitive data to external AI triggers a DPO/privacy review before going live.</div>
+                            </div>
+                          )}
+                          {cRequiresAuth===false&&(cHasSensitiveData===true||cSendsToExtAI===true)&&(
+                            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+                              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Access control warning</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>This project handles sensitive data but has no authentication. Consider adding login.</div>
+                            </div>
+                          )}
+                          {computedTier===3&&(
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
+                              <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)}
+                                style={{...inputStyle,color:cDataSensitivity?C.mushroom800:C.mushroom400}}>
+                                <option value="">Select…</option>
+                                {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </>)}
+
+                    {/* ══════════════ BLOOM PANEL ══════════════ */}
+                    {activeTab==="bloom"&&(<>
+
+                      {/* Production environment card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Production environment</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionHosting||""} onChange={e=>setEF("productionHosting",e.target.value||null)}
+                                placeholder="e.g. Vercel, Azure, AWS" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionHostingAccount} onChange={v=>setEF("productionHostingAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionHostingUrl||""} onChange={e=>setEF("productionHostingUrl",e.target.value||null)}
+                              placeholder="Production URL" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Version control</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionVersionControl||""} onChange={e=>setEF("productionVersionControl",e.target.value||null)}
+                                placeholder="e.g. GitHub, GitLab" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionVersionControlAccount} onChange={v=>setEF("productionVersionControlAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionVersionControlUrl||""} onChange={e=>setEF("productionVersionControlUrl",e.target.value||null)}
+                              placeholder="Repository URL" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionDatabase||""} onChange={e=>setEF("productionDatabase",e.target.value||null)}
+                                placeholder="e.g. Supabase, PostgreSQL" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionDatabaseAccount} onChange={v=>setEF("productionDatabaseAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionDatabaseUrl||""} onChange={e=>setEF("productionDatabaseUrl",e.target.value||null)}
+                              placeholder="Database host (no passwords)" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Go-live dates card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Go-live dates</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                          {[{k:"releaseDate",label:"Release date"},{k:"announcementDate",label:"Announcement date"}].map(({k,label})=>(
+                            <div key={k}>
+                              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{label}</label>
+                              <input type="date" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value||null)}
+                                style={inputStyle}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {computedTier>=2&&(
+                        <button onClick={()=>setShowDevopsModal(true)} style={{width:"100%",padding:"11px",background:C.carrot500,color:C.white,border:"none",borderRadius:DS.radius.lg,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.15s"}}
+                          onMouseOver={e=>e.currentTarget.style.background=C.carrot600||"#c05621"}
+                          onMouseOut={e=>e.currentTarget.style.background=C.carrot500}
+                        >
+                          <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Request DevOps Setup
+                        </button>
+                      )}
+
+                    </>)}
+
+                    {/* ══════════════ THRIVING PANEL ══════════════ */}
+                    {activeTab==="thriving"&&(<>
+
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Impact &amp; notes</div>
+                        <div style={{fontFamily:FF,fontSize:13,color:C.mushroom400,lineHeight:1.6}}>
+                          Use the Notes &amp; Milestones panel on the right to record impact metrics, milestones, and updates.
+                        </div>
+                        {project.notes?.length>0&&(
+                          <div style={{marginTop:16}}>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Recent notes</div>
+                            {project.notes.slice(-3).reverse().map((n,i)=>(
+                              <div key={i} style={{padding:"8px 12px",background:C.mushroom50,borderRadius:DS.radius.md,marginBottom:8,fontFamily:FF,fontSize:12,color:C.mushroom700,lineHeight:1.5}}>{typeof n==="string"?n:n.text||""}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                    </>)}
+
                   </div>
                 );
               })()}
 
-              {/* Save / Cancel */}
-              {formDirty&&(
-                <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>{setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],stage:project.stage||'sprout',githubRepo:project.githubRepo||'',hosting:project.hosting||'',database:project.database||''});setFormDirty(false);}}
-                    style={{flex:1,padding:"11px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}
-                    onMouseOver={e=>e.currentTarget.style.borderColor=C.mushroom400}
-                    onMouseOut={e=>e.currentTarget.style.borderColor=C.mushroom300}
-                  >Cancel</button>
-                  <button onClick={handleOverviewSave} disabled={formSaving}
-                    style={{flex:2,padding:"11px",background:formSaving?C.mushroom300:C.kangkong500,color:formSaving?C.mushroom500:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:formSaving?"not-allowed":"pointer",transition:"all 0.15s"}}
-                    onMouseOver={e=>{if(!formSaving)e.currentTarget.style.background=C.kangkong600;}}
-                    onMouseOut={e=>{if(!formSaving)e.currentTarget.style.background=C.kangkong500;}}
-                  >{formSaving?"Saving…":"Save changes"}</button>
-                </div>
-              )}
             </div>
           ) : (
             /* ── View-only: disabled-input style section cards ── */
@@ -4989,7 +5012,7 @@ const ProjectDetailPage = ({
                 <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
 
                   {/* The project */}
-                  <div ref={sectionRefs.project} style={sCard}>
+                  <div style={sCard}>
                     <div style={sTitle}>The project</div>
                     <div style={{marginBottom:12}}>
                       <label style={roLabel}>Project Name</label>
@@ -5037,7 +5060,7 @@ const ProjectDetailPage = ({
                   </div>
 
                   {/* Stage */}
-                  <div ref={sectionRefs.stage} style={sCard}>
+                  <div style={sCard}>
                     <div style={sTitle}>Stage</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
                       {STAGES.map(s=>{
@@ -5070,7 +5093,7 @@ const ProjectDetailPage = ({
                       project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                        [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
                     return(
-                      <div ref={sectionRefs.tier} style={sCard}>
+                      <div style={sCard}>
                         <div style={sTitle}>Tier Classification</div>
                         {project.tier?(
                           <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
