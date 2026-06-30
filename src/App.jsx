@@ -4179,8 +4179,9 @@ const ProjectDetailPage = ({
   const [showDevopsModal, setShowDevopsModal] = useState(false);
 
   const sectionRefs = {
-    project:  useRef(null),
     stage:    useRef(null),
+    project:  useRef(null),
+    about:    useRef(null),
     tier:     useRef(null),
     approver: useRef(null),
   };
@@ -4191,7 +4192,7 @@ const ProjectDetailPage = ({
     const container = detailScrollRef.current;
     if (!container) return;
     const onScroll = () => {
-      const keys = ["project","stage","tier","approver"];
+      const keys = ["stage","project","about","tier","approver"];
       for (const key of [...keys].reverse()) {
         const el = sectionRefs[key]?.current;
         if (!el) continue;
@@ -4406,6 +4407,7 @@ const ProjectDetailPage = ({
           {[
             {key:"stage",   label:"Stage"},
             {key:"project", label:"The project"},
+            {key:"about",   label:"About"},
             {key:"tier",    label:"Tier & Tools"},
             {key:"approver",label:"Approver"},
           ].map(({key,label}) => {
@@ -4589,7 +4591,7 @@ const ProjectDetailPage = ({
               </div>
 
               {/* ── Section: About ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+              <div ref={sectionRefs.about} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
                 <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>About</div>
                 <div style={{marginBottom:12}}>
                   <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
