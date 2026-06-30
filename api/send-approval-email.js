@@ -24,6 +24,9 @@ export default async function handler(req, res) {
     builderName,
     builderEmail,
     projectDescription,
+    prototypeLink,
+    deckLink,
+    docsLink,
   } = req.body;
 
   if (!projectId || !approverName || !approverEmail) {
@@ -50,6 +53,9 @@ export default async function handler(req, res) {
       approved_at:               null,
       approval_rejected_at:      null,
       approval_rejection_reason: null,
+      prototype_link:            prototypeLink || null,
+      deck_link:                 deckLink      || null,
+      docs_link:                 docsLink      || null,
     })
     .eq("id", projectId);
 
@@ -87,6 +93,13 @@ export default async function handler(req, res) {
       <div style="background:#fafaf8;border:1px solid #e4e2da;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
         <div style="color:#928e7c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">About the project</div>
         <div style="color:#565244;font-size:14px;line-height:1.6;">${projectDescription}</div>
+      </div>` : ""}
+      ${(prototypeLink || deckLink || docsLink) ? `
+      <div style="background:#fafaf8;border:1px solid #e4e2da;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+        <div style="color:#928e7c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Review materials</div>
+        ${prototypeLink ? `<div style="margin-bottom:8px;"><span style="color:#736f5e;font-size:12px;font-weight:600;">Demo / prototype:</span> <a href="${prototypeLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${prototypeLink}</a></div>` : ""}
+        ${deckLink      ? `<div style="margin-bottom:8px;"><span style="color:#736f5e;font-size:12px;font-weight:600;">Presentation deck:</span> <a href="${deckLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${deckLink}</a></div>` : ""}
+        ${docsLink      ? `<div><span style="color:#736f5e;font-size:12px;font-weight:600;">Documentation:</span> <a href="${docsLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${docsLink}</a></div>` : ""}
       </div>` : ""}
       <p style="margin:0 0 16px;color:#565244;font-size:14px;line-height:1.6;">
         Please review and let ${builderName} know your decision:

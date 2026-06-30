@@ -9,6 +9,9 @@ create table if not exists rooting_reviews (
   reviewer_email text,
   status         text        default 'pending',  -- pending | approved | rejected
   rejection_reason text      default null,
+  prototype_link text        default null,
+  deck_link      text        default null,
+  docs_link      text        default null,
   country        text,
   created_at     timestamptz default now(),
   resolved_at    timestamptz default null

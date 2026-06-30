@@ -4126,6 +4126,9 @@ const ProjectDetailPage = ({
     setApprovalError(null);
     setApprovalSending(true);
     try {
+      const protoLink = editForm.prototypeLink?.trim() || null;
+      const dkLink    = editForm.deckLink?.trim()      || null;
+      const dcLink    = editForm.docsLink?.trim()      || null;
       const emailRes = await fetch("/api/send-approval-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4137,10 +4140,13 @@ const ProjectDetailPage = ({
           builderName:        authUser.displayName,
           builderEmail:       authUser.email,
           projectDescription: project.description,
+          prototypeLink:      protoLink,
+          deckLink:           dkLink,
+          docsLink:           dcLink,
         }),
       });
       if (!emailRes.ok) throw new Error(`HTTP ${emailRes.status}`);
-      await onUpdateProject?.({ ...project, stage: "nursery", approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+      await onUpdateProject?.({ ...project, stage: "nursery", approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null, prototypeLink: protoLink, deckLink: dkLink, docsLink: dcLink });
       // Insert rooting_reviews ticket for Tool Shed tracking
       await supabase
         .from("rooting_reviews")
@@ -4152,6 +4158,9 @@ const ProjectDetailPage = ({
           reviewer_name:  name,
           reviewer_email: email,
           country:        project.country || null,
+          prototype_link: protoLink,
+          deck_link:      dkLink,
+          docs_link:      dcLink,
         });
     } catch (e) {
       setApprovalError("Failed to send email. Please try again.");
@@ -4184,6 +4193,9 @@ const ProjectDetailPage = ({
       database:           project.database           || '',
       approverName:       project.approverName       || '',
       approverEmail:      project.approverEmail      || '',
+      prototypeLink:      project.prototypeLink      || '',
+      deckLink:           project.deckLink           || '',
+      docsLink:           project.docsLink           || '',
       problem:            project.problem            || '',
       built:              project.built              || '',
       betterNow:          project.betterNow          || '',
@@ -4861,6 +4873,34 @@ const ProjectDetailPage = ({
                               onFocus={e=>{ if(status!=="pending") e.target.style.borderColor=C.kangkong500; }}
                               onBlur={e=>e.target.style.borderColor=status==="pending"?C.mushroom200:C.mushroom300}
                             />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Review material links */}
+                    {status!=="approved"&&(
+                      <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
+                        {[
+                          {k:"prototypeLink", label:"Prototype / demo site", ph:"https://...", note:"The live or staging URL where the approver can try the project"},
+                          {k:"deckLink",      label:"Presentation deck",     ph:"https://docs.google.com/...", note:"Google Slides, Notion, or any link to your pitch or walkthrough deck"},
+                          {k:"docsLink",      label:"Documentation / guide", ph:"https://...", note:"User guide, README, Confluence page, or supporting documentation"},
+                        ].map(({k,label,ph,note})=>(
+                          <div key={k}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:3}}>
+                              {label} <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:C.mushroom400}}>— optional</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={editForm[k]||""}
+                              onChange={e=>setEF(k,e.target.value)}
+                              placeholder={ph}
+                              disabled={status==="pending"||!canAct}
+                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(status==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:status==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:status==="pending"?0.7:1}}
+                              onFocus={e=>{if(status!=="pending")e.target.style.borderColor=C.kangkong500;}}
+                              onBlur={e=>e.target.style.borderColor=status==="pending"?C.mushroom200:C.mushroom300}
+                            />
+                            <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:3,lineHeight:1.4}}>{note}</div>
                           </div>
                         ))}
                       </div>
