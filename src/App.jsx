@@ -4147,6 +4147,9 @@ const ProjectDetailPage = ({
   const [cSproutDbDetails,  setCSpfroutDbDetails] = useState(project.sproutDbDetails  || '');
   const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
   const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
+  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth      ?? null);
+  const [cHasSensitiveData, setCHasSensitiveData] = useState(project.hasSensitiveData  ?? null);
+  const [cStoresInputs,     setCStoresInputs]     = useState(project.storesUserInputs  ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -4166,6 +4169,9 @@ const ProjectDetailPage = ({
     database:           project.database           || '',
     approverName:       project.approverName       || '',
     approverEmail:      project.approverEmail      || '',
+    problem:            project.problem            || '',
+    built:              project.built              || '',
+    betterNow:          project.betterNow          || '',
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
@@ -4266,6 +4272,9 @@ const ProjectDetailPage = ({
       database:           project.database           || '',
       approverName:       project.approverName       || '',
       approverEmail:      project.approverEmail      || '',
+      problem:            project.problem            || '',
+      built:              project.built              || '',
+      betterNow:          project.betterNow          || '',
     });
     setFormDirty(false);
     setActiveSection("project");
@@ -4326,7 +4335,10 @@ const ProjectDetailPage = ({
     || cDbPlatform.join('|')      !== projArr(project.database).join('|')
     || cSproutDbDetails !== (project.sproutDbDetails || '')
     || cDataSensitivity !== (project.dataSensitivity || '')
-    || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
+    || cSendsToExtAI !== (project.sendsToExternalAI ?? null)
+    || cRequiresAuth !== (project.requiresAuth ?? null)
+    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
+    || cStoresInputs !== (project.storesUserInputs ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
@@ -4339,12 +4351,13 @@ const ProjectDetailPage = ({
       hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
       githubRepo: cRepoUrl,
       hosting: cHostingPlatform,
-      requiresAuth: cAuthType.length > 0, authType: cAuthType,
+      requiresAuth: cRequiresAuth ?? (cAuthType.length > 0), authType: cAuthType,
       hasDatabase: cDbPlatform.length > 0, database: cDbPlatform,
       connectsSproutDb: connectsSprout,
       sproutDbDetails: connectsSprout ? cSproutDbDetails : '',
       dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
       hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
+      storesUserInputs: cStoresInputs,
     });
     setClassSaving(false);
   };
@@ -4587,6 +4600,29 @@ const ProjectDetailPage = ({
                     onBlur={e=>e.target.style.borderColor=C.mushroom300}
                   />
                 </div>
+                {/* Story expander */}
+                <div style={{marginTop:4}}>
+                  <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
+                    Tell the story behind this project
+                    <span style={{fontFamily:FF,fontSize:10,fontWeight:400,color:C.mushroom400,marginLeft:6}}>(optional)</span>
+                  </div>
+                  {[
+                    {k:"problem",  label:"What problem are you solving?",  ph:"e.g. Our team spends 3 hours a week manually..."},
+                    {k:"built",    label:"What are you building?",         ph:"e.g. An AI assistant that automatically..."},
+                    {k:"betterNow",label:"What will be better?",           ph:"e.g. The team gets those 3 hours back..."},
+                  ].map(({k,label,ph})=>(
+                    <div key={k} style={{marginBottom:8}}>
+                      <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                      <textarea
+                        value={editForm[k]||""}
+                        onChange={e=>setEF(k,e.target.value)}
+                        placeholder={ph}
+                        rows={2}
+                        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,resize:"vertical",outline:"none",boxSizing:"border-box",background:C.white}}
+                      />
+                    </div>
+                  ))}
+                </div>
                 <div>
                   <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
                     Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
@@ -4815,6 +4851,42 @@ const ProjectDetailPage = ({
                     </div>
                   </div>
 
+                  {/* Security card */}
+                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Security &amp; data</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user login or authentication?</div>
+                        <YesNo value={cRequiresAuth} onYes={()=>setCRequiresAuth(true)} onNo={()=>setCRequiresAuth(false)}/>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it handle or process sensitive data? <span style={{fontFamily:FF,fontSize:10,fontWeight:400,color:C.mushroom400}}>(PII, payroll, HR records)</span></div>
+                        <YesNo value={cHasSensitiveData} onYes={()=>setCHasSensitiveData(true)} onNo={()=>setCHasSensitiveData(false)}/>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it send employee or company data to external AI models?</div>
+                        <YesNo value={cSendsToExtAI} onYes={()=>setCendsToExtAI(true)} onNo={()=>setCendsToExtAI(false)}/>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it store or log user inputs / outputs persistently?</div>
+                        <YesNo value={cStoresInputs} onYes={()=>setCStoresInputs(true)} onNo={()=>setCStoresInputs(false)}/>
+                      </div>
+                      {/* Warning banners */}
+                      {cHasSensitiveData===true&&cSendsToExtAI===true&&(
+                        <div style={{padding:"10px 14px",background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.lg}}>
+                          <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:3}}>Privacy review needed</div>
+                          <div style={{fontFamily:FF,fontSize:11,color:"#c53030"}}>Sending sensitive data to external AI triggers a DPO/privacy review before going live.</div>
+                        </div>
+                      )}
+                      {cRequiresAuth===false&&(cHasSensitiveData===true||cSendsToExtAI===true)&&(
+                        <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+                          <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Access control warning</div>
+                          <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>This project handles sensitive data but has no authentication. Consider adding login.</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Save / Cancel — covers both tier + tech stack fields */}
                   {classIsDirty&&(
                     <div style={{display:"flex",gap:8}}>
@@ -4825,6 +4897,7 @@ const ProjectDetailPage = ({
                         setCDbPlatform(projArr(project.database));
                         setCSpfroutDbDetails(project.sproutDbDetails||'');
                         setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
+                        setCRequiresAuth(project.requiresAuth??null);setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
                       }}
                         style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
                       <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
@@ -5979,6 +6052,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     description:"", demoLink:"", collaboratorEmails:[],
     problem:"", built:"", betterNow:"",
     hasBackend:null, targetUsers:null,
+    approverName:"", approverEmail:"",
   });
   const setP = (k,v) => setPlantRaw(p=>({...p,[k]:v}));
 
@@ -6169,6 +6243,29 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
         {flow==="plant" && step===1 && (
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                Where is this project right now?
+              </label>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+                {STAGES.map(s=>{
+                  const sc=STAGE_COLORS[s]; const active=plant.stage===s;
+                  return (
+                    <button key={s} type="button" onClick={()=>setP("stage",s)} style={{
+                      padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
+                      border:`2px solid ${active?sc.dot:C.mushroom200}`,background:active?sc.bg:C.white,transition:"all 0.15s",
+                    }}>
+                      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
+                        <StageIcon stage={s} size={12}/>
+                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
+                        {active&&<IcoCheck size={10} color={sc.dot}/>}
+                      </div>
+                      <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:5}}>
                 Project name <span style={{color:C.carrot500}}>*</span>
               </label>
@@ -6224,30 +6321,22 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
                 <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Static / Internal":plantTier===2?"Internal App — coordinate with Raffy":"External-Facing — coordinate with Belle or Coleen"}</span>
               </div>
             )}
-
-            <div>
-              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                Where is this project right now?
-              </label>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
-                {STAGES.map(s=>{
-                  const sc=STAGE_COLORS[s]; const active=plant.stage===s;
-                  return (
-                    <button key={s} type="button" onClick={()=>setP("stage",s)} style={{
-                      padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
-                      border:`2px solid ${active?sc.dot:C.mushroom200}`,background:active?sc.bg:C.white,transition:"all 0.15s",
-                    }}>
-                      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
-                        <StageIcon stage={s} size={12}/>
-                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                        {active&&<IcoCheck size={10} color={sc.dot}/>}
-                      </div>
-                      <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
-                    </button>
-                  );
-                })}
+            {(plantTier===2||plantTier===3)&&(
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                  Approver
+                </label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{label:"Name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
+                    <div key={k}>
+                      <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                      <input type="text" value={plant[k]||""} onChange={e=>setP(k,e.target.value)} placeholder={ph}
+                        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,outline:"none",boxSizing:"border-box"}}/>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
