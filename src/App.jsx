@@ -4759,6 +4759,55 @@ const ProjectDetailPage = ({
                         )}
                       </div>
 
+                      {/* Going Live card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Going Live</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Request DevOps setup and get release sign-off before advancing to Bloom.</div>
+                        </div>
+                        <div style={{display:"flex",gap:10}}>
+
+                          {/* DevOps setup card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.carrot100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M2 14l3.5-3.5M13 2l-3.5 3.5M5.5 10.5L8 8M8 8l2.5-2.5M8 8l-2.5 2.5" stroke={C.carrot500} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>DevOps setup</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Coleen, Blaise, Nikki, or Raffy set up hosting and infrastructure before launch.</div>
+                            <button onClick={()=>setShowDevopsModal(true)}
+                              style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.carrot500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.carrot500,cursor:"pointer",transition:"all 0.15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.background=C.carrot100;}}
+                              onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                            >Request DevOps setup</button>
+                          </div>
+
+                          {/* Release review card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M13 4.5L6.5 12L3 8.5" stroke={C.kangkong600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>Release review</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Belle Asis signs off before the project goes live.</div>
+                            {project.releaseReviewStatus==="approved"&&(
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600}}>✓ Approved</div>
+                            )}
+                            {project.releaseReviewStatus==="pending"&&(
+                              <div style={{fontFamily:FF,fontSize:11,color:"#744210",fontWeight:600}}>Pending review…</div>
+                            )}
+                            {(!project.releaseReviewStatus||project.releaseReviewStatus==="rejected")&&(
+                              <button
+                                onClick={async()=>{ await onSubmitReleaseReview?.(project); }}
+                                disabled={computedTier===null}
+                                style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.kangkong500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.kangkong600,cursor:computedTier===null?"not-allowed":"pointer",opacity:computedTier===null?0.5:1,transition:"all 0.15s"}}
+                                onMouseOver={e=>{if(computedTier!==null)e.currentTarget.style.background=C.kangkong50;}}
+                                onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                              >{project.releaseReviewStatus==="rejected"?"Resubmit →":"Submit for release review →"}</button>
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
+
                     </>)}
 
                     {/* ══════════════ SPROUT PANEL ══════════════ */}
@@ -4883,54 +4932,6 @@ const ProjectDetailPage = ({
                         </div>
                       </div>
 
-                      {/* Going Live card */}
-                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{marginBottom:16}}>
-                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Going Live</div>
-                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Request DevOps setup and get release sign-off before advancing to Bloom.</div>
-                        </div>
-                        <div style={{display:"flex",gap:10}}>
-
-                          {/* DevOps setup card */}
-                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
-                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.carrot100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M2 14l3.5-3.5M13 2l-3.5 3.5M5.5 10.5L8 8M8 8l2.5-2.5M8 8l-2.5 2.5" stroke={C.carrot500} strokeWidth="1.5" strokeLinecap="round"/></svg>
-                            </div>
-                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>DevOps setup</div>
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Coleen, Blaise, Nikki, or Raffy set up hosting and infrastructure before launch.</div>
-                            <button onClick={()=>setShowDevopsModal(true)}
-                              style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.carrot500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.carrot500,cursor:"pointer",transition:"all 0.15s"}}
-                              onMouseOver={e=>{e.currentTarget.style.background=C.carrot100;}}
-                              onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
-                            >Request DevOps setup</button>
-                          </div>
-
-                          {/* Release review card */}
-                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
-                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M13 4.5L6.5 12L3 8.5" stroke={C.kangkong600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </div>
-                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>Release review</div>
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Belle Asis signs off before the project goes live.</div>
-                            {project.releaseReviewStatus==="approved"&&(
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600}}>✓ Approved</div>
-                            )}
-                            {project.releaseReviewStatus==="pending"&&(
-                              <div style={{fontFamily:FF,fontSize:11,color:"#744210",fontWeight:600}}>Pending review…</div>
-                            )}
-                            {(!project.releaseReviewStatus||project.releaseReviewStatus==="rejected")&&(
-                              <button
-                                onClick={async()=>{ await onSubmitReleaseReview?.(project); }}
-                                disabled={computedTier===null}
-                                style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.kangkong500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.kangkong600,cursor:computedTier===null?"not-allowed":"pointer",opacity:computedTier===null?0.5:1,transition:"all 0.15s"}}
-                                onMouseOver={e=>{if(computedTier!==null)e.currentTarget.style.background=C.kangkong50;}}
-                                onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
-                              >{project.releaseReviewStatus==="rejected"?"Resubmit →":"Submit for release review →"}</button>
-                            )}
-                          </div>
-
-                        </div>
-                      </div>
 
                     </>)}
 
