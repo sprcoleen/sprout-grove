@@ -1392,37 +1392,43 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                 return recent.length === 0 ? (
                   <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No projects yet — they'll appear here as teams add them.</div>
                 ) : recent.map((p, i) => {
-                  const cc = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
-                  const sc = STAGE_COLORS[p.stage]   || STAGE_COLORS.seedling;
+                  const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
+                  const sc  = STAGE_COLORS[p.stage]   || STAGE_COLORS.seedling;
                   const initials = (p.builder||p.builderEmail||"?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
+                  const tierLabel = p.tier ? `T${p.tier}` : null;
+                  const tierColor = p.tier===1?C.mushroom600:p.tier===2?C.blueberry500:C.carrot500;
+                  const tierBg    = p.tier===1?C.mushroom100:p.tier===2?C.blueberry100:C.carrot100;
                   return (
                     <div key={p.id}
                       onClick={() => onSelectProject(p)}
                       onMouseEnter={e => e.currentTarget.style.background=C.mushroom50}
                       onMouseLeave={e => e.currentTarget.style.background=C.white}
                       style={{
-                        display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
-                        borderLeft: "3px solid " + sc.dot,
+                        padding:"12px 14px",
                         borderBottom: i < recent.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
                         transition:"background 0.15s", cursor:"pointer", background:C.white,
                         animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
                       }}
                     >
-                      <div style={{ width:28, height:28, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0, marginTop:1 }}>
-                        {initials}
+                      {/* Stage line */}
+                      <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
+                        <span style={{ width:6, height:6, borderRadius:"50%", background:sc.dot, flexShrink:0, display:"inline-block" }}/>
+                        <span style={{ fontSize:10, fontWeight:600, color:sc.text, letterSpacing:"0.03em" }}>{STAGE_LABELS[p.stage]||p.stage}</span>
                       </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3, flexWrap:"wrap" }}>
-                          <span style={{ fontSize:13, fontWeight:700, color:C.mushroom900, lineHeight:1.3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{p.name}</span>
-                          {p.country && <CountryBadge country={p.country} size="sm"/>}
-                        </div>
-                        <div style={{ fontSize:11, color:C.mushroom500, lineHeight:1.3 }}>
-                          <span style={{ fontWeight:600, color:C.mushroom700 }}>{p.builtBy}</span>
-                          {" · "}
-                          <span style={{ fontWeight:600, color:sc.text, background:sc.bg, border:"1px solid "+sc.border, borderRadius:DS.radius.full, padding:"1px 7px", fontSize:10 }}>{STAGE_LABELS[p.stage]||p.stage}</span>
-                        </div>
+                      {/* Name */}
+                      <div style={{ fontSize:14, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                      {/* Description */}
+                      {p.description && (
+                        <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.5, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{p.description}</div>
+                      )}
+                      {/* Footer */}
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:cc.text, background:cc.bg, border:`1px solid ${cc.text}22`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{p.builtBy}</span>
+                        {tierLabel && <span style={{ fontSize:11, fontWeight:700, color:tierColor, background:tierBg, borderRadius:DS.radius.full, padding:"2px 8px" }}>{tierLabel}</span>}
+                        <span style={{ flex:1 }}/>
+                        <span style={{ fontSize:11, color:C.mushroom400, whiteSpace:"nowrap" }}>{timeAgo(p.createdAt)}</span>
+                        <div style={{ width:26, height:26, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0 }}>{initials}</div>
                       </div>
-                      <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(p.createdAt)}</div>
                     </div>
                   );
                 });
