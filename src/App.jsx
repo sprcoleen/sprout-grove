@@ -9600,10 +9600,10 @@ export default function SproutAIGarden() {
   const tod = getTimeOfDayStyle();
 
   return (
-    <div style={{fontFamily:FF,background:tod.bg,height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",transition:"background 2s ease"}}>
+    <div style={{fontFamily:FF,background:C.mushroom50,height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
 
-      {/* Time-of-day glow — sits behind all content */}
-      {tod.glow&&(
+      {/* Time-of-day glow — disabled */}
+      {false&&tod.glow&&(
         <div style={{position:"fixed",inset:0,background:tod.glow,opacity:tod.glowOpacity,pointerEvents:"none",zIndex:0}}/>
       )}
 
