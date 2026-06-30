@@ -1386,59 +1386,46 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             </div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
               {(() => {
-                const seenStageMoved = new Set();
-                const publicLog = activityLog
-                  .filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved")
-                  .filter(ev => {
-                    if (ev.event_type !== 'stage_moved') return true;
-                    const day = (ev.created_at || '').slice(0, 10);
-                    const key = `${ev.project_id}:${day}`;
-                    if (seenStageMoved.has(key)) return false;
-                    seenStageMoved.add(key);
-                    return true;
-                  });
-                return publicLog.length === 0 ? (
-                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
-                ) : publicLog.map((ev, i) => {
-                const evProject   = ev.project_id ? projects.find(p => String(p.id) === String(ev.project_id)) : null;
-                const actor       = ev.actor_name || ev.actor_email?.split("@")[0] || "?";
-                const initials    = actor.split(" ").filter(Boolean).map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
-                const cc          = COVER_COLORS[evProject?.builtBy] || COVER_COLORS.default;
-                const accentColor = ACTIVITY_DOTS[ev.event_type] || C.mushroom300;
-                return (
-                  <div key={ev.id ?? i}
-                    onMouseEnter={e => e.currentTarget.style.background=C.mushroom50}
-                    onMouseLeave={e => e.currentTarget.style.background=C.white}
-                    onClick={evProject ? () => onSelectProject(evProject) : undefined}
-                    style={{
-                      display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
-                      borderLeft: "3px solid " + accentColor,
-                      borderBottom: i < publicLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
-                      transition:"background 0.15s",
-                      animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
-                      cursor: evProject ? "pointer" : "default",
-                      background: C.white,
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div style={{ width:28, height:28, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0, marginTop:1 }}>
-                      {initials}
-                    </div>
-                    {/* Content */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ marginBottom:3 }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:C.mushroom900, lineHeight:1.3 }}>{ev.entity_name}</span>
+                const recent = [...projects]
+                  .filter(p => p.createdAt)
+                  .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+                return recent.length === 0 ? (
+                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No projects yet — they'll appear here as teams add them.</div>
+                ) : recent.map((p, i) => {
+                  const cc = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
+                  const sc = STAGE_COLORS[p.stage]   || STAGE_COLORS.seedling;
+                  const initials = (p.builder||p.builderEmail||"?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
+                  return (
+                    <div key={p.id}
+                      onClick={() => onSelectProject(p)}
+                      onMouseEnter={e => e.currentTarget.style.background=C.mushroom50}
+                      onMouseLeave={e => e.currentTarget.style.background=C.white}
+                      style={{
+                        display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
+                        borderLeft: "3px solid " + sc.dot,
+                        borderBottom: i < recent.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
+                        transition:"background 0.15s", cursor:"pointer", background:C.white,
+                        animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
+                      }}
+                    >
+                      <div style={{ width:28, height:28, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0, marginTop:1 }}>
+                        {initials}
                       </div>
-                      <div style={{ fontSize:11, color:C.mushroom500, lineHeight:1.3 }}>
-                        <span style={{ fontWeight:600, color:C.mushroom700 }}>{actor}</span>
-                        {" · "}{getActivityActionText(ev)}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3, flexWrap:"wrap" }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:C.mushroom900, lineHeight:1.3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{p.name}</span>
+                          {p.country && <CountryBadge country={p.country} size="sm"/>}
+                        </div>
+                        <div style={{ fontSize:11, color:C.mushroom500, lineHeight:1.3 }}>
+                          <span style={{ fontWeight:600, color:C.mushroom700 }}>{p.builtBy}</span>
+                          {" · "}
+                          <span style={{ fontWeight:600, color:sc.text, background:sc.bg, border:"1px solid "+sc.border, borderRadius:DS.radius.full, padding:"1px 7px", fontSize:10 }}>{STAGE_LABELS[p.stage]||p.stage}</span>
+                        </div>
                       </div>
+                      <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(p.createdAt)}</div>
                     </div>
-                    {/* Time */}
-                    <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(ev.created_at)}</div>
-                  </div>
-                );
-              });
+                  );
+                });
               })()}
             </div>
           </div>
