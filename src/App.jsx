@@ -4573,7 +4573,10 @@ const ProjectDetailPage = ({
 
                       {/* Project card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>The project</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Core details that identify your project across Grove.</div>
+                        </div>
                         <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                           <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS_LIST} form={editForm} onChange={setEF}/>
@@ -4584,9 +4587,12 @@ const ProjectDetailPage = ({
 
                       {/* Story card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Story</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Your story</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Help leadership understand what you built and why it matters.</div>
+                        </div>
                         <div style={{marginBottom:12}}>
-                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
+                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>About the project</label>
                           <textarea rows={4} value={editForm.description} onChange={e=>setEF("description",e.target.value)}
                             placeholder="Describe your project…"
                             style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}}
@@ -4624,7 +4630,10 @@ const ProjectDetailPage = ({
 
                       {/* Tier classification card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification<span style={{color:C.tomato500,marginLeft:4}}>*</span></div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Classify your project <span style={{color:C.tomato500}}>*</span></div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Two questions determine the tier and deployment checklist.</div>
+                        </div>
                         <div style={{display:"flex",flexDirection:"column",gap:14}}>
                           <div>
                             <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
@@ -4650,7 +4659,10 @@ const ProjectDetailPage = ({
 
                       {/* Stage card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Stage</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Stage</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Move the project forward as it grows.</div>
+                        </div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
                           {STAGES.map(s=>{
                             const sc=STAGE_COLORS[s];
@@ -4686,7 +4698,10 @@ const ProjectDetailPage = ({
                     {activeTab==="nursery"&&(<>
 
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Rooting Review</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Send for Rooting Review</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Your approver signs off before the project advances to Sprout.</div>
+                        </div>
 
                         {approvalStatus!=="approved"&&(
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
@@ -4785,7 +4800,10 @@ const ProjectDetailPage = ({
 
                       {/* Tech stack card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Tech stack</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>What tools and frameworks power this project?</div>
+                        </div>
                         <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
                           <MultiSelect label="AI assistant" optional opts={["Claude","ChatGPT","Gemini","Copilot","Grok","Llama","Mistral","Other"]} value={editForm.aiAssistant||[]} onChange={v=>setEF("aiAssistant",v)} placeholder="Search AI assistants…" palette="purple"/>
@@ -4853,7 +4871,10 @@ const ProjectDetailPage = ({
 
                       {/* Security card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Security &amp; data</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Security and data</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Required for Tier 2 and above.</div>
+                        </div>
                         <div style={{display:"flex",flexDirection:"column",gap:14}}>
                           <div>
                             <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user login or authentication?</div>
@@ -4903,7 +4924,10 @@ const ProjectDetailPage = ({
 
                       {/* Production environment card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Production environment</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Production environment</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Document where the live version of this project is actually running.</div>
+                        </div>
                         <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
                           <div>
@@ -4950,7 +4974,10 @@ const ProjectDetailPage = ({
 
                       {/* Go-live dates card */}
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Go-live dates</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Go-live dates</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>When did this project go live, and when was it announced?</div>
+                        </div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                           {[{k:"releaseDate",label:"Release date"},{k:"announcementDate",label:"Announcement date"}].map(({k,label})=>(
                             <div key={k}>
@@ -4979,7 +5006,10 @@ const ProjectDetailPage = ({
                     {activeTab==="thriving"&&(<>
 
                       <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Impact &amp; notes</div>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Impact &amp; notes</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>How has this project made things better?</div>
+                        </div>
                         <div style={{fontFamily:FF,fontSize:13,color:C.mushroom400,lineHeight:1.6}}>
                           Use the Notes &amp; Milestones panel on the right to record impact metrics, milestones, and updates.
                         </div>
