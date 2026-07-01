@@ -5565,12 +5565,17 @@ const ProjectDetailPage = ({
       </div>
     </div>
     {showDevopsModal&&<DevopsRequestModal
-      project={project}
+      project={{
+        ...project,
+        githubRepo:            cRepoUrl            || project.githubRepo,
+        hosting:               cHostingPlatform?.length ? cHostingPlatform : (project.hosting || []),
+        database:              cDbPlatform?.length  ? cDbPlatform  : (project.database  || []),
+        versionControlAccount: editForm.versionControlAccount ?? project.versionControlAccount,
+        hostingAccount:        editForm.hostingAccount        ?? project.hostingAccount,
+        databaseAccount:       editForm.databaseAccount       ?? project.databaseAccount,
+      }}
       authUser={authUser}
       tier={computedTier}
-      liveRepoUrl={cRepoUrl}
-      liveHosting={cHostingPlatform}
-      liveDatabase={cDbPlatform}
       onClose={()=>setShowDevopsModal(false)}
       onSubmit={async (req)=>{ const res = await onCreateDevopsRequest?.(req); return res; }}
       onSaveProject={onUpdateProject}
@@ -7907,17 +7912,18 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
-function DevopsRequestModal({ project, authUser, tier, liveRepoUrl, liveHosting, liveDatabase, onClose, onSubmit, onSaveProject }) {
+function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSaveProject }) {
   const arrToStr = a => Array.isArray(a) ? a.join(', ') : (a || '');
   const [submitting,   setSubmitting]   = React.useState(false);
   const [copied,       setCopied]       = React.useState(false);
   const [result,       setResult]       = React.useState(null);
-  const [githubRepo,   setGithubRepo]   = React.useState(liveRepoUrl  || project.githubRepo || '');
+  const [githubRepo,   setGithubRepo]   = React.useState(project.githubRepo || '');
   const [hosting,      setHosting]      = React.useState(
-    liveHosting?.length  ? arrToStr(liveHosting)  : arrToStr(project.hosting)
+    arrToStr(project.hosting) ||
+    (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
+    project.dataSource || ''
   );
   const [database,     setDatabase]     = React.useState(
-    liveDatabase?.length ? arrToStr(liveDatabase) :
     arrToStr(project.database) ||
     (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
     project.dataSource || ''
