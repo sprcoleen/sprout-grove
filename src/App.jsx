@@ -4217,13 +4217,11 @@ const ProjectDetailPage = ({
 
   const handleSaveAll = async () => {
     if (formSaving || classSaving) return;
-    setFormSaving(true);
-    if (computedTier === null) {
-      setApprovalError("Please complete the Tier Classification (Seedling tab) before saving.");
-      setActiveTab("seedling");
-      setFormSaving(false);
+    if (saveErrors.length > 0) {
+      setActiveTab(saveErrors[0].tab);
       return;
     }
+    setFormSaving(true);
     if (formDirty) {
       await onUpdateProject?.({ ...project, ...editForm });
       setFormDirty(false);
@@ -4296,6 +4294,12 @@ const ProjectDetailPage = ({
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
+
+  const saveErrors = [
+    !editForm.name?.trim()             && { tab:"seedling", msg:'Project name is required.' },
+    !(editForm.builtFor||[]).length    && { tab:"seedling", msg:'"For" department is required — who is this project for?' },
+    computedTier === null              && { tab:"seedling", msg:'Tier Classification is incomplete — answer the two questions in the Seedling tab.' },
+  ].filter(Boolean);
 
   const handleClassSave = async () => {
     if (!canEdit) return;
@@ -4500,23 +4504,39 @@ const ProjectDetailPage = ({
 
               {/* ── Sticky save bar ── */}
               {(formDirty||classIsDirty)&&(
-                <div style={{position:"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1.5px solid "+C.mushroom200,padding:"10px 0",marginBottom:16,display:"flex",gap:8}}>
-                  <button
-                    onClick={()=>{
-                      setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],githubRepo:project.githubRepo||'',hosting:project.hosting||[],database:project.database||[],approverName:project.approverName||'',approverEmail:project.approverEmail||'',problem:project.problem||'',built:project.built||'',betterNow:project.betterNow||'',prototypeLink:project.prototypeLink||null,deckLink:project.deckLink||null,docsLink:project.docsLink||null,aiAssistant:project.aiAssistant||[],builderTools:project.builderTools||[],hostingAccount:project.hostingAccount||null,versionControl:project.versionControl||[],versionControlAccount:project.versionControlAccount||null,databaseAccount:project.databaseAccount||null,screenshotUrls:project.screenshotUrls||[],productionHosting:project.productionHosting||null,productionHostingUrl:project.productionHostingUrl||null,productionHostingAccount:project.productionHostingAccount||null,productionVersionControl:project.productionVersionControl||null,productionVersionControlUrl:project.productionVersionControlUrl||null,productionVersionControlAccount:project.productionVersionControlAccount||null,productionDatabase:project.productionDatabase||null,productionDatabaseUrl:project.productionDatabaseUrl||null,productionDatabaseAccount:project.productionDatabaseAccount||null,releaseDate:project.releaseDate||null,announcementDate:project.announcementDate||null});
-                      setFormDirty(false);
-                      setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                      setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
-                      setCAuthType(projArr(project.authType));setCDbPlatform(projArr(project.database));
-                      setCSpfroutDbDetails(project.sproutDbDetails||'');setCDataSensitivity(project.dataSensitivity||'');
-                      setCendsToExtAI(project.sendsToExternalAI??null);setCRequiresAuth(project.requiresAuth??null);
-                      setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
-                    }}
-                    style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}
-                  >Discard</button>
-                  <button onClick={handleSaveAll} disabled={formSaving||classSaving}
-                    style={{flex:2,padding:"9px",background:formSaving||classSaving?C.mushroom300:C.kangkong500,color:formSaving||classSaving?C.mushroom500:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:formSaving||classSaving?"not-allowed":"pointer"}}
-                  >{formSaving||classSaving?"Saving…":"Save changes"}</button>
+                <div style={{position:"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1.5px solid "+C.mushroom200,padding:"10px 0",marginBottom:16}}>
+                  {saveErrors.length>0&&(
+                    <div style={{marginBottom:8,padding:"8px 12px",background:"#fefcbf",border:"1px solid "+C.mango500,borderRadius:DS.radius.md,display:"flex",flexDirection:"column",gap:4}}>
+                      {saveErrors.map((e,i)=>(
+                        <button key={i} onClick={()=>setActiveTab(e.tab)}
+                          style={{display:"flex",alignItems:"flex-start",gap:6,background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left"}}>
+                          <span style={{fontFamily:FF,fontSize:12,color:C.mango600,lineHeight:1.5}}>⚠ {e.msg}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8}}>
+                    <button
+                      onClick={()=>{
+                        setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],githubRepo:project.githubRepo||'',hosting:project.hosting||[],database:project.database||[],approverName:project.approverName||'',approverEmail:project.approverEmail||'',problem:project.problem||'',built:project.built||'',betterNow:project.betterNow||'',prototypeLink:project.prototypeLink||null,deckLink:project.deckLink||null,docsLink:project.docsLink||null,aiAssistant:project.aiAssistant||[],builderTools:project.builderTools||[],hostingAccount:project.hostingAccount||null,versionControl:project.versionControl||[],versionControlAccount:project.versionControlAccount||null,databaseAccount:project.databaseAccount||null,screenshotUrls:project.screenshotUrls||[],productionHosting:project.productionHosting||null,productionHostingUrl:project.productionHostingUrl||null,productionHostingAccount:project.productionHostingAccount||null,productionVersionControl:project.productionVersionControl||null,productionVersionControlUrl:project.productionVersionControlUrl||null,productionVersionControlAccount:project.productionVersionControlAccount||null,productionDatabase:project.productionDatabase||null,productionDatabaseUrl:project.productionDatabaseUrl||null,productionDatabaseAccount:project.productionDatabaseAccount||null,releaseDate:project.releaseDate||null,announcementDate:project.announcementDate||null});
+                        setFormDirty(false);
+                        setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                        setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
+                        setCAuthType(projArr(project.authType));setCDbPlatform(projArr(project.database));
+                        setCSpfroutDbDetails(project.sproutDbDetails||'');setCDataSensitivity(project.dataSensitivity||'');
+                        setCendsToExtAI(project.sendsToExternalAI??null);setCRequiresAuth(project.requiresAuth??null);
+                        setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
+                      }}
+                      style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}
+                    >Discard</button>
+                    <button onClick={handleSaveAll} disabled={formSaving||classSaving||saveErrors.length>0}
+                      style={{flex:2,padding:"9px",
+                        background:saveErrors.length>0?C.mushroom200:formSaving||classSaving?C.mushroom300:C.kangkong500,
+                        color:saveErrors.length>0?C.mushroom400:formSaving||classSaving?C.mushroom500:C.white,
+                        border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,
+                        cursor:saveErrors.length>0||formSaving||classSaving?"not-allowed":"pointer"}}
+                    >{formSaving||classSaving?"Saving…":"Save changes"}</button>
+                  </div>
                 </div>
               )}
 
