@@ -3826,10 +3826,20 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
         {project.stage==="nursery" && (
           <div style={{marginBottom:16,padding:"12px 14px",background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg}}>
             <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:6}}>Rooting Review Pending</div>
-            <div style={{fontFamily:FF,fontSize:12,color:C.mango700,marginBottom:2}}>
-              Awaiting approver sign-off{project.approvalRequestedAt ? ` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}.
-            </div>
-            {project.approverName&&<div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginTop:2}}>Reviewer: {project.approverName}</div>}
+            {project.approvalStatus==="pending"?(
+              <>
+                <div style={{fontFamily:FF,fontSize:12,color:C.mango700,marginBottom:2}}>
+                  Awaiting IS / ExCom sign-off from <strong>{project.approverName||project.approverEmail}</strong>{project.approvalRequestedAt ? ` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}.
+                </div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mango600,marginTop:4,lineHeight:1.5}}>
+                  After IS / ExCom approves, the Release Manager will conduct the final Rooting Review. You'll be notified when a decision is made.
+                </div>
+              </>
+            ):(
+              <div style={{fontFamily:FF,fontSize:12,color:C.mango700}}>
+                Under review by the Release Manager (Belle Asis / Diane Litan). You'll be notified once a decision is made.
+              </div>
+            )}
             {/* Withdraw button — builder or Admin */}
             {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
               <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{
@@ -4105,6 +4115,9 @@ const ProjectDetailPage = ({
   const [approvalCancelling,   setApprovalCancelling]   = useState(false);
   const [approvalError,        setApprovalError]        = useState(null);
   const [advancingToSprout,    setAdvancingToSprout]    = useState(false);
+  const [rlmActing,            setRlmActing]            = useState(false);
+  const [rlmRejecting,         setRlmRejecting]         = useState(false);
+  const [rlmRejectReason,      setRlmRejectReason]      = useState("");
 
   const handleSendApprovalRequest = async () => {
     const name  = editForm.approverName?.trim();
@@ -4161,6 +4174,23 @@ const ProjectDetailPage = ({
     setApprovalCancelling(true);
     await onUpdateProject?.({ ...project, approvalStatus: null, approvalRequestedAt: null, approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
     setApprovalCancelling(false);
+  };
+
+  const handleRlmApprove = async () => {
+    setRlmActing(true);
+    const now = new Date().toISOString();
+    await onUpdateProject?.({ ...project, approvalStatus: "approved", approvedAt: now, approvalRejectedAt: null, approvalRejectionReason: null });
+    setRlmActing(false);
+  };
+
+  const handleRlmReject = async () => {
+    if (!rlmRejectReason.trim()) return;
+    setRlmActing(true);
+    const now = new Date().toISOString();
+    await onUpdateProject?.({ ...project, approvalStatus: "rejected", approvalRejectedAt: now, approvalRejectionReason: rlmRejectReason.trim(), approvedAt: null });
+    setRlmActing(false);
+    setRlmRejecting(false);
+    setRlmRejectReason("");
   };
 
   // Sync edit form when project prop changes (e.g. after related project nav)
@@ -4841,11 +4871,56 @@ const ProjectDetailPage = ({
                           </div>
                         )}
 
-                        {approvalStatus==="pending"&&(
+                        {approvalStatus==="pending"&&!authUser?.isAdmin&&(
                           <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
-                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Rooting Review pending</div>
-                            <div style={{fontFamily:FF,fontSize:11,color:"#744210"}}>An email was sent to {project.approverEmail}{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.&nbsp;Waiting for their response.</div>
-                            {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:4}}>{approvalSending?"Sending…":"Resend email"}</button>}
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:4}}>Awaiting IS / ExCom sign-off</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5}}>
+                              An approval request was sent to <strong>{project.approverName||project.approverEmail}</strong>{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5,marginTop:6}}>
+                              Once they sign off, the <strong>Release Manager</strong> (Belle Asis / Diane Litan) will conduct the Rooting Review. You'll receive a notification when a decision is made.
+                            </div>
+                            {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:6}}>{approvalSending?"Sending…":"Resend email"}</button>}
+                          </div>
+                        )}
+                        {approvalStatus==="pending"&&authUser?.isAdmin&&(
+                          <div style={{background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.md,padding:"12px 14px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",color:C.blueberry500,marginBottom:4}}>Release Manager Review</div>
+                            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom700,lineHeight:1.5,marginBottom:10}}>
+                              <strong>{project.approverName||project.approverEmail}</strong> has been asked to sign off. As Release Manager you can also approve or reject this Rooting Review directly.
+                            </div>
+                            {!rlmRejecting?(
+                              <div style={{display:"flex",gap:8}}>
+                                <button onClick={handleRlmApprove} disabled={rlmActing}
+                                  style={{flex:2,padding:"8px",background:rlmActing?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:rlmActing?"not-allowed":"pointer",transition:"all 0.15s"}}>
+                                  {rlmActing?"Approving…":"Approve →"}
+                                </button>
+                                <button onClick={()=>setRlmRejecting(true)} disabled={rlmActing}
+                                  style={{flex:1,padding:"8px",background:C.white,color:C.tomato600,border:"1.5px solid "+C.tomato400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
+                                  Reject
+                                </button>
+                              </div>
+                            ):(
+                              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                <textarea value={rlmRejectReason} onChange={e=>setRlmRejectReason(e.target.value)}
+                                  placeholder="Reason for rejection — the builder will see this…"
+                                  rows={3}
+                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",boxSizing:"border-box"}}
+                                  onFocus={e=>e.target.style.borderColor=C.tomato400}
+                                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                                />
+                                <div style={{display:"flex",gap:8}}>
+                                  <button onClick={handleRlmReject} disabled={rlmActing||!rlmRejectReason.trim()}
+                                    style={{flex:2,padding:"8px",background:rlmActing||!rlmRejectReason.trim()?C.mushroom300:C.tomato500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:rlmActing||!rlmRejectReason.trim()?"not-allowed":"pointer",transition:"all 0.15s"}}>
+                                    {rlmActing?"Rejecting…":"Submit rejection"}
+                                  </button>
+                                  <button onClick={()=>{setRlmRejecting(false);setRlmRejectReason("");}} disabled={rlmActing}
+                                    style={{flex:1,padding:"8px",background:C.white,color:C.mushroom600,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer"}}>
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                         {approvalStatus==="approved"&&(
