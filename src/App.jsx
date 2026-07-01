@@ -9238,10 +9238,21 @@ export default function SproutAIGarden() {
   };
 
   const withdrawFromNursery = async (projectId) => {
-    const { error } = await supabase.rpc("withdraw_from_nursery", { p_id: projectId });
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
+    const { error } = await supabase.from("projects").update({
+      stage: "seedling",
+      review_status: null,
+      approval_status: null,
+      approval_requested_at: null,
+      approved_at: null,
+      approval_rejected_at: null,
+      approval_rejection_reason: null,
+    }).eq("id", projectId).eq("stage", "nursery");
     if (error) { console.error("withdrawFromNursery:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, stage:"seedling", reviewStatus:null}
+      ? {...p, stage:"seedling", reviewStatus:null, approvalStatus:null, approvalRequestedAt:null, approvedAt:null, approvalRejectedAt:null, approvalRejectionReason:null}
       : p
     ));
     setSelected(null);
