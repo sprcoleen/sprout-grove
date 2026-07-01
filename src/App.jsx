@@ -5195,7 +5195,7 @@ const ProjectDetailPage = ({
                           onMouseOut={e=>e.currentTarget.style.background=C.carrot500}
                         >
                           <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          Request DevOps Setup
+                          Request Setup Support
                         </button>
                       )}
 
@@ -5567,8 +5567,9 @@ const ProjectDetailPage = ({
     {showDevopsModal&&<DevopsRequestModal
       project={project}
       authUser={authUser}
+      tier={computedTier}
       onClose={()=>setShowDevopsModal(false)}
-      onSubmit={async (req)=>{await onCreateDevopsRequest?.(req);setShowDevopsModal(false);}}
+      onSubmit={async (req)=>{ const res = await onCreateDevopsRequest?.(req); return res; }}
     />}
 
     {/* Danger zone — Request Deletion (bottom of full detail page) */}
@@ -7902,38 +7903,50 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
-// ── DevopsRequestModal ───────────────────────────────────────────────────────
-function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
-  const [submitting, setSubmitting] = React.useState(false);
-  const [copied,     setCopied]     = React.useState(false);
-  const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
-  const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
-  const [hosting,    setHosting]    = React.useState(project.hosting    || '');
-  const [database,   setDatabase]   = React.useState(
+function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit }) {
+  const [submitting,   setSubmitting]   = React.useState(false);
+  const [copied,       setCopied]       = React.useState(false);
+  const [result,       setResult]       = React.useState(null);
+  const [githubRepo,   setGithubRepo]   = React.useState(project.githubRepo || '');
+  const [hosting,      setHosting]      = React.useState(
+    Array.isArray(project.hosting) ? project.hosting.join(', ') : (project.hosting || '')
+  );
+  const [database,     setDatabase]     = React.useState(
     project.database ||
     (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
-    project.dataSource ||
-    ''
+    project.dataSource || ''
   );
-  const [remarks, setRemarks] = React.useState('');
+  const [githubAcct,   setGithubAcct]   = React.useState('company');
+  const [hostingAcct,  setHostingAcct]  = React.useState('company');
+  const [dbAcct,       setDbAcct]       = React.useState('company');
+  const [notes,        setNotes]        = React.useState('');
+
+  const effectiveTier = tier ?? project.tier ?? 2;
+  const assignee = effectiveTier >= 3
+    ? { name:'Coleen Bartido',   initials:'CB', role:'Technical Lead · Groundskeeper',          badgeBg:'#3182ce', bannerBg:'#ebf8ff', bannerBorder:'#63b3ed', avatarBg:'#3182ce', tierLabel:'Tier 3' }
+    : { name:'Raphael Enriquez', initials:'RE', role:'Infrastructure & DevOps · Groundskeeper', badgeBg:'#d69e2e', bannerBg:'#fefcbf', bannerBorder:'#d69e2e', avatarBg:'#d69e2e', tierLabel:'Tier 2' };
+
+  const acctLabel = v => v === 'company' ? 'Company (Sprout)' : 'Personal';
+  const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
   const ticketSummary = 'Grove SRC: ' + project.name;
-  const monoField = (label, value) =>
-    label.padEnd(13) + (value || 'TBD');
   const ticketDesc = [
     'Project: '  + project.name,
     'Builder: '  + project.builderEmail,
+    'Assigned to: ' + assignee.name,
     '',
     'Please set up the following:',
-    monoField("GitHub Repo:", githubRepo),
-    monoField("Hosting:",     hosting),
-    monoField("Database:",    database),
-    ...(remarks.trim() ? ['', 'Additional Remarks:', remarks.trim()] : []),
+    pad('GitHub Repo:',13) + (githubRepo || 'TBD') + '  [' + acctLabel(githubAcct) + ']',
+    pad('Hosting:',   13) + (hosting    || 'TBD') + '  [' + acctLabel(hostingAcct) + ']',
+    pad('Database:',  13) + (database   || 'TBD') + '  [' + acctLabel(dbAcct)      + ']',
+    ...(notes.trim() ? ['', 'Additional Notes:', notes.trim()] : []),
   ].join('\n');
+
   const handleCopy = () => {
     navigator.clipboard.writeText(ticketSummary + '\n\n' + ticketDesc).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
     });
   };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     setResult(null);
@@ -7945,101 +7958,173 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       githubRepo,
       hosting,
       database,
-      remarks,
+      remarks:      notes,
       status:       'todo',
       country:      project.country,
     });
     setSubmitting(false);
     setResult(res || { ok: false, message: 'No response from server' });
   };
-  const fieldRow = (label, value, setter, ph) => (
-    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-      <span style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,minWidth:96,flexShrink:0}}>{label}</span>
-      <input value={value} onChange={e=>setter(e.target.value)} placeholder={ph}
-        style={{flex:1,padding:'4px 8px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom800,background:C.white,outline:'none',transition:'border-color 0.15s'}}
-        onFocus={e=>e.target.style.borderColor=C.kangkong500}
-        onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+
+  const inputSt = {flex:1,padding:'5px 9px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom800,background:C.white,outline:'none',transition:'border-color 0.15s'};
+  const fieldBlock = (label, value, setter, ph, acct, setAcct) => (
+    <div style={{marginBottom:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+        <span style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,minWidth:96,flexShrink:0}}>{label}</span>
+        <input value={value} onChange={e=>setter(e.target.value)} placeholder={ph}
+          style={inputSt}
+          onFocus={e=>e.target.style.borderColor=C.kangkong500}
+          onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'4px 8px 4px 10px',background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.sm}}>
+        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.mushroom500,flexShrink:0,whiteSpace:'nowrap'}}>Account type</span>
+        <div style={{display:'flex',gap:4,marginLeft:'auto'}}>
+          {['personal','company'].map(v=>{
+            const active = acct===v;
+            const isPersonal = v==='personal';
+            const bg     = active ? (isPersonal ? '#fefcbf' : C.kangkong50)     : C.white;
+            const border = active ? (isPersonal ? '#d69e2e' : C.kangkong400)    : C.mushroom300;
+            const color  = active ? (isPersonal ? '#b7791f' : C.kangkong600)    : C.mushroom500;
+            return (
+              <button key={v} onClick={()=>setAcct(v)}
+                style={{padding:'2px 10px',borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,border:'1.5px solid '+border,background:bg,color,cursor:'pointer',transition:'all 0.15s'}}>
+                {v==='personal' ? 'Personal' : 'Company (Sprout)'}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
+
+  const tools = project.toolUsed || [];
+
   return (
     <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(32,30,24,0.55)',backdropFilter:'blur(6px)'}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,padding:28,maxWidth:500,width:'92%',maxHeight:'90vh',overflowY:'auto',boxShadow:DS.shadow.xl,border:'1px solid '+C.mushroom200,animation:'slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
-          <div>
-            <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900,display:'flex',alignItems:'center',gap:8}}>
-              <IcoDevops size={20} color={C.carrot500}/> Request DevOps Setup
+      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,width:'92%',maxWidth:500,maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:DS.shadow.xl,border:'1px solid '+C.mushroom200,animation:'slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)'}}>
+
+        {/* Header */}
+        <div style={{padding:'20px 22px 0',display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:9}}>
+            <IcoDevops size={20} color={C.carrot500}/>
+            <div>
+              <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900}}>Request Setup Support</div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2,lineHeight:1.5}}>A Groundskeeper will be assigned to help configure your project's infrastructure.</div>
             </div>
-            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Logs a request in Grove. Edit the details below, then copy or submit.</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,flexShrink:0}}><IcoClose size={18} color={C.mushroom400}/></button>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,flexShrink:0,marginTop:-2}}><IcoClose size={18} color={C.mushroom400}/></button>
         </div>
-        <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:16}}>
-          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket info</div>
-          <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
 
-          {/* Date + Creator meta */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
-            {[
-              {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
-              {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
-            ].map(item=>(
-              <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
-                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
-                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+        {/* Scrollable body */}
+        <div style={{padding:'16px 22px',overflowY:'auto',flex:1}}>
+
+          {/* Assignee banner */}
+          <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:assignee.bannerBg,border:'1.5px solid '+assignee.bannerBorder,borderRadius:DS.radius.lg,marginBottom:14}}>
+            <div style={{width:38,height:38,borderRadius:DS.radius.full,background:assignee.avatarBg,color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FF,fontSize:13,fontWeight:700,flexShrink:0}}>
+              {assignee.initials}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:assignee.badgeBg,marginBottom:2}}>Ticket will be assigned to</div>
+              <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{assignee.name}</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginTop:1}}>{assignee.role}</div>
+            </div>
+            <div style={{padding:'3px 10px',borderRadius:DS.radius.full,background:assignee.badgeBg,color:C.white,fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{assignee.tierLabel}</div>
+          </div>
+
+          {/* Ticket block */}
+          <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:14}}>
+            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket preview</div>
+            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+              {[
+                {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
+                {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
+              ].map(item=>(
+                <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
+                  <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {tools.length>0&&(
+              <div style={{marginBottom:12}}>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:6,display:'flex',alignItems:'center',gap:6}}>
+                  Tools used
+                  <span style={{fontSize:9,fontWeight:600,padding:'1px 7px',borderRadius:DS.radius.full,background:C.kangkong100,color:C.kangkong600,border:'1px solid '+C.kangkong200}}>auto-filled</span>
+                </div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                  {tools.map(t=>(
+                    <span key={t} style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:DS.radius.full,background:C.kangkong50,border:'1.5px solid '+C.kangkong200,color:C.kangkong600}}>{t}</span>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:8}}>Setup details</div>
+            {fieldBlock("Version Control:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo", githubAcct, setGithubAcct)}
+            {fieldBlock("Hosting:",         hosting,    setHosting,    "e.g. Vercel, Azure",      hostingAcct, setHostingAcct)}
+            {fieldBlock("Database:",        database,   setDatabase,   "e.g. Supabase, MySQL",    dbAcct, setDbAcct)}
           </div>
 
-          <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom700,lineHeight:1.8,marginBottom:10,whiteSpace:'pre-wrap'}}>
-            {'Project: '  + project.name + '\n'}
-            {'Builder: '  + project.builderEmail + '\n\n'}
-            {'Please set up the following:'}
-          </div>
-          {fieldRow("GitHub Repo:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo")}
-          {fieldRow("Hosting:",     hosting,    setHosting,    "e.g. Vercel, AWS")}
-          {fieldRow("Database:",    database,   setDatabase,   "e.g. Supabase, MySQL")}
-          <div style={{marginTop:10}}>
-            <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,marginBottom:5}}>Additional Remarks <span style={{color:C.mushroom400,fontSize:10}}>(optional)</span></div>
-            <textarea value={remarks} onChange={e=>setRemarks(e.target.value)}
-              placeholder="Any other details, special requirements, or context for the DevOps team…"
+          {/* Notes */}
+          <div style={{marginBottom:6}}>
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',color:C.mushroom600,marginBottom:5}}>
+              Additional notes <span style={{fontWeight:400,textTransform:'none',color:C.mushroom400,letterSpacing:0}}>(optional)</span>
+            </div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)}
+              placeholder="Anything the Groundskeeper should know — special requirements, environment details, constraints, or context…"
               rows={3}
-              style={{width:'100%',padding:'8px 10px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.5}}
+              style={{width:'100%',padding:'8px 11px',borderRadius:DS.radius.md,border:'1.5px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.55}}
               onFocus={e=>e.target.style.borderColor=C.kangkong500}
               onBlur={e=>e.target.style.borderColor=C.mushroom300}
             />
           </div>
+
+          {/* Copy button */}
+          <button onClick={handleCopy} style={{width:'100%',padding:'8px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:12,marginTop:4,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+            {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
+          </button>
+
+          {/* Result banner */}
+          {result&&(
+            result.ok
+              ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:6}}>
+                  <IcoCheck size={16} color={C.kangkong600}/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created!</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
+                      {result.jiraTicketKey&&<><strong>{result.jiraTicketKey}</strong> — </>}
+                      Assigned to <strong>{assignee.name}</strong>. Visible in the Tool Shed.
+                    </div>
+                  </div>
+                </div>
+              : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:6}}>
+                  <IcoClose size={15} color={C.tomato600}/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Ticket could not be created</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>
+                      {result.jiraError || result.message || 'Something went wrong. Please try again.'}
+                    </div>
+                  </div>
+                </div>
+          )}
         </div>
-        <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
-        </button>
-        {/* Confirmation banner */}
-        {result&&(
-          result.ok
-            ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:14}}>
-                <IcoCheck size={16} color={C.kangkong600}/>
-                <div>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created successfully!</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
-                    Jira ticket <strong>{result.jiraTicketKey}</strong> has been created and assigned to Coleen. It is now visible in the Tool Shed.
-                  </div>
-                </div>
-              </div>
-            : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:14}}>
-                <span style={{fontSize:15,lineHeight:1}}>❌</span>
-                <div>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Ticket could not be created</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>
-                    {result.jiraError || result.message || 'Something went wrong. Please try again.'}
-                  </div>
-                </div>
-              </div>
-        )}
-        <div style={{display:'flex',gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>{result?.ok ? 'Close' : 'Cancel'}</button>
-          <button onClick={handleSubmit} disabled={submitting||result?.ok} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
-            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket'}
+
+        {/* Footer */}
+        <div style={{padding:'12px 22px',borderTop:'1px solid '+C.mushroom100,display:'flex',gap:10,flexShrink:0,background:C.white}}>
+          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600,transition:'background 0.15s'}}
+            onMouseOver={e=>e.currentTarget.style.background=C.mushroom100}
+            onMouseOut={e=>e.currentTarget.style.background=C.white}>
+            {result?.ok ? 'Close' : 'Cancel'}
+          </button>
+          <button onClick={handleSubmit} disabled={submitting||result?.ok}
+            style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
+            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket →'}
           </button>
         </div>
+
       </div>
     </div>
   );
