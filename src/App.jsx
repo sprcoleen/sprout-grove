@@ -9094,6 +9094,22 @@ export default function SproutAIGarden() {
         });
       } catch(e) { console.warn("Jira ticket for release review failed:", e.message); }
     }
+    // Notify Release Manager via email (non-fatal)
+    fetch("/api/send-release-review-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action:       "submit",
+        projectName:  project.name,
+        builderName:  project.builder || authUser?.displayName || authUser?.email,
+        builderEmail: project.builderEmail || authUser?.email,
+        stage:        project.stage,
+        tier:         project.tier,
+        demoLink:     project.demoLink || null,
+        description:  project.description || null,
+      }),
+    }).catch(e => console.warn("Release review notification email failed:", e.message));
+
     logActivity("release_review_submitted", project.name, { project_id: String(project.id), stage: project.stage });
   };
 
@@ -9112,6 +9128,23 @@ export default function SproutAIGarden() {
           releaseReviewedBy: authUser.email, releaseReviewedAt: now}
       : p
     ));
+    // Notify builder of the decision via email (non-fatal)
+    if (project.builderEmail) {
+      fetch("/api/send-release-review-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action:       "decision",
+          decisionType: action,
+          projectName:  project.name,
+          builderEmail: project.builderEmail,
+          stage:        project.stage,
+          reviewerName: authUser?.displayName || authUser?.email,
+          comment:      comment || null,
+        }),
+      }).catch(e => console.warn("Release review decision email failed:", e.message));
+    }
+
     logActivity("release_review_actioned", project.name, { project_id: String(project.id), action });
   };
 
