@@ -5568,6 +5568,9 @@ const ProjectDetailPage = ({
       project={project}
       authUser={authUser}
       tier={computedTier}
+      liveRepoUrl={cRepoUrl}
+      liveHosting={cHostingPlatform}
+      liveDatabase={cDbPlatform}
       onClose={()=>setShowDevopsModal(false)}
       onSubmit={async (req)=>{ const res = await onCreateDevopsRequest?.(req); return res; }}
       onSaveProject={onUpdateProject}
@@ -7904,17 +7907,18 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
-function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSaveProject }) {
+function DevopsRequestModal({ project, authUser, tier, liveRepoUrl, liveHosting, liveDatabase, onClose, onSubmit, onSaveProject }) {
+  const arrToStr = a => Array.isArray(a) ? a.join(', ') : (a || '');
   const [submitting,   setSubmitting]   = React.useState(false);
   const [copied,       setCopied]       = React.useState(false);
   const [result,       setResult]       = React.useState(null);
-  const [githubRepo,   setGithubRepo]   = React.useState(project.githubRepo || '');
+  const [githubRepo,   setGithubRepo]   = React.useState(liveRepoUrl  || project.githubRepo || '');
   const [hosting,      setHosting]      = React.useState(
-    Array.isArray(project.hosting) ? project.hosting.join(', ') : (project.hosting || '')
+    liveHosting?.length  ? arrToStr(liveHosting)  : arrToStr(project.hosting)
   );
   const [database,     setDatabase]     = React.useState(
-    Array.isArray(project.database) ? project.database.join(', ') :
-    project.database ||
+    liveDatabase?.length ? arrToStr(liveDatabase) :
+    arrToStr(project.database) ||
     (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
     project.dataSource || ''
   );
