@@ -9102,30 +9102,36 @@ export default function SproutAIGarden() {
   };
 
   const handleStartProject = async (name) => {
-    const saved = await addProject({
-      name,
-      builder: authUser.displayName,
-      builderEmail: authUser.email,
-      stage: "seedling",
-      builtBy: "Marketing",
-      builtFor: [],
-      description: "",
-      demoLink: "",
-      collaboratorEmails: [],
-      toolUsed: [],
-      agenticFramework: [],
-      dataSources: [],
-      hasBackend: null,
-      targetUsers: null,
-      tier: null,
-      problemSpace: "",
-      capability: "",
-      notes: [],
-      milestones: ["Seedling — " + new Date().toLocaleDateString("en-PH", {month:"short",year:"numeric"})],
-      impactNum: "TBD",
-      interestedUsers: [],
-    });
-    if (!saved) return;
+    // Bypass fromProject to avoid inserting v2 columns that may not exist yet.
+    // Only send the safe core columns present in all schema versions.
+    const row = {
+      name:                name.trim(),
+      builder:             authUser.displayName,
+      builder_email:       authUser.email,
+      stage:               "seedling",
+      built_by:            "Marketing",
+      built_for:           [],
+      description:         "",
+      demo_link:           "",
+      collaborator_emails: [],
+      tool_used:           [],
+      agentic_framework:   [],
+      data_sources:        [],
+      notes:               [],
+      milestones:          ["Seedling — " + new Date().toLocaleDateString("en-PH", {month:"short",year:"numeric"})],
+      impact_num:          "TBD",
+      interested_users:    [],
+      problem_space:       "",
+      zx:                  Math.round(40 + Math.random() * 20),
+      zy:                  Math.round(45 + Math.random() * 20),
+      last_updated:        new Date().toISOString(),
+      country:             authUser.country || "PH",
+    };
+    const { data, error } = await supabase.from("projects").insert(row).select().single();
+    if (error) { console.error("handleStartProject:", error); return; }
+    const saved = toProject(data);
+    setProjects(prev => [saved, ...prev]);
+    logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
     setShowContribute(false);
     setContributeInitialFlow(null);
     setDetailProject(saved);
