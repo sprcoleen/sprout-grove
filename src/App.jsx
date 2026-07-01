@@ -5971,10 +5971,12 @@ const TooltipLabel = ({tooltip}) => {
 };
 
 // ── ContributeModal ────────────────────────────────────────────────────────────
-const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initialFlow=null}) => {
+const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projects, authUser, initialFlow=null}) => {
   const [flow, setFlow] = React.useState(initialFlow);
   const [step, setStep] = React.useState(1);
   const [gatewayChoice, setGatewayChoice] = React.useState(null);
+  const [plantName, setPlantName] = React.useState("");
+  const [plantStarting, setPlantStarting] = React.useState(false);
 
   // Plant form
   const PLANT_DEPTS = Object.keys(DEPT_ZONES);
@@ -6139,6 +6141,66 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
             style={{width:"100%",padding:"11px",borderRadius:DS.radius.lg,background:gatewayChoice?C.kangkong600:C.mushroom200,border:"none",cursor:gatewayChoice?"pointer":"not-allowed",fontFamily:FF,fontSize:13,fontWeight:700,color:C.white,transition:"all 0.15s"}}>
             Continue →
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PLANT FLOW — name capture → open ProjectDetailPage ───────────────────────
+  if (flow === "plant") {
+    const canStart = plantName.trim().length > 0;
+    const handleStart = async () => {
+      if (!canStart || plantStarting || !onStartProject) return;
+      setPlantStarting(true);
+      await onStartProject(plantName.trim());
+      setPlantStarting(false);
+    };
+    return (
+      <div style={backdropStyle}>
+        <div onClick={e=>e.stopPropagation()} style={{...panelStyle,maxWidth:460}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
+            <div>
+              <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900,display:"flex",alignItems:"center",gap:8}}>
+                <IcoGarden size={20} color={C.kangkong600}/> Add a Plant
+              </div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Name your project to get started</div>
+            </div>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,marginTop:-2}}><IcoClose size={18} color={C.mushroom400}/></button>
+          </div>
+
+          <div style={{marginBottom:20}}>
+            <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+              Project name <span style={{color:C.carrot500}}>*</span>
+            </label>
+            <input
+              autoFocus
+              value={plantName}
+              onChange={e=>setPlantName(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter") handleStart(); }}
+              placeholder="e.g. SmartSort AI"
+              style={inputStyle}
+            />
+            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:6,lineHeight:1.5}}>
+              You'll fill in the full details — story, tech, and classification — in the project form.
+            </div>
+          </div>
+
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setFlow(null)} style={{padding:"10px 16px",background:"none",border:`1.5px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,cursor:"pointer",fontFamily:FF,fontSize:13,color:C.mushroom600,fontWeight:600}}>
+              ← Back
+            </button>
+            <button onClick={handleStart} disabled={!canStart||plantStarting} style={{
+              flex:1,padding:"11px",background:canStart?C.kangkong600:C.mushroom200,border:"none",
+              borderRadius:DS.radius.lg,cursor:canStart?"pointer":"not-allowed",
+              fontFamily:FF,fontSize:13,fontWeight:700,color:C.white,transition:"all 0.15s",
+              display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            }}>
+              {plantStarting
+                ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</span> Creating…</>
+                : <>Open Details Form →</>
+              }
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -9032,10 +9094,42 @@ export default function SproutAIGarden() {
     const withCountry = {...proj, country: proj.country || authUser?.country || "PH", builderEmail: proj.builderEmail || authUser?.email || ''};
     const row = {...fromProject(withCountry), country: withCountry.country}; // country excluded from fromProject (immutability), re-added for INSERT only
     const { data, error } = await supabase.from("projects").insert(row).select().single();
-    if (error) { console.error("addProject:", error); return; }
+    if (error) { console.error("addProject:", error); return null; }
     const saved = toProject(data);
     setProjects(prev => [saved, ...prev]);
     logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
+    return saved;
+  };
+
+  const handleStartProject = async (name) => {
+    const saved = await addProject({
+      name,
+      builder: authUser.displayName,
+      builderEmail: authUser.email,
+      stage: "seedling",
+      builtBy: "Marketing",
+      builtFor: [],
+      description: "",
+      demoLink: "",
+      collaboratorEmails: [],
+      toolUsed: [],
+      agenticFramework: [],
+      dataSources: [],
+      hasBackend: null,
+      targetUsers: null,
+      tier: null,
+      problemSpace: "",
+      capability: "",
+      notes: [],
+      milestones: ["Seedling — " + new Date().toLocaleDateString("en-PH", {month:"short",year:"numeric"})],
+      impactNum: "TBD",
+      interestedUsers: [],
+    });
+    if (!saved) return;
+    setShowContribute(false);
+    setContributeInitialFlow(null);
+    setDetailProject(saved);
+    setView("project-detail");
   };
 
   const handleUpdateProject = async (updated) => {
@@ -9780,6 +9874,7 @@ export default function SproutAIGarden() {
           onClose={()=>setShowContribute(false)}
           onAdd={addProject}
           onAddWish={handleAddWish}
+          onStartProject={handleStartProject}
           projects={projects}
           authUser={authUser}
           initialFlow={contributeInitialFlow}
