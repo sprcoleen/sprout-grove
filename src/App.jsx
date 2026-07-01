@@ -6962,7 +6962,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
     problem:"", built:"", betterNow:"",
     builder:            authUser?.displayName || "",
     builderEmail:       authUser?.email || "",
-    stage:              STAGES[0],
+    stage:              "seedling",
     dataSource:         "",
     dataSources:        [],
     demoLink:           "",
@@ -7039,7 +7039,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
   };
 
   const submit = async () => {
-    if (!form.name.trim() || !form.toolUsed.length || submitting) return;
+    if (!form.name.trim() || submitting) return;
     if (aiOverlapChecked && aiOverlaps?.length > 0) { doAdd(); return; }
     setSubmitting(true);
     setAiChecking(true);
@@ -7065,7 +7065,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900,display:"flex",alignItems:"center",gap:8}}>
               <IcoGarden size={24} color={C.kangkong600}/> Add to the Garden
             </div>
-            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Log a project you're working on or have shipped</div>
+            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Fill in the basics — you'll complete the rest in your project's edit page</div>
           </div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><IcoClose size={18} color={C.mushroom400}/></button>
         </div>
@@ -7113,33 +7113,6 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             />
           </div>
         </div>
-
-        <MultiSelect
-          label="Tools you're using" required
-          opts={TOOLS}
-          value={form.toolUsed}
-          onChange={v=>setField("toolUsed",v)}
-          placeholder="Search tools…"
-          palette="green"
-        />
-
-        <MultiSelect
-          label="Agentic framework" optional
-          opts={AGENTIC_FRAMEWORKS}
-          value={form.agenticFramework||[]}
-          onChange={v=>setField("agenticFramework",v)}
-          placeholder="Search frameworks…"
-          palette="purple"
-        />
-
-        <MultiSelect
-          label="Data sources" optional
-          opts={DATA_SOURCES}
-          value={form.dataSources}
-          onChange={v=>setField("dataSources",v)}
-          placeholder="Search data sources…"
-          palette="blue"
-        />
 
         {/* ── Section 2: About the project ── */}
         <SectionHeader title="About the project"/>
@@ -7224,36 +7197,35 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
           </div>
         </div>
 
-        {/* ── Section 3: Stage ── */}
-        <SectionHeader title="Stage"/>
-
-        {/* Stage selector */}
-        <div style={{marginBottom:16}}>
-          <label style={{display:"block",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,marginBottom:8}}>Where is this project right now?</label>
+        {/* ── Stage display — Seedling only, others disabled ── */}
+        <div style={{marginBottom:20}}>
+          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Where is this project right now?</label>
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
             {STAGES.map(s=>{
               const sc = STAGE_COLORS[s];
-              const active = form.stage===s;
+              const active = s === "seedling";
               return (
-                <button key={s} onClick={()=>setField("stage",s)} style={{
-                  padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
-                  border:"2px solid "+(active?sc.dot:C.mushroom200),
-                  background:active?sc.bg:C.white,
-                  transition:"all 0.15s",
+                <div key={s} style={{
+                  padding:"10px 8px",borderRadius:DS.radius.lg,textAlign:"left",
+                  border:"2px solid "+(active?sc.dot:C.mushroom100),
+                  background:active?sc.bg:C.mushroom50,
+                  opacity:active?1:0.45,
+                  cursor:"default",
                 }}>
                   <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
                     <StageIcon stage={s} size={13}/>
-                    <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
+                    <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:active?sc.text:C.mushroom400}}>{STAGE_LABELS[s]}</span>
                     {active&&<IcoCheck size={11} color={sc.dot}/>}
                   </div>
                   <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
-                </button>
+                </div>
               );
             })}
           </div>
+          <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:6}}>Stage advances as your project progresses through the Garden.</div>
         </div>
 
-        {/* ── Section 4: Tier Classification ── */}
+        {/* ── Section 3: Tier Classification ── */}
         <>
             <SectionHeader title="Tier Classification"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
@@ -7306,67 +7278,6 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             </div>
         </>
 
-        {/* ── Section 5: Security & Data ── */}
-        {editingTier!==null&&(
-          <>
-            <SectionHeader title="Security & Data"/>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6,padding:"8px 10px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md}}>
-                Required before advancing to Bloom. Answer now to avoid being blocked later.
-              </div>
-              {[
-                {q:"Does this project require user login or authentication?",              k:"requiresAuth"},
-                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)", k:"hasSensitiveData"},
-                {q:"Does it send employee or company data to external AI models?",          k:"sendsToExternalAI"},
-                {q:"Does it store or log user inputs / outputs persistently?",             k:"storesUserInputs"},
-              ].map(({q,k})=>(
-                <div key={k}>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>setField(k,opt.v)}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",
-                          border:`2px solid ${form[k]===opt.v?C.kangkong400:C.mushroom200}`,
-                          background:form[k]===opt.v?C.kangkong50:C.white,
-                          fontFamily:FF,fontSize:13,fontWeight:form[k]===opt.v?700:400,
-                          color:form[k]===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {form.targetUsers!=='internal'&&form.requiresAuth===false&&form.requiresAuth!==null&&(
-                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                  <span style={{fontSize:14}}>⚠️</span>
-                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
-                </div>
-              )}
-              {form.sendsToExternalAI===true&&form.hasSensitiveData===true&&(
-                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                  <span style={{fontSize:14}}>🔒</span>
-                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ── Section 6: Technical Details (Tier 2+) ── */}
-        {editingTier>=2&&(
-          <>
-            <SectionHeader title="Technical Details"/>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <ModalField label="GitHub repo" k="githubRepo" ph="github.com/org/repo" form={form} onChange={setField}/>
-                <ModalField label="Hosting" k="hosting" ph="e.g. Free Vercel, Azure, None" form={form} onChange={setField}/>
-              </div>
-              <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={form} onChange={setField}/>
-            </div>
-          </>
-        )}
-
         {/* AI Duplicate Check result */}
         {aiOverlapChecked&&(
           <div style={{
@@ -7403,7 +7314,7 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
         {/* Submit */}
         {(()=>{
           const hasOverlaps = aiOverlapChecked && aiOverlaps?.length > 0;
-          const canSubmit = !!(form.name.trim() && form.toolUsed.length && (form.builtFor||[]).length && !submitting);
+          const canSubmit = !!(form.name.trim() && (form.builtFor||[]).length && !submitting);
           const bg = !canSubmit ? C.mushroom300 : hasOverlaps ? C.mango500 : C.kangkong500;
           const shadow = canSubmit ? "0 4px 16px "+(hasOverlaps?C.mango500:C.kangkong500)+"40" : "none";
           return (
@@ -7424,6 +7335,14 @@ const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}
             </button>
           );
         })()}
+
+        {/* Next step hint */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12,padding:"9px 12px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:C.kangkong400,flexShrink:0}}/>
+          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>
+            <strong style={{color:C.mushroom700}}>Next: Rooting</strong> — after saving, open your project to request a review and set up DevOps.
+          </div>
+        </div>
       </div>
     </div>
   );
