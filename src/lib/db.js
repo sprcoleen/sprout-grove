@@ -175,8 +175,8 @@ export const fromProject = (proj) => ({
   production_database:             proj.productionDatabase                         ?? null,
   production_database_url:         proj.productionDatabaseUrl                      ?? null,
   production_database_account:     proj.productionDatabaseAccount                  ?? null,
-  release_date:                    proj.releaseDate                                ?? null,
-  announcement_date:               proj.announcementDate                           ?? null,
+  release_date:                    proj.releaseDate                                || null,
+  announcement_date:               proj.announcementDate                           || null,
   last_updated:     new Date().toISOString(),
 })
 
