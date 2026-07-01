@@ -4101,9 +4101,10 @@ const ProjectDetailPage = ({
   const [activeTab, setActiveTab] = useState("seedling");
 
   // Approval request state
-  const [approvalSending,    setApprovalSending]    = useState(false);
-  const [approvalCancelling, setApprovalCancelling] = useState(false);
-  const [approvalError,      setApprovalError]      = useState(null);
+  const [approvalSending,      setApprovalSending]      = useState(false);
+  const [approvalCancelling,   setApprovalCancelling]   = useState(false);
+  const [approvalError,        setApprovalError]        = useState(null);
+  const [advancingToSprout,    setAdvancingToSprout]    = useState(false);
 
   const handleSendApprovalRequest = async () => {
     const name  = editForm.approverName?.trim();
@@ -4882,54 +4883,56 @@ const ProjectDetailPage = ({
                         )}
                       </div>
 
-                      {/* Going Live card */}
-                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                        <div style={{marginBottom:16}}>
-                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Going Live</div>
-                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Request DevOps setup and get release sign-off before advancing to Bloom.</div>
-                        </div>
-                        <div style={{display:"flex",gap:10}}>
-
-                          {/* DevOps setup card */}
-                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
-                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.carrot100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M2 14l3.5-3.5M13 2l-3.5 3.5M5.5 10.5L8 8M8 8l2.5-2.5M8 8l-2.5 2.5" stroke={C.carrot500} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      {/* Next steps guide — shown after approval is secured */}
+                      {approvalStatus==="approved"&&(
+                        <div style={{background:"#f0fdf4",border:"1.5px solid "+C.kangkong300,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                            <div style={{width:22,height:22,borderRadius:"50%",background:C.kangkong500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <svg width={12} height={12} viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5L10 3" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </div>
-                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>DevOps setup</div>
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Coleen, Blaise, Nikki, or Raffy set up hosting and infrastructure before launch.</div>
-                            <button onClick={()=>setShowDevopsModal(true)}
-                              style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.carrot500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.carrot500,cursor:"pointer",transition:"all 0.15s"}}
-                              onMouseOver={e=>{e.currentTarget.style.background=C.carrot100;}}
-                              onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
-                            >Request DevOps setup</button>
+                            <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.kangkong700}}>Approval secured — here's what to do next</div>
                           </div>
 
-                          {/* Release review card */}
-                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
-                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M13 4.5L6.5 12L3 8.5" stroke={C.kangkong600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </div>
-                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>Release review</div>
-                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Belle Asis signs off before the project goes live.</div>
-                            {project.releaseReviewStatus==="approved"&&(
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600}}>✓ Approved</div>
-                            )}
-                            {project.releaseReviewStatus==="pending"&&(
-                              <div style={{fontFamily:FF,fontSize:11,color:"#744210",fontWeight:600}}>Pending review…</div>
-                            )}
-                            {(!project.releaseReviewStatus||project.releaseReviewStatus==="rejected")&&(
-                              <button
-                                onClick={async()=>{ await onSubmitReleaseReview?.(project); }}
-                                disabled={computedTier===null}
-                                style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.kangkong500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.kangkong600,cursor:computedTier===null?"not-allowed":"pointer",opacity:computedTier===null?0.5:1,transition:"all 0.15s"}}
-                                onMouseOver={e=>{if(computedTier!==null)e.currentTarget.style.background=C.kangkong50;}}
-                                onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
-                              >{project.releaseReviewStatus==="rejected"?"Resubmit →":"Submit for release review →"}</button>
-                            )}
+                          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+                            {[
+                              {n:1,title:"Fill in Technical Details",desc:"Go to the Sprout tab and document your tech stack, hosting setup, and security answers. This is required before requesting DevOps setup.",tab:"sprout",cta:"Go to Sprout tab →"},
+                              {n:2,title:"Request DevOps Setup",desc:"Once your tech details are complete, submit a request to Coleen, Blaise, Nikki, or Raffy to configure hosting and infrastructure.",tab:null,cta:null},
+                              {n:3,title:"Submit for Release Review",desc:"Get sign-off from Belle Asis or Diane Litan. Both DevOps setup and release review must be approved before advancing to Bloom.",tab:null,cta:null},
+                            ].map(({n,title,desc,tab,cta})=>(
+                              <div key={n} style={{display:"flex",gap:10,padding:"12px 14px",borderRadius:DS.radius.lg,background:C.white,border:"1px solid "+C.kangkong200}}>
+                                <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,border:"1.5px solid "+C.kangkong300,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.kangkong700}}>{n}</span>
+                                </div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom900,marginBottom:3}}>{title}</div>
+                                  <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>{desc}</div>
+                                  {tab&&cta&&(
+                                    <button onClick={()=>setActiveTab(tab)} style={{marginTop:6,background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600,cursor:"pointer",textDecoration:"underline"}}>{cta}</button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
 
+                          {canAct&&project.stage==="nursery"&&(
+                            <button
+                              onClick={async()=>{
+                                setAdvancingToSprout(true);
+                                await onUpdateProject?.({...project, stage:"sprout"});
+                                setAdvancingToSprout(false);
+                                setActiveTab("sprout");
+                              }}
+                              disabled={advancingToSprout}
+                              style={{width:"100%",padding:"10px",background:advancingToSprout?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:advancingToSprout?"not-allowed":"pointer",transition:"all 0.15s"}}
+                            >{advancingToSprout?"Moving to Sprout…":"Advance to Sprout stage →"}</button>
+                          )}
+                          {project.stage!=="nursery"&&(
+                            <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,textAlign:"center",fontWeight:600}}>
+                              Already advanced to {project.stage.charAt(0).toUpperCase()+project.stage.slice(1)}
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      )}
 
                     </>)}
 
@@ -5055,6 +5058,54 @@ const ProjectDetailPage = ({
                         </div>
                       </div>
 
+                      {/* Going Live card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Going Live</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Complete your tech details above, then secure DevOps setup and release sign-off before advancing to Bloom.</div>
+                        </div>
+                        <div style={{display:"flex",gap:10}}>
+
+                          {/* DevOps setup card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.carrot100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M2 14l3.5-3.5M13 2l-3.5 3.5M5.5 10.5L8 8M8 8l2.5-2.5M8 8l-2.5 2.5" stroke={C.carrot500} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>DevOps setup</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Coleen, Blaise, Nikki, or Raffy set up hosting and infrastructure before launch.</div>
+                            <button onClick={()=>setShowDevopsModal(true)}
+                              style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.carrot500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.carrot500,cursor:"pointer",transition:"all 0.15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.background=C.carrot100;}}
+                              onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                            >Request DevOps setup</button>
+                          </div>
+
+                          {/* Release review card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M13 4.5L6.5 12L3 8.5" stroke={C.kangkong600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>Release review</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Belle Asis or Diane Litan signs off before the project goes live.</div>
+                            {project.releaseReviewStatus==="approved"&&(
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600}}>✓ Approved</div>
+                            )}
+                            {project.releaseReviewStatus==="pending"&&(
+                              <div style={{fontFamily:FF,fontSize:11,color:"#744210",fontWeight:600}}>Pending review…</div>
+                            )}
+                            {(!project.releaseReviewStatus||project.releaseReviewStatus==="rejected")&&(
+                              <button
+                                onClick={async()=>{ await onSubmitReleaseReview?.(project); }}
+                                disabled={computedTier===null}
+                                style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.kangkong500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.kangkong600,cursor:computedTier===null?"not-allowed":"pointer",opacity:computedTier===null?0.5:1,transition:"all 0.15s"}}
+                                onMouseOver={e=>{if(computedTier!==null)e.currentTarget.style.background=C.kangkong50;}}
+                                onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                              >{project.releaseReviewStatus==="rejected"?"Resubmit →":"Submit for release review →"}</button>
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
 
                     </>)}
 
