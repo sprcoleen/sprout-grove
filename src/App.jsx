@@ -4670,18 +4670,14 @@ const ProjectDetailPage = ({
                         </div>
 
                         {approvalStatus!=="approved"&&(
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-                            {[{label:"Approver name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Approver email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
-                              <div key={k}>
-                                <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
-                                <input type="text" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph}
-                                  disabled={approvalStatus==="pending"||!canAct}
-                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(approvalStatus==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:approvalStatus==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:approvalStatus==="pending"?0.7:1}}
-                                  onFocus={e=>{if(approvalStatus!=="pending")e.target.style.borderColor=C.kangkong500;}}
-                                  onBlur={e=>e.target.style.borderColor=approvalStatus==="pending"?C.mushroom200:C.mushroom300}
-                                />
-                              </div>
-                            ))}
+                          <div style={{marginBottom:12}}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:6}}>Approver</label>
+                            <ApproverPicker
+                              name={editForm.approverName}
+                              email={editForm.approverEmail}
+                              onChange={(n,e)=>{ setEF("approverName",n); setEF("approverEmail",e); }}
+                              disabled={approvalStatus==="pending"||!canAct}
+                            />
                           </div>
                         )}
 
@@ -6838,6 +6834,86 @@ function MultiSelect({ value, onChange, opts, label, required, optional, placeho
         </div>
       )}
       {required && !value.length && <div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginTop:3}}>Select at least one</div>}
+    </div>
+  );
+}
+
+// ── ApproverPicker — single-select profiles search for approver fields ─────────
+function ApproverPicker({name, email, onChange, disabled=false}) {
+  const [query, setQuery]       = useState("");
+  const [results, setResults]   = useState([]);
+  const [open, setOpen]         = useState(false);
+  const [searching, setSearching] = useState(false);
+  const selected = !!(name && email);
+
+  useEffect(() => {
+    if (selected || !query.trim() || query.length < 2) { setResults([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase.from("profiles")
+        .select("email, display_name")
+        .or(`display_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(8);
+      const list = data || [];
+      setResults(list);
+      setOpen(list.length > 0);
+      setSearching(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, selected]);
+
+  const pick = (p) => {
+    onChange(p.display_name || p.email, p.email);
+    setQuery(""); setResults([]); setOpen(false);
+  };
+
+  const clear = () => { onChange("", ""); setQuery(""); };
+
+  if (selected) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,background:disabled?C.mushroom50:C.white}}>
+        <div style={{width:32,height:32,borderRadius:"50%",background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,flexShrink:0}}>
+          {(name||"?").slice(0,2).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{email}</div>
+        </div>
+        {!disabled&&<button onClick={clear} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 6px",color:C.mushroom400,fontFamily:FF,fontSize:12,flexShrink:0}}>✕</button>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{position:"relative"}}>
+      <input type="text" value={query}
+        onChange={e=>setQuery(e.target.value)}
+        onFocus={()=>{ if(query.length>=2) setOpen(true); }}
+        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        disabled={disabled}
+        placeholder="Search by name or email…"
+        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:disabled?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:disabled?0.7:1}}
+      />
+      {searching&&<span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontFamily:FF,fontSize:11,color:C.mushroom400}}>…</span>}
+      {open&&results.length>0&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.white,border:"1.5px solid "+C.mushroom200,borderRadius:DS.radius.lg,boxShadow:DS.shadow.md,maxHeight:220,overflowY:"auto"}}>
+          {results.map(p=>(
+            <button key={p.email} onMouseDown={()=>pick(p)}
+              style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 12px",background:"none",border:"none",borderBottom:"1px solid "+C.mushroom100,cursor:"pointer",textAlign:"left"}}
+              onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+              onMouseLeave={e=>e.currentTarget.style.background="none"}
+            >
+              <div style={{width:28,height:28,borderRadius:"50%",background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,color:C.kangkong700,flexShrink:0}}>
+                {(p.display_name||p.email).slice(0,2).toUpperCase()}
+              </div>
+              <div>
+                <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900}}>{p.display_name}</div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{p.email}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
