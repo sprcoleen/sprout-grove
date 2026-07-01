@@ -133,5 +133,55 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: `Email failed: ${emailErr.message}` });
   }
 
+  // FYI email to Release Manager for alignment (non-fatal)
+  try {
+    await transporter.sendMail({
+      from:    `"Grove by Sprout" <${process.env.GMAIL_USER}>`,
+      to:      "cbasis@sprout.ph",
+      replyTo: builderEmail,
+      subject: `[FYI] Rooting Review submitted: ${projectName}`,
+      html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#fafaf8;font-family:system-ui,sans-serif;">
+  <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;border:1px solid #e4e2da;overflow:hidden;">
+    <div style="background:#1f6e1f;padding:24px 28px;">
+      <div style="color:#d6f0d6;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Grove by Sprout — Alignment Notice</div>
+      <div style="color:#fff;font-size:20px;font-weight:700;">Rooting Review Submitted</div>
+    </div>
+    <div style="padding:28px;">
+      <p style="margin:0 0 16px;color:#3a372e;font-size:15px;line-height:1.6;">Hi,</p>
+      <p style="margin:0 0 16px;color:#3a372e;font-size:15px;line-height:1.6;">
+        <strong>${builderName}</strong> has submitted <strong>${projectName}</strong> for Rooting Review.
+        IS / ExCom sign-off has been requested from <strong>${approverName}</strong> (${approverEmail}).
+      </p>
+      <p style="margin:0 0 16px;color:#565244;font-size:14px;line-height:1.6;">
+        This is for your alignment — no action is required from you at this time.
+        Once the approver signs off, the project will automatically advance to Sprout stage.
+      </p>
+      ${projectDescription ? `
+      <div style="background:#fafaf8;border:1px solid #e4e2da;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+        <div style="color:#928e7c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">About the project</div>
+        <div style="color:#565244;font-size:14px;line-height:1.6;">${projectDescription}</div>
+      </div>` : ""}
+      ${(prototypeLink || deckLink || docsLink) ? `
+      <div style="background:#fafaf8;border:1px solid #e4e2da;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+        <div style="color:#928e7c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Review materials</div>
+        ${prototypeLink ? `<div style="margin-bottom:8px;"><span style="color:#736f5e;font-size:12px;font-weight:600;">Demo / prototype:</span> <a href="${prototypeLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${prototypeLink}</a></div>` : ""}
+        ${deckLink      ? `<div style="margin-bottom:8px;"><span style="color:#736f5e;font-size:12px;font-weight:600;">Presentation deck:</span> <a href="${deckLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${deckLink}</a></div>` : ""}
+        ${docsLink      ? `<div><span style="color:#736f5e;font-size:12px;font-weight:600;">Documentation:</span> <a href="${docsLink}" style="color:#1f6e1f;font-size:13px;word-break:break-all;">${docsLink}</a></div>` : ""}
+      </div>` : ""}
+    </div>
+    <div style="background:#fafaf8;border-top:1px solid #e4e2da;padding:14px 28px;">
+      <div style="color:#b0ac9c;font-size:11px;">Sent via Grove — Sprout's internal AI project tracker</div>
+    </div>
+  </div>
+</body>
+</html>`,
+    });
+  } catch (rmErr) {
+    console.error("Release Manager FYI email error:", rmErr);
+  }
+
   return res.status(200).json({ success: true, sentAt: now });
 }

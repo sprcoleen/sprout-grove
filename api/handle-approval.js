@@ -170,6 +170,8 @@ export default async function handler(req, res) {
       approval_status: "approved",
       approved_at:     approvedAt,
       approval_token:  null,
+      stage:           "sprout",
+      last_updated:    approvedAt,
     }).eq("id", project.id);
 
     await supabase.from("rooting_reviews")
@@ -179,15 +181,16 @@ export default async function handler(req, res) {
 
     await sendEmail(
       RELEASE_MANAGER_EMAIL,
-      `${project.name} approved — ready for Grove release review`,
+      `[FYI] ${project.name} — Rooting approved, now at Sprout stage`,
       `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;background:#fafaf8;padding:32px">
       <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e4e2da;overflow:hidden">
-        <div style="background:#1f6e1f;padding:20px 24px"><div style="color:#fff;font-size:18px;font-weight:700">Ready for Release Review</div></div>
+        <div style="background:#1f6e1f;padding:20px 24px"><div style="color:#fff;font-size:18px;font-weight:700">Rooting Review Approved</div></div>
         <div style="padding:24px">
           <p style="color:#3a372e;font-size:15px;line-height:1.6;margin-bottom:12px">
-            <strong>${project.name}</strong> has received sign-off from <strong>${project.approver_name}</strong> and is ready for your release review on Grove.
+            <strong>${project.name}</strong> has been approved by <strong>${project.approver_name}</strong> and has automatically advanced to <strong>Sprout stage</strong> on Grove.
           </p>
-          <a href="${GROVE_URL}" style="display:inline-block;margin-top:8px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Review on Grove</a>
+          <p style="color:#928e7c;font-size:13px;line-height:1.6;margin-bottom:12px">This is for your alignment — no action required.</p>
+          <a href="${GROVE_URL}" style="display:inline-block;margin-top:8px;padding:10px 22px;background:#2d8c2d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">View on Grove</a>
         </div>
       </div></body></html>`,
       project.builder_email || undefined
@@ -196,7 +199,7 @@ export default async function handler(req, res) {
     return res.status(200).send(page("Approved!",
       `<div class="icon">✓</div>
        <p>You've approved <strong>${project.name}</strong>.</p>
-       <p><strong>${project.builder || "The project owner"}</strong> can now advance this project on Grove. The Release Manager has been notified.</p>
+       <p>The project has been automatically moved to <strong>Sprout stage</strong> on Grove. The Release Manager has been notified for alignment.</p>
        <p class="sub">You can close this tab.</p>`
     ));
   }

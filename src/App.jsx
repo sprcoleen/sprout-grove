@@ -4115,9 +4115,6 @@ const ProjectDetailPage = ({
   const [approvalCancelling,   setApprovalCancelling]   = useState(false);
   const [approvalError,        setApprovalError]        = useState(null);
   const [advancingToSprout,    setAdvancingToSprout]    = useState(false);
-  const [rlmActing,            setRlmActing]            = useState(false);
-  const [rlmRejecting,         setRlmRejecting]         = useState(false);
-  const [rlmRejectReason,      setRlmRejectReason]      = useState("");
 
   const handleSendApprovalRequest = async () => {
     const name  = editForm.approverName?.trim();
@@ -4174,23 +4171,6 @@ const ProjectDetailPage = ({
     setApprovalCancelling(true);
     await onUpdateProject?.({ ...project, approvalStatus: null, approvalRequestedAt: null, approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
     setApprovalCancelling(false);
-  };
-
-  const handleRlmApprove = async () => {
-    setRlmActing(true);
-    const now = new Date().toISOString();
-    await onUpdateProject?.({ ...project, approvalStatus: "approved", approvedAt: now, approvalRejectedAt: null, approvalRejectionReason: null });
-    setRlmActing(false);
-  };
-
-  const handleRlmReject = async () => {
-    if (!rlmRejectReason.trim()) return;
-    setRlmActing(true);
-    const now = new Date().toISOString();
-    await onUpdateProject?.({ ...project, approvalStatus: "rejected", approvalRejectedAt: now, approvalRejectionReason: rlmRejectReason.trim(), approvedAt: null });
-    setRlmActing(false);
-    setRlmRejecting(false);
-    setRlmRejectReason("");
   };
 
   // Sync edit form when project prop changes (e.g. after related project nav)
@@ -4871,56 +4851,17 @@ const ProjectDetailPage = ({
                           </div>
                         )}
 
-                        {approvalStatus==="pending"&&!authUser?.isAdmin&&(
+                        {approvalStatus==="pending"&&(
                           <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
                             <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:4}}>Awaiting IS / ExCom sign-off</div>
                             <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5}}>
                               An approval request was sent to <strong>{project.approverName||project.approverEmail}</strong>{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.
+                              The Release Manager has also been notified for alignment.
                             </div>
-                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5,marginTop:6}}>
-                              Once they sign off, the <strong>Release Manager</strong> (Belle Asis / Diane Litan) will conduct the Rooting Review. You'll receive a notification when a decision is made.
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5,marginTop:4}}>
+                              Once they approve, the project will automatically advance to Sprout stage.
                             </div>
                             {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:6}}>{approvalSending?"Sending…":"Resend email"}</button>}
-                          </div>
-                        )}
-                        {approvalStatus==="pending"&&authUser?.isAdmin&&(
-                          <div style={{background:C.blueberry100,border:"1px solid "+C.blueberry400,borderRadius:DS.radius.md,padding:"12px 14px",marginBottom:10}}>
-                            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",color:C.blueberry500,marginBottom:4}}>Release Manager Review</div>
-                            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom700,lineHeight:1.5,marginBottom:10}}>
-                              <strong>{project.approverName||project.approverEmail}</strong> has been asked to sign off. As Release Manager you can also approve or reject this Rooting Review directly.
-                            </div>
-                            {!rlmRejecting?(
-                              <div style={{display:"flex",gap:8}}>
-                                <button onClick={handleRlmApprove} disabled={rlmActing}
-                                  style={{flex:2,padding:"8px",background:rlmActing?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:rlmActing?"not-allowed":"pointer",transition:"all 0.15s"}}>
-                                  {rlmActing?"Approving…":"Approve →"}
-                                </button>
-                                <button onClick={()=>setRlmRejecting(true)} disabled={rlmActing}
-                                  style={{flex:1,padding:"8px",background:C.white,color:C.tomato600,border:"1.5px solid "+C.tomato400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>
-                                  Reject
-                                </button>
-                              </div>
-                            ):(
-                              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                                <textarea value={rlmRejectReason} onChange={e=>setRlmRejectReason(e.target.value)}
-                                  placeholder="Reason for rejection — the builder will see this…"
-                                  rows={3}
-                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",boxSizing:"border-box"}}
-                                  onFocus={e=>e.target.style.borderColor=C.tomato400}
-                                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                                />
-                                <div style={{display:"flex",gap:8}}>
-                                  <button onClick={handleRlmReject} disabled={rlmActing||!rlmRejectReason.trim()}
-                                    style={{flex:2,padding:"8px",background:rlmActing||!rlmRejectReason.trim()?C.mushroom300:C.tomato500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:rlmActing||!rlmRejectReason.trim()?"not-allowed":"pointer",transition:"all 0.15s"}}>
-                                    {rlmActing?"Rejecting…":"Submit rejection"}
-                                  </button>
-                                  <button onClick={()=>{setRlmRejecting(false);setRlmRejectReason("");}} disabled={rlmActing}
-                                    style={{flex:1,padding:"8px",background:C.white,color:C.mushroom600,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer"}}>
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )}
                         {approvalStatus==="approved"&&(
@@ -4958,37 +4899,19 @@ const ProjectDetailPage = ({
                         )}
                       </div>
 
-                      {/* Next steps guide — shown after approval is secured */}
+                      {/* Approval approved — shown in stale state before page refresh */}
                       {approvalStatus==="approved"&&(
                         <div style={{background:"#f0fdf4",border:"1.5px solid "+C.kangkong300,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
                             <div style={{width:22,height:22,borderRadius:"50%",background:C.kangkong500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                               <svg width={12} height={12} viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5L10 3" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </div>
-                            <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.kangkong700}}>Approval secured — here's what to do next</div>
+                            <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.kangkong700}}>Approval secured!</div>
                           </div>
-
-                          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-                            {[
-                              {n:1,title:"Fill in Technical Details",desc:"Go to the Sprout tab and document your tech stack, hosting setup, and security answers. This is required before requesting DevOps setup.",tab:"sprout",cta:"Go to Sprout tab →"},
-                              {n:2,title:"Request DevOps Setup",desc:"Once your tech details are complete, submit a request to Coleen, Blaise, Nikki, or Raffy to configure hosting and infrastructure.",tab:null,cta:null},
-                              {n:3,title:"Submit for Release Review",desc:"Get sign-off from Belle Asis or Diane Litan. Both DevOps setup and release review must be approved before advancing to Bloom.",tab:null,cta:null},
-                            ].map(({n,title,desc,tab,cta})=>(
-                              <div key={n} style={{display:"flex",gap:10,padding:"12px 14px",borderRadius:DS.radius.lg,background:C.white,border:"1px solid "+C.kangkong200}}>
-                                <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,border:"1.5px solid "+C.kangkong300,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.kangkong700}}>{n}</span>
-                                </div>
-                                <div style={{flex:1}}>
-                                  <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom900,marginBottom:3}}>{title}</div>
-                                  <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5}}>{desc}</div>
-                                  {tab&&cta&&(
-                                    <button onClick={()=>setActiveTab(tab)} style={{marginTop:6,background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600,cursor:"pointer",textDecoration:"underline"}}>{cta}</button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                          <div style={{fontFamily:FF,fontSize:12,color:C.kangkong700,lineHeight:1.6,marginBottom:14}}>
+                            Approved by <strong>{project.approverName}</strong>{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+                            Your project should now be at <strong>Sprout stage</strong>. Refresh the page if it hasn't updated yet.
                           </div>
-
                           {canAct&&project.stage==="nursery"&&(
                             <button
                               onClick={async()=>{
@@ -5003,7 +4926,7 @@ const ProjectDetailPage = ({
                           )}
                           {project.stage!=="nursery"&&(
                             <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,textAlign:"center",fontWeight:600}}>
-                              Already advanced to {project.stage.charAt(0).toUpperCase()+project.stage.slice(1)}
+                              Already at {project.stage.charAt(0).toUpperCase()+project.stage.slice(1)} stage
                             </div>
                           )}
                         </div>
