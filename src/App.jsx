@@ -4088,7 +4088,14 @@ const ProjectDetailPage = ({
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
+  const [saveToast, setSaveToast]   = useState(null); // null | saveErrors snapshot
   const setEF = (k, v) => { setEditForm(p=>({...p, [k]:v})); setFormDirty(true); };
+
+  useEffect(() => {
+    if (!saveToast) return;
+    const t = setTimeout(() => setSaveToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [saveToast]);
   const [showDevopsModal, setShowDevopsModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState("seedling");
@@ -4218,6 +4225,7 @@ const ProjectDetailPage = ({
   const handleSaveAll = async () => {
     if (formSaving || classSaving) return;
     if (saveErrors.length > 0) {
+      setSaveToast(saveErrors);
       setActiveTab(saveErrors[0].tab);
       return;
     }
@@ -4333,6 +4341,49 @@ const ProjectDetailPage = ({
 
   return (
     <>
+    {/* ── Validation toast — fixed, always visible regardless of scroll ── */}
+    {saveToast&&(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(460px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.tomato500,
+        borderRadius:DS.radius.lg, padding:"14px 16px",
+        boxShadow:"0 8px 32px rgba(229,62,62,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", flexDirection:"column", gap:8,
+      }}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{width:20,height:20,borderRadius:"50%",background:C.tomato500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <span style={{color:C.white,fontSize:12,fontWeight:700,lineHeight:1}}>!</span>
+            </div>
+            <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>
+              {saveToast.length === 1 ? "1 required field is missing" : `${saveToast.length} required fields are missing`}
+            </span>
+          </div>
+          <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {saveToast.map((e,i)=>(
+            <button key={i} onClick={()=>{setActiveTab(e.tab);setSaveToast(null);}}
+              style={{display:"flex",alignItems:"center",gap:8,width:"100%",
+                padding:"8px 10px",borderRadius:DS.radius.md,
+                background:C.tomato100, border:"1px solid "+C.tomato500+"66",
+                cursor:"pointer",textAlign:"left",transition:"background 0.15s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#fecaca"}
+              onMouseLeave={e=>e.currentTarget.style.background=C.tomato100}
+            >
+              <svg width={12} height={12} viewBox="0 0 12 12" fill="none" style={{flexShrink:0}}>
+                <path d="M2 6h8M6 2l4 4-4 4" stroke={C.tomato600} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{fontFamily:FF,fontSize:12,color:C.tomato700,lineHeight:1.4}}>{e.msg}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,textAlign:"center"}}>Tap any item above to jump to the field · closes in 6s</div>
+      </div>
+    )}
+
     <div style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
 
       {/* Top nav */}
@@ -4372,6 +4423,7 @@ const ProjectDetailPage = ({
             ].map(({key, n, label, sub, dotColor}, idx, arr) => {
               const active = activeTab === key;
               const isCurrent = project.stage === key;
+              const hasValidationError = saveErrors.some(e => e.tab === key);
               return (
                 <button key={key} onClick={()=>setActiveTab(key)} style={{
                   display:"flex", alignItems:"flex-start", gap:9, padding:8, width:"100%",
@@ -4382,17 +4434,27 @@ const ProjectDetailPage = ({
                   fontFamily:FF,
                 }}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:3}}>
-                    <div style={{
-                      width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
-                      fontSize:9, fontWeight:600, flexShrink:0,
-                      border:"1.5px solid "+(active?dotColor:"#ccc9bc"),
-                      color:active?C.white:"#928e7c",
-                      background:active?dotColor:C.white,
-                    }}>{n}</div>
+                    <div style={{position:"relative"}}>
+                      <div style={{
+                        width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:9, fontWeight:600, flexShrink:0,
+                        border:"1.5px solid "+(active?dotColor:"#ccc9bc"),
+                        color:active?C.white:"#928e7c",
+                        background:active?dotColor:C.white,
+                      }}>{n}</div>
+                      {hasValidationError&&(
+                        <div style={{
+                          position:"absolute", top:-3, right:-3,
+                          width:8, height:8, borderRadius:"50%",
+                          background:C.tomato500, border:"1.5px solid "+C.white,
+                          flexShrink:0,
+                        }}/>
+                      )}
+                    </div>
                     {idx < arr.length - 1 && <div style={{width:1,height:18,background:"#e4e2da",margin:"2px auto 0"}}/>}
                   </div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:FF,fontSize:12,fontWeight:active?600:500,color:active?C.mushroom900:C.mushroom600}}>{label}</div>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:active?600:500,color:hasValidationError?C.tomato600:active?C.mushroom900:C.mushroom600}}>{label}</div>
                     <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:1}}>{sub}</div>
                     {isCurrent && <div style={{display:"inline-flex",alignItems:"center",gap:3,marginTop:4,padding:"1px 7px",borderRadius:9999,fontSize:9,fontWeight:600,letterSpacing:"0.04em",background:"#f0faf0",border:"1px solid #aadcaa",color:"#1f6e1f"}}>current</div>}
                   </div>
