@@ -5570,6 +5570,7 @@ const ProjectDetailPage = ({
       tier={computedTier}
       onClose={()=>setShowDevopsModal(false)}
       onSubmit={async (req)=>{ const res = await onCreateDevopsRequest?.(req); return res; }}
+      onSaveProject={onUpdateProject}
     />}
 
     {/* Danger zone — Request Deletion (bottom of full detail page) */}
@@ -7903,7 +7904,7 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
-function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit }) {
+function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSaveProject }) {
   const [submitting,   setSubmitting]   = React.useState(false);
   const [copied,       setCopied]       = React.useState(false);
   const [result,       setResult]       = React.useState(null);
@@ -7912,13 +7913,14 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit }) {
     Array.isArray(project.hosting) ? project.hosting.join(', ') : (project.hosting || '')
   );
   const [database,     setDatabase]     = React.useState(
+    Array.isArray(project.database) ? project.database.join(', ') :
     project.database ||
     (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
     project.dataSource || ''
   );
-  const [githubAcct,   setGithubAcct]   = React.useState('company');
-  const [hostingAcct,  setHostingAcct]  = React.useState('company');
-  const [dbAcct,       setDbAcct]       = React.useState('company');
+  const [githubAcct,   setGithubAcct]   = React.useState(project.versionControlAccount || 'company');
+  const [hostingAcct,  setHostingAcct]  = React.useState(project.hostingAccount        || 'company');
+  const [dbAcct,       setDbAcct]       = React.useState(project.databaseAccount       || 'company');
   const [notes,        setNotes]        = React.useState('');
 
   const effectiveTier = tier ?? project.tier ?? 2;
@@ -7962,6 +7964,18 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit }) {
       status:       'todo',
       country:      project.country,
     });
+    if (res?.ok && onSaveProject) {
+      const toArr = s => s.split(',').map(x=>x.trim()).filter(Boolean);
+      onSaveProject({
+        ...project,
+        githubRepo,
+        hosting:               toArr(hosting),
+        database:              toArr(database),
+        versionControlAccount: githubAcct,
+        hostingAccount:        hostingAcct,
+        databaseAccount:       dbAcct,
+      }).catch(e => console.warn('Setup support save error:', e));
+    }
     setSubmitting(false);
     setResult(res || { ok: false, message: 'No response from server' });
   };
@@ -8097,6 +8111,9 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit }) {
                     <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
                       {result.jiraTicketKey&&<><strong>{result.jiraTicketKey}</strong> — </>}
                       Assigned to <strong>{assignee.name}</strong>. Visible in the Tool Shed.
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,marginTop:4,opacity:0.85}}>
+                      Setup details saved to this project — they'll be pre-filled next time.
                     </div>
                   </div>
                 </div>
