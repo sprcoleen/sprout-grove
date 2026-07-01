@@ -4088,7 +4088,7 @@ const ProjectDetailPage = ({
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
-  const [saveToast, setSaveToast]   = useState(null); // null | saveErrors snapshot
+  const [saveToast, setSaveToast]   = useState(null); // null | {type:'error',errors:[]} | {type:'success'} | {type:'failure'}
   const setEF = (k, v) => { setEditForm(p=>({...p, [k]:v})); setFormDirty(true); };
 
   useEffect(() => {
@@ -4225,19 +4225,21 @@ const ProjectDetailPage = ({
   const handleSaveAll = async () => {
     if (formSaving || classSaving) return;
     if (saveErrors.length > 0) {
-      setSaveToast(saveErrors);
+      setSaveToast({ type: 'error', errors: saveErrors });
       setActiveTab(saveErrors[0].tab);
       return;
     }
     setFormSaving(true);
+    let allOk = true;
     if (formDirty) {
-      await onUpdateProject?.({ ...project, ...editForm });
-      setFormDirty(false);
+      const result = await onUpdateProject?.({ ...project, ...editForm });
+      if (result?.ok === false) allOk = false;
+      else setFormDirty(false);
     }
-    if (classIsDirty) {
+    if (allOk && classIsDirty) {
       setClassSaving(true);
       const connectsSprout = SPROUT_SYSTEMS.some(s => cDbPlatform.includes(s));
-      await onSaveClassification?.(project.id, {
+      const result = await onSaveClassification?.(project.id, {
         hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
         githubRepo: cRepoUrl,
         hosting: cHostingPlatform,
@@ -4249,9 +4251,11 @@ const ProjectDetailPage = ({
         hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
         storesUserInputs: cStoresInputs,
       });
+      if (result?.ok === false) allOk = false;
       setClassSaving(false);
     }
     setFormSaving(false);
+    setSaveToast(allOk ? { type: 'success' } : { type: 'failure' });
   };
 
   const interestedUsers = project.interestedUsers || [];
@@ -4341,8 +4345,49 @@ const ProjectDetailPage = ({
 
   return (
     <>
-    {/* ── Validation toast — fixed, always visible regardless of scroll ── */}
-    {saveToast&&(
+    {/* ── Save toast — fixed, always visible regardless of scroll ── */}
+    {saveToast&&(saveToast.type==='success'?(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(360px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.kangkong500,
+        borderRadius:DS.radius.lg, padding:"12px 16px",
+        boxShadow:"0 8px 32px rgba(45,140,45,0.15), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width={11} height={11} viewBox="0 0 11 11" fill="none">
+              <path d="M2 5.5l2.5 2.5L9 3" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong700}}>Changes saved successfully</span>
+        </div>
+        <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+      </div>
+    ):saveToast.type==='failure'?(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(400px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.tomato500,
+        borderRadius:DS.radius.lg, padding:"12px 16px",
+        boxShadow:"0 8px 32px rgba(229,62,62,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:20,height:20,borderRadius:"50%",background:C.tomato500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{color:C.white,fontSize:12,fontWeight:700,lineHeight:1}}>!</span>
+          </div>
+          <div>
+            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Save failed</div>
+            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginTop:2}}>Something went wrong. Check your connection and try again.</div>
+          </div>
+        </div>
+        <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+      </div>
+    ):(
       <div style={{
         position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
         zIndex:9999, width:"min(460px, 92vw)",
@@ -4358,13 +4403,13 @@ const ProjectDetailPage = ({
               <span style={{color:C.white,fontSize:12,fontWeight:700,lineHeight:1}}>!</span>
             </div>
             <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>
-              {saveToast.length === 1 ? "1 required field is missing" : `${saveToast.length} required fields are missing`}
+              {saveToast.errors.length === 1 ? "1 required field is missing" : `${saveToast.errors.length} required fields are missing`}
             </span>
           </div>
           <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:5}}>
-          {saveToast.map((e,i)=>(
+          {saveToast.errors.map((e,i)=>(
             <button key={i} onClick={()=>{setActiveTab(e.tab);setSaveToast(null);}}
               style={{display:"flex",alignItems:"center",gap:8,width:"100%",
                 padding:"8px 10px",borderRadius:DS.radius.md,
@@ -4382,7 +4427,7 @@ const ProjectDetailPage = ({
         </div>
         <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,textAlign:"center"}}>Tap any item above to jump to the field · closes in 6s</div>
       </div>
-    )}
+    ))}
 
     <div style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
 
@@ -8876,12 +8921,13 @@ export default function SproutAIGarden() {
   };
 
   const handleUpdateProject = async (updated) => {
-    if (!authUser || (authUser.email !== updated.builderEmail && !authUser.isAdmin)) return;
+    if (!authUser || (authUser.email !== updated.builderEmail && !authUser.isAdmin)) return { ok: false };
     const row = fromProject(updated);
     delete row.country; // country is immutable — never send in UPDATE
     const { error } = await supabase.from("projects").update(row).eq("id", updated.id);
-    if (error) { console.error("handleUpdateProject:", error); return; }
+    if (error) { console.error("handleUpdateProject:", error); return { ok: false }; }
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
+    return { ok: true };
   };
 
   const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
@@ -8898,13 +8944,14 @@ export default function SproutAIGarden() {
       data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
       has_sensitive_data: hasSensitiveData,
     }).eq("id", projectId);
-    if (error) { console.error("saveClassification:", error); return; }
+    if (error) { console.error("saveClassification:", error); return { ok: false }; }
     setProjects(prev => prev.map(p => p.id === projectId
       ? {...p, hasBackend, targetUsers, tier, githubRepo, hosting,
               requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails,
               dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p
     ));
+    return { ok: true };
   };
 
   const handleUpdateWish = async (updated) => {
