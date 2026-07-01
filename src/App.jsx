@@ -303,7 +303,7 @@ const DEPT_ZONES = {
 };
 
 const CAPABILITIES = ["All","LLM","Computer Vision","Automation","Prediction","NLP"];
-const TOOLS = ["ChatGPT","Claude Chat","Claude Code","Copilot","Cowork","Cursor","Zapier / Make","Other"];
+const TOOLS = ["Bolt","ChatGPT","Claude","Claude Code","Copilot","Cowork","Cursor","Gemini","Grok","LLaMA","Lovable","Mistral","n8n","Replit","V0","Windsurf","Zapier / Make","Other"];
 const AGENTIC_FRAMEWORKS = ["Aulendil","AutoGPT","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
 const DB_AND_SOURCES = [
   "Azure SQL","Databricks","Firebase","Google Drive/Docs","HubSpot","Jira",
@@ -4945,17 +4945,20 @@ const ProjectDetailPage = ({
                         </div>
                         <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
-                          <MultiSelect label="AI assistant" optional opts={["Claude","ChatGPT","Gemini","Copilot","Grok","Llama","Mistral","Other"]} value={editForm.aiAssistant||[]} onChange={v=>setEF("aiAssistant",v)} placeholder="Search AI assistants…" palette="purple"/>
+                          <MultiSelect label="Tools used" required
+                            tooltip="All AI tools on this project — assistants (Claude, ChatGPT), code builders (Cursor, Claude Code), automation (Zapier)"
+                            opts={TOOLS} value={editForm.toolUsed} onChange={v=>setEF("toolUsed",v)} placeholder="Search tools…" palette="green"/>
 
-                          <MultiSelect label="Builder tools" optional opts={["Claude Code","Cursor","Windsurf","Replit","Bolt","V0","Lovable","Other"]} value={editForm.builderTools||[]} onChange={v=>setEF("builderTools",v)} placeholder="Search builder tools…" palette="purple"/>
-
-                          <MultiSelect label="Tools used" required opts={TOOLS} value={editForm.toolUsed} onChange={v=>setEF("toolUsed",v)} placeholder="Search tools…" palette="green"/>
-
-                          <MultiSelect label="Agentic framework" optional opts={AGENTIC_FRAMEWORKS} value={editForm.agenticFramework||[]} onChange={v=>setEF("agenticFramework",v)} placeholder="Search frameworks…" palette="purple"/>
+                          <MultiSelect label="Agentic framework" optional
+                            tooltip="Multi-agent orchestration framework (e.g. Aulendil, BMAD, LangChain) — leave blank if none"
+                            opts={AGENTIC_FRAMEWORKS} value={editForm.agenticFramework||[]} onChange={v=>setEF("agenticFramework",v)} placeholder="Search frameworks…" palette="purple"/>
 
                           {computedTier>=2&&(<>
                             <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting</div>
+                              <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Hosting</div>
+                                <TooltipLabel tooltip="Platform where the project is deployed (e.g. Vercel, Azure, internal server)"/>
+                              </div>
                               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                                 <div style={{flex:1}}>
                                   <MultiSelect opts={["AWS","Azure","Google Cloud","Internal server","Vercel","Other"]} value={cHostingPlatform} onChange={v=>setCHostingPlatform(v)} placeholder="Search platforms…" palette="green"/>
@@ -4966,7 +4969,10 @@ const ProjectDetailPage = ({
                           </>)}
 
                           <div>
-                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Version control</div>
+                            <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Version control</div>
+                              <TooltipLabel tooltip="Paste your GitHub, GitLab, or Bitbucket repository URL"/>
+                            </div>
                             <div style={{display:"flex",gap:8}}>
                               <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
                                 placeholder="github.com/org/repo"
@@ -4980,13 +4986,18 @@ const ProjectDetailPage = ({
 
                           {computedTier>=2&&(<>
                             <div>
-                              <MultiSelect label="User authentication" optional opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]} value={cAuthType} onChange={v=>setCAuthType(v)} placeholder="Search auth types…" palette="green"/>
+                              <MultiSelect label="User authentication" optional
+                                tooltip="How users log in to this project (e.g. Keycloak, Google SSO, API key)"
+                                opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]} value={cAuthType} onChange={v=>setCAuthType(v)} placeholder="Search auth types…" palette="green"/>
                               {computedTier===3&&!cAuthType.includes('Keycloak')&&cAuthType.length>0&&(
                                 <div style={{marginTop:6,padding:"6px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,color:C.mango600}}>Keycloak must be included for Tier 3 projects.</div>
                               )}
                             </div>
                             <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database &amp; data sources</div>
+                              <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Database &amp; data sources</div>
+                              <TooltipLabel tooltip="Databases or external data services this project reads from or writes to"/>
+                            </div>
                               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                                 <div style={{flex:1}}>
                                   <MultiSelect opts={DB_AND_SOURCES} value={cDbPlatform} onChange={v=>setCDbPlatform(v)} placeholder="Search databases &amp; data sources…" palette="blue"/>
@@ -6915,7 +6926,7 @@ const MS_PALETTES = {
   purple: { bg:C.ubas100,     border:C.ubas400,     text:C.ubas500,      hover:"#ede9fa",      check:C.ubas500      },
   blue:   { bg:C.blueberry100,border:C.blueberry400,text:C.blueberry500, hover:"#dbeafe",      check:C.blueberry500 },
 };
-function MultiSelect({ value, onChange, opts, label, required, optional, placeholder, palette="green" }) {
+function MultiSelect({ value, onChange, opts, label, required, optional, tooltip, placeholder, palette="green" }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ref = useRef(null);
@@ -6930,11 +6941,14 @@ function MultiSelect({ value, onChange, opts, label, required, optional, placeho
   return (
     <div ref={ref} style={{position:"relative",marginBottom:14}}>
       {label && (
-        <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
-          {label}
-          {required && <span style={{color:C.tomato500,fontWeight:400}}> *</span>}
-          {optional && <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}> (optional)</span>}
-        </label>
+        <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:4}}>
+          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5}}>
+            {label}
+            {required && <span style={{color:C.tomato500,fontWeight:400}}> *</span>}
+            {optional && <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}> (optional)</span>}
+          </label>
+          {tooltip && <TooltipLabel tooltip={tooltip}/>}
+        </div>
       )}
       <div onClick={()=>setOpen(true)} style={{
         display:"flex",alignItems:"center",gap:6,
