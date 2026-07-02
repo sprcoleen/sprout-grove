@@ -4028,6 +4028,7 @@ const ProjectDetailPage = ({
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
   onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
+  devopsRequests,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -5558,6 +5559,68 @@ const ProjectDetailPage = ({
               <button onClick={()=>{if(noteText.trim()){onNote(project.id,noteText);setNoteText("");}}} style={{padding:"9px 18px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600}}>+</button>
             </div>
           </div>
+
+          {/* ── Linked Tickets ── */}
+          {(devopsRequests||[]).length>0&&(
+            <div style={{marginTop:20,paddingTop:18,borderTop:"1px solid "+C.mushroom200}}>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                <svg width={14} height={14} viewBox="0 0 16 16" fill="none">
+                  <rect x="1.5" y="3" width="13" height="10" rx="2" stroke={C.mushroom400} strokeWidth="1.4"/>
+                  <path d="M5 7h6M5 10h4" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+                Linked Tickets
+                <span style={{marginLeft:2,padding:"1px 7px",borderRadius:DS.radius.full,background:C.mushroom100,color:C.mushroom600,fontFamily:FF,fontSize:10,fontWeight:700}}>
+                  {(devopsRequests||[]).length}
+                </span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {(devopsRequests||[]).map(req=>{
+                  const statusColor =
+                    req.status==="done"       ? {bg:C.kangkong100,border:C.kangkong200,dot:C.kangkong500,text:C.kangkong700} :
+                    req.status==="in_progress"? {bg:"#fefcbf",    border:"#d69e2e",    dot:"#b7791f",    text:"#744210"}      :
+                    req.status==="blocked"    ? {bg:C.tomato100,  border:"#fc8181",    dot:C.tomato500,  text:C.tomato600}    :
+                                                {bg:C.mushroom50, border:C.mushroom200,dot:C.mushroom400,text:C.mushroom600};
+                  const statusLabel =
+                    req.status==="done"        ? "Done"        :
+                    req.status==="in_progress" ? "In progress" :
+                    req.status==="blocked"     ? "Blocked"     : "To do";
+                  return (
+                    <div key={req.id} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:12}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                          {req.jiraTicketKey&&(
+                            <span style={{fontFamily:"Roboto Mono, monospace",fontSize:11,fontWeight:700,color:C.kangkong600,background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.sm,padding:"1px 7px",flexShrink:0}}>
+                              {req.jiraTicketKey}
+                            </span>
+                          )}
+                          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            Grove SRC: {req.projectName}
+                          </span>
+                        </div>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                          {req.githubRepo&&<span style={{fontFamily:"Roboto Mono, monospace",fontSize:10,color:C.mushroom500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>📁 {req.githubRepo}</span>}
+                          {req.hosting&&<span style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>🌐 {req.hosting}</span>}
+                          {req.database&&<span style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>🗄 {req.database}</span>}
+                        </div>
+                        {req.devopsNotes&&(
+                          <div style={{marginTop:6,fontFamily:FF,fontSize:11,color:C.mushroom600,background:C.mushroom50,borderRadius:DS.radius.sm,padding:"4px 8px",borderLeft:"2px solid "+C.mushroom300}}>{req.devopsNotes}</div>
+                        )}
+                        <div style={{marginTop:5,fontFamily:FF,fontSize:10,color:C.mushroom400}}>
+                          Requested by {req.requestedBy?.split("@")[0]} · {req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}
+                        </div>
+                      </div>
+                      <div style={{flexShrink:0}}>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:DS.radius.full,background:statusColor.bg,border:"1px solid "+statusColor.border,fontFamily:FF,fontSize:10,fontWeight:700,color:statusColor.text}}>
+                          <span style={{width:6,height:6,borderRadius:"50%",background:statusColor.dot,flexShrink:0}}/>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           </>
 
@@ -9824,6 +9887,7 @@ export default function SproutAIGarden() {
               onToggleInterested={handleToggleInterested}
               onSaveClassification={handleSaveClassification}
               onCreateDevopsRequest={handleCreateDevopsRequest}
+              devopsRequests={devopsRequests.filter(r=>String(r.projectId)===String(detailProject.id))}
               onMoveStage={handleMoveStage}
               onSubmitReleaseReview={handleSubmitReleaseReview}
               onReleaseReviewAction={handleReleaseReviewAction}
