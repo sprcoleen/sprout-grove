@@ -4566,6 +4566,7 @@ const ProjectDetailPage = ({
               project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Static / Internal"]
              :project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]
              :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]
+             :canEdit         ?["#744210","#fefcbf","#d69e2e",null]
                                :[C.mushroom400,C.mushroom50,C.mushroom200,null];
             return (
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:DS.radius.lg,marginBottom:16,background:tbg,border:"1px solid "+tbr}}>
@@ -4574,17 +4575,25 @@ const ProjectDetailPage = ({
                     <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:tc,padding:"2px 8px",background:C.white,border:"1.5px solid "+tbr,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
                     <span style={{fontFamily:FF,fontSize:12,color:tc}}>{tl}</span>
                   </>
-                ) : (
+                ) : canEdit ? (
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",gap:10}}>
-                    <div>
-                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <svg width={16} height={16} viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#b7791f" strokeWidth="1.5" fill="#fefcbf"/><path d="M8 6v3.5M8 11v.5" stroke="#b7791f" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Classification required</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:"#92400e"}}>Answer 2 questions in the Seedling tab to set this project's tier and unlock Setup Support.</div>
+                      </div>
                     </div>
                     <button onClick={()=>setActiveTab("seedling")}
-                      style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
-                      onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
-                      onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
-                    >Classify now →</button>
+                      style={{flexShrink:0,padding:"5px 14px",background:"#b7791f",border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:700,color:C.white,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
+                      onMouseOver={e=>e.currentTarget.style.background="#744210"}
+                      onMouseOut={e=>e.currentTarget.style.background="#b7791f"}
+                    >Go to Classification →</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
                   </div>
                 )}
               </div>
@@ -8439,6 +8448,9 @@ function DevopsBoard({ authUser, rootingReviews }) {
 function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove, onDeny, onOpenProject }) {
   const [auditFilter, setAuditFilter] = React.useState("all"); // "all" | "unclassified" | "pending_review" | "flagged"
   const [activeTab, setActiveTab] = React.useState("deletions"); // "deletions" | "audit"
+  const [selectedIds,  setSelectedIds]  = React.useState(new Set());
+  const [nudgeSending, setNudgeSending] = React.useState(false);
+  const [nudgeSent,    setNudgeSent]    = React.useState(new Set()); // projectIds that have been notified
 
   const pendingDels   = deleteRequests.filter(r => r.status === "pending");
   const resolvedDels  = deleteRequests.filter(r => r.status !== "pending");
@@ -8457,6 +8469,35 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
   const securityComplete = (p) =>
     [p.requiresAuth, p.externalAccess, p.hasSensitiveData, p.sendsToExternalAI, p.storesUserInputs]
       .every(v => v !== null && v !== undefined);
+
+  const handleNudge = async (ids) => {
+    setNudgeSending(true);
+    const targets = unclassified.filter(p => ids.has(String(p.id)));
+    try {
+      const res = await fetch("/api/send-classification-nudge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projects: targets.map(p => ({
+            projectId:   String(p.id),
+            projectName: p.name,
+            builderName: p.builder || p.builtBy,
+            builderEmail: p.builderEmail,
+          })),
+          adminName: authUser?.name || authUser?.email,
+        }),
+      });
+      const data = await res.json();
+      const sentIds = new Set(nudgeSent);
+      (data.results || []).forEach(r => { if (r.ok) sentIds.add(r.projectId); });
+      setNudgeSent(sentIds);
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error("Nudge send error:", e);
+    } finally {
+      setNudgeSending(false);
+    }
+  };
 
   const TABS = [
     { id: "deletions", label: `Deletion Requests${pendingDels.length ? ` (${pendingDels.length})` : ""}` },
@@ -8596,7 +8637,7 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
               {k:"pending_review",label:`Pending RM Review (${pendingReview.length})`, active: pendingReview.length > 0},
               {k:"flagged",     label:`Security Flags (${flagged.length})`,     active: flagged.length > 0},
             ].map(f => (
-              <button key={f.k} onClick={()=>setAuditFilter(f.k)} style={{
+              <button key={f.k} onClick={()=>{ setAuditFilter(f.k); setSelectedIds(new Set()); }} style={{
                 padding:"5px 12px",borderRadius:DS.radius.full,cursor:"pointer",
                 fontFamily:FF,fontSize:12,fontWeight:600,border:"1px solid",transition:"all 0.15s",
                 background:auditFilter===f.k?C.kangkong500:"transparent",
@@ -8606,11 +8647,42 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
             ))}
           </div>
 
+          {/* Unclassified notify action bar */}
+          {auditFilter==="unclassified"&&unclassified.length>0&&(
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango300,borderRadius:DS.radius.md,flexWrap:"wrap"}}>
+              <div style={{flex:1,fontFamily:FF,fontSize:12,color:"#744210",fontWeight:600}}>
+                {selectedIds.size>0
+                  ? `${selectedIds.size} project${selectedIds.size>1?"s":""} selected`
+                  : `${unclassified.length} unclassified project${unclassified.length>1?"s":""} — select to notify builders`
+                }
+              </div>
+              <button onClick={()=>{
+                if(selectedIds.size===unclassified.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(unclassified.map(p=>String(p.id))));
+              }} style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,border:"1px solid #d69e2e",background:"transparent",color:"#744210",cursor:"pointer"}}>
+                {selectedIds.size===unclassified.length?"Deselect all":"Select all"}
+              </button>
+              <button
+                disabled={selectedIds.size===0||nudgeSending}
+                onClick={()=>handleNudge(selectedIds)}
+                style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"5px 14px",borderRadius:DS.radius.full,border:"none",background:selectedIds.size>0?C.mango500:"#e2dcc0",color:selectedIds.size>0?C.white:"#b0ac9c",cursor:selectedIds.size>0?"pointer":"not-allowed",transition:"all 0.15s"}}>
+                {nudgeSending?"Sending…":`Notify selected (${selectedIds.size})`}
+              </button>
+              <button
+                disabled={nudgeSending}
+                onClick={()=>handleNudge(new Set(unclassified.map(p=>String(p.id))))}
+                style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 14px",borderRadius:DS.radius.full,border:"1px solid #d69e2e",background:"transparent",color:"#744210",cursor:nudgeSending?"not-allowed":"pointer"}}>
+                {nudgeSending?"Sending…":"Notify all"}
+              </button>
+            </div>
+          )}
+
           {/* Table */}
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontFamily:FF,fontSize:12}}>
               <thead>
                 <tr style={{background:C.mushroom100}}>
+                  {auditFilter==="unclassified"&&<th style={{padding:"9px 12px",width:32}}/>}
                   {["Project","Team","Stage","Tier","Classified","RM Review","Flags","Builder"].map(h => (
                     <th key={h} style={{padding:"9px 12px",textAlign:"left",fontWeight:700,color:C.mushroom600,borderBottom:"2px solid "+C.mushroom200,whiteSpace:"nowrap",fontSize:11}}>{h}</th>
                   ))}
@@ -8618,19 +8690,31 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
               </thead>
               <tbody>
                 {auditList.length === 0 && (
-                  <tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match this filter.</td></tr>
+                  <tr><td colSpan={auditFilter==="unclassified"?9:8} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match this filter.</td></tr>
                 )}
                 {auditList.map((p,i) => {
                   const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
                   const classified = securityComplete(p);
                   const hasSecFlag = (p.externalAccess===true&&p.requiresAuth===false)||(p.sendsToExternalAI===true&&p.hasSensitiveData===true);
+                  const isSelected = selectedIds.has(String(p.id));
+                  const wasSent    = nudgeSent.has(String(p.id));
                   return (
-                    <tr key={p.id} style={{background:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
-                      onClick={()=>onOpenProject(p)}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.kangkong50}
-                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.white:C.mushroom50}>
+                    <tr key={p.id} style={{background:isSelected?C.mango100:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
+                      onClick={(e)=>{ if(auditFilter==="unclassified"&&e.target.type==="checkbox") return; onOpenProject(p); }}
+                      onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.background=C.kangkong50; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background=isSelected?C.mango100:i%2===0?C.white:C.mushroom50; }}>
+                      {auditFilter==="unclassified"&&(
+                        <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,textAlign:"center",verticalAlign:"middle"}} onClick={e=>e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={e=>{
+                            const next = new Set(selectedIds);
+                            e.target.checked ? next.add(String(p.id)) : next.delete(String(p.id));
+                            setSelectedIds(next);
+                          }} style={{cursor:"pointer",accentColor:C.mango500,width:14,height:14}}/>
+                        </td>
+                      )}
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,fontWeight:600,color:C.mushroom900,maxWidth:200}}>
                         <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                        {wasSent&&<div style={{fontSize:10,color:C.kangkong600,fontWeight:600,marginTop:2}}>Notified ✓</div>}
                       </td>
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom600}}>{p.builtBy}</td>
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
@@ -8697,6 +8781,7 @@ export default function SproutAIGarden() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
+  const isPopNavRef    = useRef(false); // true while syncing state from a popstate event
   const [gateToast, setGateToast] = useState(null); // { message, reason } | null
   const [deleteRequests, setDeleteRequests] = useState([]);
   const [deleteReqModal, setDeleteReqModal] = useState(null); // { entity, entityType } | null
@@ -8898,17 +8983,59 @@ export default function SproutAIGarden() {
   }, [authUser?.email]);
 
   // ── Deep-link: ?project=ID opens project detail directly ─────────────────
+  const MAIN_VIEWS = ["dashboard","garden","wishlist","devops","admin","guide","project-detail"];
+  const NAV_VALID  = ["dashboard","garden","wishlist","devops","admin","guide"];
+
+  const applyUrlToState = (params) => {
+    const pid       = params.get("project");
+    const viewParam = params.get("view");
+    if (pid) {
+      const target = projects.find(p => String(p.id) === String(pid));
+      if (target) { setDetailProject(target); setView("project-detail"); return; }
+    }
+    if (viewParam && NAV_VALID.includes(viewParam)) {
+      if (viewParam === "admin" && !authUser?.isAdmin) { setView("dashboard"); return; }
+      setView(viewParam);
+      setDetailProject(null);
+    } else {
+      setView("dashboard");
+      setDetailProject(null);
+    }
+  };
+
+  // ── URL → state: read params on initial load ──────────────────────────────
   useEffect(() => {
     if (!authUser || projects.length === 0) return;
-    const params = new URLSearchParams(window.location.search);
-    const pid = params.get("project");
-    if (!pid) return;
-    const target = projects.find(p => String(p.id) === String(pid));
-    if (target) {
-      setDetailProject(target);
-      setView("project-detail");
-      window.history.replaceState({}, "", window.location.pathname);
+    applyUrlToState(new URLSearchParams(window.location.search));
+  }, [authUser?.email, projects.length]);
+
+  // ── state → URL: push a history entry on every navigation ────────────────
+  useEffect(() => {
+    if (!authUser) return;
+    if (!MAIN_VIEWS.includes(view)) return;   // skip internal panel states
+    if (isPopNavRef.current) { isPopNavRef.current = false; return; } // came from popstate — don't re-push
+    const params = new URLSearchParams();
+    if (view === "project-detail" && detailProject) {
+      params.set("view", "project-detail");
+      params.set("project", String(detailProject.id));
+    } else if (view !== "dashboard") {
+      params.set("view", view);
     }
+    const newSearch = params.toString() ? "?" + params.toString() : "";
+    if (newSearch !== window.location.search) {
+      window.history.pushState(null, "", newSearch || "/");
+    }
+  }, [view, detailProject?.id, authUser?.email]);
+
+  // ── popstate: back / forward buttons sync URL → state ────────────────────
+  useEffect(() => {
+    const onPopState = () => {
+      if (!authUser) return;
+      isPopNavRef.current = true;
+      applyUrlToState(new URLSearchParams(window.location.search));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, [authUser?.email, projects.length]);
 
   // ── DevOps request handlers ────────────────────────────────────────────────
