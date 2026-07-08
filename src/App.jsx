@@ -125,7 +125,7 @@ const STAGE_DESC = {
 const STAGE_FLORA = STAGE_DESC;
 const STAGE_ORDER = {seedling:0,nursery:1,sprout:2,bloom:3,thriving:4};
 
-// ── Release Gate — checks if a project can advance past sprout or bloom ────────
+// ── Release Gate — checks if a project can advance past seedling, sprout, or bloom ─
 // Returns { blocked, reason, message }
 function getStageGate(project) {
   const { tier, stage, requiresAuth, externalAccess, hasSensitiveData,
@@ -133,6 +133,10 @@ function getStageGate(project) {
   const securityComplete = [requiresAuth, externalAccess, hasSensitiveData,
                             sendsToExternalAI, storesUserInputs]
                            .every(v => v !== null && v !== undefined);
+  if (stage === "seedling") {
+    if (tier === null || tier === undefined)
+      return { blocked:true, reason:"unclassified", message:"Complete Tier Classification (Seedling tab) before your project can advance." };
+  }
   if (stage === "sprout") {
     if (!securityComplete)
       return { blocked:true, reason:"classification", message:"Complete Security & Data Classification (Technical tab) before going live." };
@@ -6242,6 +6246,8 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
   const [gatewayChoice, setGatewayChoice] = React.useState(null);
   const [plantName, setPlantName] = React.useState("");
   const [plantStarting, setPlantStarting] = React.useState(false);
+  const [plantHasBackend, setPlantHasBackend] = React.useState(null);
+  const [plantTargetUsers, setPlantTargetUsers] = React.useState(null);
 
   // Plant form
   const PLANT_DEPTS = Object.keys(DEPT_ZONES);
@@ -6413,27 +6419,36 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
 
   // ── PLANT FLOW — name capture → open ProjectDetailPage ───────────────────────
   if (flow === "plant") {
-    const canStart = plantName.trim().length > 0;
+    const canStart = plantName.trim().length > 0 && plantHasBackend !== null && plantTargetUsers !== null;
     const handleStart = async () => {
       if (!canStart || plantStarting || !onStartProject) return;
       setPlantStarting(true);
-      await onStartProject(plantName.trim());
+      await onStartProject(plantName.trim(), { hasBackend: plantHasBackend, targetUsers: plantTargetUsers });
       setPlantStarting(false);
     };
+    const ToggleBtn = ({ active, onClick, children }) => (
+      <button type="button" onClick={onClick} style={{
+        padding:"7px 14px", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:600,
+        border:`1.5px solid ${active ? C.kangkong500 : C.mushroom200}`,
+        background: active ? C.kangkong50 : C.white,
+        color: active ? C.kangkong700 : C.mushroom500,
+        cursor:"pointer", transition:"all 0.15s",
+      }}>{children}</button>
+    );
     return (
       <div style={backdropStyle}>
-        <div onClick={e=>e.stopPropagation()} style={{...panelStyle,maxWidth:460}}>
+        <div onClick={e=>e.stopPropagation()} style={{...panelStyle,maxWidth:480}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
             <div>
               <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900,display:"flex",alignItems:"center",gap:8}}>
                 <IcoGarden size={20} color={C.kangkong600}/> Add a Plant
               </div>
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Name your project to get started</div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Name your project and classify it to get started</div>
             </div>
             <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,marginTop:-2}}><IcoClose size={18} color={C.mushroom400}/></button>
           </div>
 
-          <div style={{marginBottom:20}}>
+          <div style={{marginBottom:18}}>
             <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
               Project name <span style={{color:C.carrot500}}>*</span>
             </label>
@@ -6441,13 +6456,52 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
               autoFocus
               value={plantName}
               onChange={e=>setPlantName(e.target.value)}
-              onKeyDown={e=>{ if(e.key==="Enter") handleStart(); }}
+              onKeyDown={e=>{ if(e.key==="Enter"&&canStart) handleStart(); }}
               placeholder="e.g. SmartSort AI"
               style={inputStyle}
             />
-            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:6,lineHeight:1.5}}>
-              You'll fill in the full details — story, tech, and classification — in the project form.
+          </div>
+
+          <div style={{background:C.mushroom50,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,padding:"14px 16px",marginBottom:18,display:"flex",flexDirection:"column",gap:14}}>
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom500,textTransform:"uppercase",letterSpacing:0.5}}>
+              Tier Classification <span style={{color:C.carrot500}}>*</span>
             </div>
+
+            <div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom800,marginBottom:8}}>
+                Does this project have a backend, database, or server-side logic?
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <ToggleBtn active={plantHasBackend===true} onClick={()=>setPlantHasBackend(true)}>Yes</ToggleBtn>
+                <ToggleBtn active={plantHasBackend===false} onClick={()=>setPlantHasBackend(false)}>No</ToggleBtn>
+              </div>
+            </div>
+
+            <div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom800,marginBottom:8}}>
+                Who are the target users?
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <ToggleBtn active={plantTargetUsers==="internal"} onClick={()=>setPlantTargetUsers("internal")}>Internal only</ToggleBtn>
+                <ToggleBtn active={plantTargetUsers==="external"} onClick={()=>setPlantTargetUsers("external")}>External</ToggleBtn>
+                <ToggleBtn active={plantTargetUsers==="both"} onClick={()=>setPlantTargetUsers("both")}>Both</ToggleBtn>
+              </div>
+            </div>
+
+            {plantHasBackend !== null && plantTargetUsers !== null && (() => {
+              const t = plantHasBackend === false && plantTargetUsers === "internal" ? 1
+                      : plantHasBackend === true  && plantTargetUsers !== "internal" ? 3
+                      : 2;
+              const tLabel = t === 1 ? "Tier 1 — Static / Internal" : t === 2 ? "Tier 2 — Internal App" : "Tier 3 — External-Facing";
+              const tColor = t === 1 ? C.mushroom600 : t === 2 ? C.blueberry500 : C.carrot500;
+              const tBg    = t === 1 ? C.mushroom100 : t === 2 ? C.blueberry100 : C.carrot100;
+              const tBorder= t === 1 ? C.mushroom300 : t === 2 ? C.blueberry400 : C.carrot500;
+              return (
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:tBg,border:`1px solid ${tBorder}`,borderRadius:DS.radius.md}}>
+                  <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tColor}}>{tLabel}</span>
+                </div>
+              );
+            })()}
           </div>
 
           <div style={{display:"flex",gap:10}}>
@@ -9248,9 +9302,14 @@ export default function SproutAIGarden() {
     return saved;
   };
 
-  const handleStartProject = async (name) => {
+  const handleStartProject = async (name, classification = {}) => {
     // Bypass fromProject to avoid inserting v2 columns that may not exist yet.
     // Only send the safe core columns present in all schema versions.
+    const { hasBackend = null, targetUsers = null } = classification;
+    const tier = hasBackend === null || targetUsers === null ? null
+               : hasBackend === false && targetUsers === "internal" ? 1
+               : hasBackend === true  && targetUsers !== "internal" ? 3
+               : 2;
     const row = {
       name:                name.trim(),
       builder:             authUser.displayName,
@@ -9273,6 +9332,9 @@ export default function SproutAIGarden() {
       zy:                  Math.round(45 + Math.random() * 20),
       last_updated:        new Date().toISOString(),
       country:             authUser.country || "PH",
+      has_backend:         hasBackend,
+      target_users:        targetUsers,
+      tier,
     };
     const { data, error } = await supabase.from("projects").insert(row).select().single();
     if (error) { console.error("handleStartProject:", error); return; }

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grove by Sprout — AI Project Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g50:#f0faf0;--g100:#d6f0d6;--g200:#aadcaa;--g500:#2d8c2d;--g600:#1f6e1f;--g800:#0e380e;--g900:#082008;
+  --m50:#fafaf8;--m100:#f2f1ed;--m200:#e4e2da;--m300:#ccc9bc;--m400:#b0ac9c;--m500:#928e7c;--m600:#736f5e;--m700:#565244;--m800:#3a372e;--m900:#201e18;
+  --mango:#d69e2e;--mango-l:#fefcbf;--mango-d:#744210;
+  --carrot:#dd6b20;--carrot-l:#feebc8;
+  --blue:#3182ce;--blue-l:#ebf8ff;--blue-d:#2c5282;
+  --ubas:#805ad5;--ubas-l:#faf5ff;
+  --ff:system-ui,-apple-system,"Segoe UI",Rubik,sans-serif;
+}
+body{font-family:var(--ff);background:var(--m50);color:var(--m900);line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+nav{position:sticky;top:0;z-index:50;background:rgba(250,250,248,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--m200);padding:0 32px;height:52px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--g600);letter-spacing:-0.3px}
+.nav-brand svg{flex-shrink:0}
+.nav-url{font-size:12px;font-weight:600;color:var(--m500);letter-spacing:0.02em;background:var(--m100);border:1px solid var(--m200);border-radius:9999px;padding:4px 12px}
+
+.hero{background:var(--g800);color:#fff;padding:96px 32px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,0.04) 1px,transparent 0);background-size:28px 28px;pointer-events:none}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:9999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--g200);margin-bottom:28px}
+.hero h1{font-size:clamp(52px,8vw,96px);font-weight:900;line-height:0.95;letter-spacing:-3px;margin-bottom:20px;color:#fff}
+.hero h1 span{color:var(--g200)}
+.hero-sub{font-size:clamp(15px,2.5vw,20px);color:rgba(255,255,255,0.65);max-width:560px;margin:0 auto 40px;font-weight:400;line-height:1.5}
+.hero-countries{display:flex;align-items:center;justify-content:center;gap:12px}
+.country-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:9999px;padding:7px 16px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.9)}
+.hero-scroll{margin-top:56px;display:flex;justify-content:center}
+.scroll-hint{width:28px;height:28px;border:1.5px solid rgba(255,255,255,0.2);border-radius:9999px;display:flex;align-items:center;justify-content:center;animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+section{padding:72px 32px}
+.container{max-width:960px;margin:0 auto}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--g500);margin-bottom:10px}
+.section-title{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-0.5px;line-height:1.15;color:var(--m900);margin-bottom:14px}
+.section-sub{font-size:16px;color:var(--m600);max-width:580px;line-height:1.65}
+
+.what-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-top:48px}
+@media(max-width:640px){.what-grid{grid-template-columns:1fr}}
+.what-text p{font-size:16px;color:var(--m700);line-height:1.75;margin-bottom:16px}
+.stat-stack{display:flex;flex-direction:column;gap:12px}
+.stat-card{background:#fff;border:1px solid var(--m200);border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-label{font-size:12px;font-weight:600;color:var(--m500);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.05em}
+.stat-value{font-size:15px;font-weight:700;color:var(--m900)}
+
+.stages-section{background:var(--m100)}
+.pipeline{display:flex;gap:0;margin-top:48px;overflow-x:auto;padding-bottom:8px}
+.stage-node{flex:1;min-width:140px;position:relative;padding:20px 16px 20px;text-align:center}
+.stage-node::after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--m400);z-index:1;font-weight:300}
+.stage-node:last-child::after{display:none}
+.stage-dot{width:48px;height:48px;border-radius:9999px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px;border:2px solid}
+.stage-name{font-size:13px;font-weight:800;letter-spacing:0.02em;margin-bottom:4px}
+.stage-desc{font-size:11px;line-height:1.5;color:var(--m600)}
+.stage-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;margin-top:8px}
+.s-seed .stage-dot{background:var(--m100);border-color:var(--m300);color:var(--m600)}
+.s-seed .stage-name{color:var(--m700)}
+.s-seed .stage-badge{background:var(--m100);color:var(--m600);border:1px solid var(--m300)}
+.s-sprout .stage-dot{background:var(--g50);border-color:var(--g200);color:var(--g600)}
+.s-sprout .stage-name{color:var(--g600)}
+.s-sprout .stage-badge{background:var(--g50);color:var(--g600);border:1px solid var(--g200)}
+.s-growing .stage-dot{background:var(--mango-l);border-color:var(--mango);color:var(--mango-d)}
+.s-growing .stage-name{color:var(--mango-d)}
+.s-growing .stage-badge{background:var(--mango-l);color:var(--mango-d);border:1px solid var(--mango)}
+.s-blooming .stage-dot{background:var(--carrot-l);border-color:var(--carrot);color:var(--carrot)}
+.s-blooming .stage-name{color:var(--carrot)}
+.s-blooming .stage-badge{background:var(--carrot-l);color:var(--carrot);border:1px solid var(--carrot)}
+.s-thriving .stage-dot{background:var(--blue-l);border-color:var(--blue);color:var(--blue-d)}
+.s-thriving .stage-name{color:var(--blue-d)}
+.s-thriving .stage-badge{background:var(--blue-l);color:var(--blue-d);border:1px solid var(--blue)}
+
+.workflow-section{background:#fff}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:48px}
+.step-card{background:var(--m50);border:1px solid var(--m200);border-radius:14px;padding:24px;position:relative}
+.step-num{font-size:32px;font-weight:900;color:var(--m200);line-height:1;margin-bottom:12px;font-variant-numeric:tabular-nums}
+.step-title{font-size:14px;font-weight:800;color:var(--m900);margin-bottom:6px}
+.step-desc{font-size:13px;color:var(--m600);line-height:1.6}
+.step-tag{display:inline-block;font-size:10px;font-weight:700;border-radius:9999px;padding:2px 8px;margin-top:10px;letter-spacing:0.05em}
+
+.features-section{background:var(--m50)}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+@media(max-width:720px){.features-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.features-grid{grid-template-columns:1fr}}
+.feature-card{background:#fff;border:1px solid var(--m200);border-radius:14px;padding:24px;transition:box-shadow 0.2s,transform 0.2s}
+.feature-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-2px)}
+.feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:18px}
+.feat-title{font-size:14px;font-weight:800;color:var(--m900);margin-bottom:6px}
+.feat-desc{font-size:12.5px;color:var(--m600);line-height:1.6}
+
+.tiers-section{background:#fff}
+.tiers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+@media(max-width:600px){.tiers-grid{grid-template-columns:1fr}}
+.tier-card{border-radius:16px;padding:28px;border:1.5px solid}
+.tier-num{font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
+.tier-name{font-size:17px;font-weight:800;margin-bottom:10px}
+.tier-rule{font-size:12px;font-weight:600;opacity:0.8;margin-bottom:16px;line-height:1.5}
+.tier-hosting{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;border-radius:9999px;display:inline-block}
+.tier-details{margin-top:14px;font-size:12px;line-height:1.7;opacity:0.75}
+.tier-1{background:var(--m100);border-color:var(--m300);color:var(--m800)}
+.tier-1 .tier-hosting{background:var(--m200);color:var(--m700)}
+.tier-2{background:var(--blue-l);border-color:var(--blue);color:var(--blue-d)}
+.tier-2 .tier-hosting{background:rgba(49,130,206,0.15);color:var(--blue-d)}
+.tier-3{background:var(--carrot-l);border-color:var(--carrot);color:#7b341e}
+.tier-3 .tier-hosting{background:rgba(221,107,32,0.15);color:#7b341e}
+
+.roles-section{background:var(--m100)}
+.roles-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
+@media(max-width:560px){.roles-grid{grid-template-columns:1fr}}
+.role-card{background:#fff;border:1px solid var(--m200);border-radius:14px;padding:22px;display:flex;gap:16px;align-items:flex-start}
+.role-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:700}
+.role-title{font-size:13px;font-weight:800;color:var(--m900);margin-bottom:2px}
+.role-names{font-size:11px;font-weight:600;color:var(--m500);margin-bottom:6px;line-height:1.5}
+.role-desc{font-size:12.5px;color:var(--m600);line-height:1.6}
+
+.gate-section{background:var(--g800);color:#fff;padding:64px 32px;text-align:center}
+.gate-section .eyebrow{color:var(--g200)}
+.gate-section .section-title{color:#fff}
+.gate-section .section-sub{color:rgba(255,255,255,0.6);margin:0 auto 40px}
+.gate-steps{display:flex;justify-content:center;gap:0;flex-wrap:wrap;max-width:720px;margin:0 auto}
+.gate-step{flex:1;min-width:140px;padding:16px;text-align:center;position:relative}
+.gate-step::after{content:"→";position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.25);font-size:16px}
+.gate-step:last-child::after{display:none}
+.gate-icon{width:44px;height:44px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:18px}
+.gate-label{font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+.gate-desc{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5}
+
+footer{background:var(--g900);color:rgba(255,255,255,0.5);text-align:center;padding:40px 32px;font-size:13px}
+footer strong{color:rgba(255,255,255,0.9);font-weight:700}
+.footer-url{display:inline-block;margin-top:12px;color:var(--g200);font-weight:600;font-size:15px;letter-spacing:0.02em}
+
+/* ROADMAP */
+.roadmap-section{background:#fff}
+.roadmap{position:relative;margin-top:48px;padding-left:32px}
+.roadmap::before{content:"";position:absolute;left:10px;top:8px;bottom:8px;width:2px;background:linear-gradient(to bottom,var(--g500),var(--blue));border-radius:2px;opacity:0.25}
+.rm-item{position:relative;margin-bottom:40px}
+.rm-item:last-child{margin-bottom:0}
+.rm-dot{position:absolute;left:-37px;top:4px;width:16px;height:16px;border-radius:9999px;border:2.5px solid;background:#fff;flex-shrink:0}
+.rm-date{display:inline-block;font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:9999px;margin-bottom:8px}
+.rm-title{font-size:17px;font-weight:800;color:var(--m900);margin-bottom:6px;line-height:1.3}
+.rm-desc{font-size:14px;color:var(--m600);line-height:1.7;max-width:580px}
+.rm-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:9999px;margin-top:10px}
+.rm-now .rm-dot{border-color:var(--g500);background:var(--g500)}
+.rm-now .rm-date{background:var(--g50);color:var(--g600);border:1px solid var(--g200)}
+.rm-june .rm-dot{border-color:var(--mango);background:var(--mango)}
+.rm-june .rm-date{background:var(--mango-l);color:var(--mango-d);border:1px solid var(--mango)}
+.rm-july .rm-dot{border-color:var(--carrot);background:var(--carrot)}
+.rm-july .rm-date{background:var(--carrot-l);color:var(--carrot);border:1px solid var(--carrot)}
+.rm-aug .rm-dot{border-color:var(--blue);background:var(--blue)}
+.rm-aug .rm-date{background:var(--blue-l);color:var(--blue-d);border:1px solid var(--blue)}
+.rm-phase-tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;margin-right:8px;vertical-align:middle}
+.rm-done{opacity:0.65}
+.rm-done .rm-dot{border-color:var(--g500)!important;background:var(--g500)!important}
+.rm-done .rm-dot::after{content:"✓";position:absolute;font-size:8px;font-weight:900;color:#fff;top:50%;left:50%;transform:translate(-50%,-50%)}
+.rm-done .rm-title{text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:var(--m400)}
+.rm-status-done{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;background:var(--g50);color:var(--g600);border:1px solid var(--g200);border-radius:9999px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.rm-inprogress .rm-dot{border-color:var(--carrot)!important;background:var(--carrot)!important;box-shadow:0 0 0 3px rgba(221,107,32,0.15),0 0 0 6px rgba(221,107,32,0.07)}
+.rm-status-active{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.07em;text-transform:uppercase;background:var(--carrot-l);color:var(--carrot);border:1px solid var(--carrot);border-radius:9999px;padding:3px 10px;margin-bottom:10px}
+.rm-pulse{width:7px;height:7px;border-radius:9999px;background:var(--carrot);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.4)}}
+
+.reveal{opacity:0;transform:translateY(20px);transition:opacity 0.55s ease,transform 0.55s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:0.08s}
+.reveal-delay-2{transition-delay:0.16s}
+.reveal-delay-3{transition-delay:0.24s}
+.reveal-delay-4{transition-delay:0.32s}
+.reveal-delay-5{transition-delay:0.40s}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <rect width="26" height="26" rx="7" fill="#2d8c2d"/>
+      <path d="M13 20V10M13 10C13 10 10 7 7 8M13 10C13 10 16 7 19 8M13 14C13 14 10 12 8 13M13 14C13 14 16 12 18 13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    Grove
+  </div>
+  <span class="nav-url">grove.sprout.solutions</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#aadcaa" stroke-width="1.5"/><path d="M7 4v3l2 1.5" stroke="#aadcaa" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Internal Tool · Sprout Philippines &amp; Thailand
+  </div>
+  <h1>Where AI ideas<br><span>take root</span></h1>
+  <p class="hero-sub">Grove is Sprout's internal tracker for AI initiatives — from a spark of an idea all the way to a live product used by the team.</p>
+  <div class="hero-countries">
+    <div class="country-chip">
+      <svg width="22" height="15" viewBox="0 0 22 15" xmlns="http://www.w3.org/2000/svg">
+        <rect width="22" height="15" rx="2" fill="#0038A8"/>
+        <rect y="7.5" width="22" height="7.5" fill="#CE1126"/>
+        <polygon points="0,0 11,7.5 0,15" fill="#FCD116"/>
+        <circle cx="3.5" cy="7.5" r="1.3" fill="#FCD116"/>
+        <circle cx="5.5" cy="4.5" r="0.8" fill="#FCD116"/>
+        <circle cx="5.5" cy="10.5" r="0.8" fill="#FCD116"/>
+        <circle cx="2" cy="4.5" r="0.8" fill="#FCD116"/>
+        <circle cx="2" cy="10.5" r="0.8" fill="#FCD116"/>
+      </svg>
+      Philippines
+    </div>
+    <div class="country-chip">
+      <svg width="22" height="15" viewBox="0 0 22 15" xmlns="http://www.w3.org/2000/svg">
+        <rect width="22" height="15" rx="2" fill="#A51931"/>
+        <rect y="2.5" width="22" height="10" fill="#F4F5F8"/>
+        <rect y="5" width="22" height="5" fill="#2D2A4A"/>
+      </svg>
+      Thailand
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-hint">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+</div>
+
+<section style="background:#fff">
+  <div class="container">
+    <div class="eyebrow reveal">About</div>
+    <h2 class="section-title reveal">One home for every<br>AI initiative at Sprout</h2>
+    <div class="what-grid">
+      <div class="what-text reveal">
+        <p>Before Grove, AI projects lived in scattered spreadsheets, Slack threads, and tribal knowledge. There was no easy way to see what was being built, where it stood, or who needed help to ship.</p>
+        <p>Grove changes that. It's a single, living registry where any Sprout employee can document an AI project, track it from prototype to production, get infrastructure support, and know exactly what's required before going live.</p>
+        <p>Admins and Release Managers have full visibility — audit tools, release review gates, and classification checks — so nothing ships without the right sign-offs.</p>
+      </div>
+      <div class="stat-stack">
+        <div class="stat-card reveal reveal-delay-1">
+          <div class="stat-icon" style="background:var(--g50)">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.5 7.5H18L13.5 11L15.5 17L10 13.5L4.5 17L6.5 11L2 7.5H7.5L10 2Z" fill="#2d8c2d"/></svg>
+          </div>
+          <div><div class="stat-label">Coverage</div><div class="stat-value">PH + TH · All AI projects in one view</div></div>
+        </div>
+        <div class="stat-card reveal reveal-delay-2">
+          <div class="stat-icon" style="background:var(--mango-l)">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="2" fill="#d69e2e"/><rect x="11" y="3" width="6" height="6" rx="2" fill="#d69e2e" opacity="0.5"/><rect x="3" y="11" width="6" height="6" rx="2" fill="#d69e2e" opacity="0.5"/><rect x="11" y="11" width="6" height="6" rx="2" fill="#d69e2e" opacity="0.7"/></svg>
+          </div>
+          <div><div class="stat-label">Views</div><div class="stat-value">Board, list, and grouped by stage or department</div></div>
+        </div>
+        <div class="stat-card reveal reveal-delay-3">
+          <div class="stat-icon" style="background:var(--blue-l)">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 100 14A7 7 0 0010 3z" fill="#ebf8ff" stroke="#3182ce" stroke-width="1.5"/><path d="M10 7v4l2.5 2.5" stroke="#3182ce" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div><div class="stat-label">Transparency</div><div class="stat-value">Live activity feed · Stage history · Notes</div></div>
+        </div>
+        <div class="stat-card reveal reveal-delay-4">
+          <div class="stat-icon" style="background:#faf5ff">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 10l4 4 7-7" stroke="#805ad5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div><div class="stat-label">Governance</div><div class="stat-value">Release gates · Tier classification · Sign-offs</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stages-section">
+  <div class="container">
+    <div class="eyebrow reveal">The Growth Journey</div>
+    <h2 class="section-title reveal">Five stages from idea to production</h2>
+    <p class="section-sub reveal">Every project follows the same path — from a seed of an idea in the Wishlist to a fully live, thriving product.</p>
+    <div class="pipeline reveal" style="margin-top:40px">
+      <div class="stage-node s-seed">
+        <div class="stage-dot">💡</div>
+        <div class="stage-name">Seed</div>
+        <div class="stage-desc">An idea submitted to the Wishlist. Anyone can upvote or claim it.</div>
+        <div class="stage-badge">Wishlist only</div>
+      </div>
+      <div class="stage-node s-sprout">
+        <div class="stage-dot">🌱</div>
+        <div class="stage-name">Sprout</div>
+        <div class="stage-desc">Early prototype. A Gardener has claimed and started building.</div>
+        <div class="stage-badge">Prototype</div>
+      </div>
+      <div class="stage-node s-growing">
+        <div class="stage-dot">🌿</div>
+        <div class="stage-name">Growing</div>
+        <div class="stage-desc">Active development. IS/ExCom approval required before advancing.</div>
+        <div class="stage-badge">In development</div>
+      </div>
+      <div class="stage-node s-blooming">
+        <div class="stage-dot">🌸</div>
+        <div class="stage-name">Blooming</div>
+        <div class="stage-desc">Near production. Release review sign-off required for Tier 2/3.</div>
+        <div class="stage-badge">Near live</div>
+      </div>
+      <div class="stage-node s-thriving">
+        <div class="stage-dot">✨</div>
+        <div class="stage-name">Thriving</div>
+        <div class="stage-desc">Live in production. The project is actively serving its users.</div>
+        <div class="stage-badge">Live</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="workflow-section">
+  <div class="container">
+    <div class="eyebrow reveal">How it works</div>
+    <h2 class="section-title reveal">From wishlist to live product</h2>
+    <div class="steps">
+      <div class="step-card reveal">
+        <div class="step-num">01</div>
+        <div class="step-title">Submit a Seed</div>
+        <div class="step-desc">Any Sprout employee spots an AI opportunity and posts it to the Wishlist. Others can upvote to signal interest.</div>
+        <span class="step-tag" style="background:var(--m100);color:var(--m700);border:1px solid var(--m300)">Anyone can do this</span>
+      </div>
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-num">02</div>
+        <div class="step-title">Claim &amp; Start Building</div>
+        <div class="step-desc">A Gardener claims an unclaimed Seed and starts building. The Seed becomes a Project, starting at Sprout stage.</div>
+        <span class="step-tag" style="background:var(--g50);color:var(--g600);border:1px solid var(--g200)">Gardeners</span>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-num">03</div>
+        <div class="step-title">Classify Your Project</div>
+        <div class="step-desc">Answer two questions — does it have a backend? Who are the users? Grove auto-assigns a Tier (1, 2, or 3) that determines hosting and review requirements.</div>
+        <span class="step-tag" style="background:var(--mango-l);color:var(--mango-d);border:1px solid var(--mango)">Required</span>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-num">04</div>
+        <div class="step-title">Request Setup Support</div>
+        <div class="step-desc">Need a GitHub repo, hosting, or a database? One click creates a Jira ticket routed to the right Groundskeeper for your tier.</div>
+        <span class="step-tag" style="background:var(--blue-l);color:var(--blue-d);border:1px solid var(--blue)">Groundskeepers</span>
+      </div>
+      <div class="step-card reveal reveal-delay-4">
+        <div class="step-num">05</div>
+        <div class="step-title">Pass Release Review</div>
+        <div class="step-desc">Tier 2 and 3 projects require a Release Manager sign-off before advancing to Blooming or Thriving. Submit, wait for approval or feedback.</div>
+        <span class="step-tag" style="background:#faf5ff;color:#805ad5;border:1px solid #c4b5fd">Release Managers</span>
+      </div>
+      <div class="step-card reveal reveal-delay-5">
+        <div class="step-num">06</div>
+        <div class="step-title">Go Live &amp; Keep Growing</div>
+        <div class="step-desc">Project advances to Blooming or Thriving. The Momentum feed logs every milestone so the whole company can see what's shipping.</div>
+        <span class="step-tag" style="background:var(--g50);color:var(--g600);border:1px solid var(--g200)">Visible to all</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features-section">
+  <div class="container">
+    <div class="eyebrow reveal">Features</div>
+    <h2 class="section-title reveal">Everything a growing AI project needs</h2>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feat-icon" style="background:var(--m100)">🌱</div>
+        <div class="feat-title">Seed Wishlist</div>
+        <div class="feat-desc">A shared backlog of AI ideas. Submit, upvote, and claim — so good ideas don't get lost in Slack.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feat-icon" style="background:var(--g50)">🌿</div>
+        <div class="feat-title">Garden Board</div>
+        <div class="feat-desc">Kanban-style view of all projects across every stage. Drag to advance, filter by department, stage, or country.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feat-icon" style="background:var(--mango-l)">📐</div>
+        <div class="feat-title">Tier Classification</div>
+        <div class="feat-desc">Two questions auto-assign a tier. The tier determines hosting, which Groundskeeper owns setup, and what reviews are required.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feat-icon" style="background:#faf5ff">✅</div>
+        <div class="feat-title">Release Review Gate</div>
+        <div class="feat-desc">Tier 2 and 3 projects must pass a Release Manager review before going live. Approved, pending, or rejected — fully tracked.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-4">
+        <div class="feat-icon" style="background:var(--blue-l)">🛠️</div>
+        <div class="feat-title">Setup Support Tickets</div>
+        <div class="feat-desc">One-click Jira ticket creation for GitHub repo, hosting platform, and database setup — routed to the right Groundskeeper automatically.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-5">
+        <div class="feat-icon" style="background:var(--g50)">📡</div>
+        <div class="feat-title">Momentum Feed</div>
+        <div class="feat-desc">A real-time activity log of every stage advance, note, and milestone — so the company always knows what's shipping.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tiers-section">
+  <div class="container">
+    <div class="eyebrow reveal">Classification</div>
+    <h2 class="section-title reveal">Three tiers, two questions</h2>
+    <p class="section-sub reveal">Tier is computed automatically from two fields. It determines hosting requirements, Groundskeeper assignment, and which security reviews apply.</p>
+    <div style="background:var(--m100);border-radius:12px;padding:16px 20px;margin:24px 0 36px;display:inline-flex;align-items:center;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--m700)" class="reveal">
+      <span><strong style="color:var(--m900)">Q1</strong> — Does the project have a backend, database, or server-side logic?</span>
+      <span style="color:var(--m400)">+</span>
+      <span><strong style="color:var(--m900)">Q2</strong> — Who are the target users: internal, external, or both?</span>
+    </div>
+    <div class="tiers-grid">
+      <div class="tier-card tier-1 reveal">
+        <div class="tier-num">Tier 1</div>
+        <div class="tier-name">Static / Internal</div>
+        <div class="tier-rule">No backend · Internal users only</div>
+        <div class="tier-hosting">Hosted on Markup</div>
+        <div class="tier-details">Uploaded directly by the project owner. No infrastructure setup required. No release review needed.</div>
+      </div>
+      <div class="tier-card tier-2 reveal reveal-delay-1">
+        <div class="tier-num">Tier 2</div>
+        <div class="tier-name">Internal App</div>
+        <div class="tier-rule">Has backend OR external/both users</div>
+        <div class="tier-hosting">Sprout Vercel / Azure</div>
+        <div class="tier-details">Requires IS/ExCom approval. Groundskeeper: Raphael Enriquez. Release review required before Blooming and Thriving.</div>
+      </div>
+      <div class="tier-card tier-3 reveal reveal-delay-2">
+        <div class="tier-num">Tier 3</div>
+        <div class="tier-name">External-Facing</div>
+        <div class="tier-rule">Has backend AND external/both users</div>
+        <div class="tier-hosting">Sprout Vercel / Azure</div>
+        <div class="tier-details">Requires IS/ExCom approval. Groundskeeper: Coleen Bartido. Full security sign-off required. DPO review if sensitive data is sent to external AI.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="roles-section">
+  <div class="container">
+    <div class="eyebrow reveal">Who's Involved</div>
+    <h2 class="section-title reveal">Roles in the Grove ecosystem</h2>
+    <div class="roles-grid">
+      <div class="role-card reveal">
+        <div class="role-avatar" style="background:var(--g50);color:var(--g600)">🌱</div>
+        <div>
+          <div class="role-title">Gardener</div>
+          <div class="role-names">Any Sprout employee</div>
+          <div class="role-desc">Can submit Seeds, upvote ideas, add projects, advance their own projects through stages, and request setup support.</div>
+        </div>
+      </div>
+      <div class="role-card reveal reveal-delay-1">
+        <div class="role-avatar" style="background:var(--mango-l);color:var(--mango-d)">🔧</div>
+        <div>
+          <div class="role-title">Groundskeeper</div>
+          <div class="role-names">Raffy · Coleen · Nikki · Blaise</div>
+          <div class="role-desc">IS and DevOps team. Receives Jira tickets for GitHub, hosting, and database setup. Tier 2 → Raffy, Tier 3 → Coleen.</div>
+        </div>
+      </div>
+      <div class="role-card reveal reveal-delay-2">
+        <div class="role-avatar" style="background:#faf5ff;color:#805ad5">🔍</div>
+        <div>
+          <div class="role-title">Release Manager</div>
+          <div class="role-names">Belle Asis</div>
+          <div class="role-desc">Reviews and approves or rejects release review submissions for Tier 2/3 projects before they advance to Blooming or Thriving.</div>
+        </div>
+      </div>
+      <div class="role-card reveal reveal-delay-3">
+        <div class="role-avatar" style="background:var(--carrot-l);color:var(--carrot)">⚙️</div>
+        <div>
+          <div class="role-title">Admin</div>
+          <div class="role-names">Belle Asis · Diane Litan</div>
+          <div class="role-desc">Full system access — edit any project, skip stages, delete records, audit unclassified projects, and send classification nudges.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section class="roadmap-section">
+  <div class="container">
+    <div class="eyebrow reveal">What's Next</div>
+    <h2 class="section-title reveal">Grove roadmap — mid 2026</h2>
+    <p class="section-sub reveal">The next chapter focuses on formalising the process, aligning the people, and expanding to cover Tier 3 releases end-to-end.</p>
+    <div class="roadmap">
+
+      <div class="rm-item rm-now rm-done reveal">
+        <div class="rm-dot"></div>
+        <div class="rm-date"><span class="rm-status-done">✓ Done</span></div>
+        <div class="rm-title">Move to Sprout Repository</div>
+        <div class="rm-desc">Grove's codebase migrated into the official Sprout organisation repository — bringing it under standard source control, access management, and CI practices used across Sprout's product team.</div>
+      </div>
+
+      <div class="rm-item rm-june rm-done reveal">
+        <div class="rm-dot"></div>
+        <div class="rm-date">June 2026 <span class="rm-status-done">✓ Done</span></div>
+        <div class="rm-title">Groundskeeper Alignment</div>
+        <div class="rm-desc">Raffy, Coleen, Nikki, and Blaise aligned on their tier-based roles and the end-to-end setup support process in Grove — from receiving a Jira ticket to marking it complete.</div>
+      </div>
+
+      <div class="rm-item rm-july rm-inprogress reveal">
+        <div class="rm-dot"></div>
+        <div class="rm-status-active"><div class="rm-pulse"></div> In Progress</div>
+        <div class="rm-date">Early July 2026</div>
+        <div class="rm-title">Process Kickoff — All Teams</div>
+        <div class="rm-desc">Getting ready to officially announce and roll out the Grove workflow to all Sprout teams in the Philippines and Thailand. Builders will learn the new end-to-end process: how to classify their project, when IS/ExCom approval is needed, how to request setup support, and what the release review gate means for their project.</div>
+        <div class="rm-tag" style="background:var(--carrot-l);color:var(--carrot);border:1px solid var(--carrot)">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="#dd6b20" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Company-wide · PH &amp; TH
+        </div>
+      </div>
+
+      <div class="rm-item reveal" style="position:relative">
+        <div class="rm-dot" style="border-color:#805ad5;background:#fff"></div>
+        <div class="rm-date" style="background:#faf5ff;color:#553c9a;border:1px solid #b794f4">Pending</div>
+        <div class="rm-title" style="color:var(--m700)">Groundskeepers Alert Notification</div>
+        <div class="rm-desc">Implementation of automated alert notifications to Groundskeepers when a setup support ticket is raised — ensuring timely response without manual follow-up. Scheduled after the kickoff process is fully underway.</div>
+        <div class="rm-tag" style="background:#faf5ff;color:#553c9a;border:1px solid #b794f4;margin-top:10px">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2a3.5 3.5 0 013.5 3.5c0 2-1 3-1 3H3.5s-1-1-1-3A3.5 3.5 0 016 2zM4.5 8.5S4.5 10 6 10s1.5-1.5 1.5-1.5" stroke="#805ad5" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Pending scheduling
+        </div>
+      </div>
+
+      <div class="rm-item rm-aug reveal">
+        <div class="rm-dot"></div>
+        <div class="rm-date">Late July – Early August 2026</div>
+        <div class="rm-title">
+          <span class="rm-phase-tag" style="background:var(--blue-l);color:var(--blue-d);border:1px solid var(--blue)">Phase 2</span>
+          Tier 3 Release Process, Relay Hub Integration &amp; Reporting
+        </div>
+        <div class="rm-desc">Finalise the full Tier 3 release process — covering DPO review, data sensitivity sign-off, and external AI usage checks. Tier 3 project releases are integrated into the <strong>Relay Release Hub</strong>. A <strong>reporting tool</strong> will also be introduced to surface project metrics and process health — this will be scoped and built once the full process is live and the kickoff is complete.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          <div class="rm-tag" style="background:var(--blue-l);color:var(--blue-d);border:1px solid var(--blue)">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="8" height="8" rx="2" stroke="#2c5282" stroke-width="1.3"/><path d="M4 6h4M6 4v4" stroke="#2c5282" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Tier 3 projects
+          </div>
+          <div class="rm-tag" style="background:#faf5ff;color:#553c9a;border:1px solid #b794f4">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4" stroke="#805ad5" stroke-width="1.3" stroke-linecap="round"/><path d="M6 9l-2 1.5V9H2.5" stroke="#805ad5" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Relay Release Hub
+          </div>
+          <div class="rm-tag" style="background:var(--mush-100);color:var(--m700);border:1px solid var(--mush-300)">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 9V4l3-2 2 1.5L10 2v5l-3 2-2-1.5L2 9z" stroke="#565244" stroke-width="1.3" stroke-linejoin="round"/></svg>
+            Reporting tool
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="gate-section">
+  <div class="container">
+    <div class="eyebrow">Release Gate Flow</div>
+    <h2 class="section-title" style="color:#fff;margin-bottom:10px">Before a Tier 2/3 project goes live</h2>
+    <p class="section-sub" style="margin-bottom:36px">A lightweight but structured path ensures no project ships without the right checks.</p>
+    <div class="gate-steps">
+      <div class="gate-step">
+        <div class="gate-icon">📋</div>
+        <div class="gate-label">Classify</div>
+        <div class="gate-desc">Builder answers 2 questions; tier auto-assigned</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">🏛️</div>
+        <div class="gate-label">IS / ExCom</div>
+        <div class="gate-desc">Approval required before Growing → Blooming</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">📤</div>
+        <div class="gate-label">Submit Review</div>
+        <div class="gate-desc">Builder submits release review in Grove</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">✅</div>
+        <div class="gate-label">RM Sign-off</div>
+        <div class="gate-desc">Release Manager approves or requests changes</div>
+      </div>
+      <div class="gate-step">
+        <div class="gate-icon">🚀</div>
+        <div class="gate-label">Go Live</div>
+        <div class="gate-desc">Project advances to Blooming or Thriving</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <svg width="32" height="32" viewBox="0 0 26 26" fill="none" style="margin-bottom:12px">
+    <rect width="26" height="26" rx="7" fill="rgba(255,255,255,0.08)"/>
+    <path d="M13 20V10M13 10C13 10 10 7 7 8M13 10C13 10 16 7 19 8M13 14C13 14 10 12 8 13M13 14C13 14 16 12 18 13" stroke="rgba(255,255,255,0.4)" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+  <div><strong>Grove</strong> — Sprout's internal AI project tracker</div>
+  <div>Philippines · Thailand</div>
+  <div class="footer-url">grove.sprout.solutions</div>
+</footer>
+
+<script>
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
