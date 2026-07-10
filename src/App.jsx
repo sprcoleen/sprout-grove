@@ -3593,7 +3593,7 @@ function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onRelease
 }
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
-const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction,onRequestDeletion}) => {
+const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction,onRequestDeletion,pendingDeleteIds}) => {
   const [noteText,setNoteText] = useState("");
   const interestedUsers = project.interestedUsers || [];
   const isInterested    = authUser ? interestedUsers.includes(authUser.email) : false;
@@ -4007,16 +4007,25 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
 
         {/* Danger zone — Request Deletion */}
         {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
-            <button
-              onClick={()=>onRequestDeletion(project,"project")}
-              title="Request deletion of this project"
-              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
-              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
-              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
-              <IcoTrash size={13} color={C.tomato500}/>
-            </button>
-            <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
+          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200}}>
+            {pendingDeleteIds?.has(String(project.id)) ? (
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                <IcoTrash size={13} color={C.mango600}/>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mango600,lineHeight:1.4}}>Deletion requested — your request has been forwarded to the admin.</span>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button
+                  onClick={()=>onRequestDeletion(project,"project")}
+                  title="Request deletion of this project"
+                  onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+                  onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+                  <IcoTrash size={13} color={C.tomato500}/>
+                </button>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -4032,7 +4041,7 @@ const ProjectDetailPage = ({
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
   onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
-  devopsRequests,
+  devopsRequests, pendingDeleteIds,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -5659,16 +5668,25 @@ const ProjectDetailPage = ({
 
     {/* Danger zone — Request Deletion (bottom of full detail page) */}
     {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent",display:"flex",alignItems:"center",gap:8}}>
-        <button
-          onClick={()=>onRequestDeletion(project,"project")}
-          title="Request deletion of this project"
-          onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
-          onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
-          style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
-          <IcoTrash size={13} color={C.tomato500}/>
-        </button>
-        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
+      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent"}}>
+        {pendingDeleteIds?.has(String(project.id)) ? (
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+            <IcoTrash size={13} color={C.mango600}/>
+            <span style={{fontFamily:FF,fontSize:12,color:C.mango600,lineHeight:1.4}}>Deletion requested — your request has been forwarded to the admin.</span>
+          </div>
+        ) : (
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button
+              onClick={()=>onRequestDeletion(project,"project")}
+              title="Request deletion of this project"
+              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+              <IcoTrash size={13} color={C.tomato500}/>
+            </button>
+            <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
+          </div>
+        )}
       </div>
     )}
     </>
@@ -10081,6 +10099,7 @@ export default function SproutAIGarden() {
               onSubmitReleaseReview={handleSubmitReleaseReview}
               onReleaseReviewAction={handleReleaseReviewAction}
               onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
+              pendingDeleteIds={pendingDeleteIds}
             />
           )}
         </div>
@@ -10101,6 +10120,7 @@ export default function SproutAIGarden() {
             onSubmitReleaseReview={handleSubmitReleaseReview}
             onReleaseReviewAction={handleReleaseReviewAction}
             onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
+            pendingDeleteIds={pendingDeleteIds}
           />
         )}
 
