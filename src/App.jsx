@@ -1129,7 +1129,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     )
     .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999));
 
-  const myStale = myProjects.filter(p => (p.lastUpdated ?? 0) > 30);
 
   const seedsToClaim = wishes
     .filter(w => !w.claimedBy && !w.fulfilledBy)
@@ -1172,28 +1171,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     }
     return arr.slice(0, Math.min(arr.length, 10));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Dynamic action items (cap at 3)
-  const actionItems = [
-    ...(tierCounts.none > 0 ? [{
-      borderColor: C.mango600, btnBg: C.mango100, btnColor: C.mango600,
-      title: tierCounts.none === 1 ? "1 project needs classification" : `${tierCounts.none} projects need classification`,
-      sub: "Required before they can advance stages",
-      label: "View", action: () => onNavigateGarden?.("list", null),
-    }] : []),
-    ...(myStale.length > 0 ? [{
-      borderColor: C.tomato500, btnBg: C.tomato100, btnColor: C.tomato600,
-      title: `Stale — no update in ${myStale[0].lastUpdated}d`,
-      sub: myStale[0].name,
-      label: "View", action: () => onSelectProject(myStale[0]),
-    }] : []),
-    ...(seedsToClaim.length > 0 ? [{
-      borderColor: C.ubas500, btnBg: C.ubas100, btnColor: C.ubas500,
-      title: `${seedsToClaim.length} seed${seedsToClaim.length > 1 ? "s" : ""} waiting to be claimed`,
-      sub: seedsToClaim[0].title,
-      label: "Claim", action: () => onNavigateWishlist?.(),
-    }] : []),
-  ].slice(0, 3);
 
   // ── Spotlight timer (tick-based, pauses on hover) ────────────────────────────
   useEffect(() => {
@@ -1341,27 +1318,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
 
         {/* ─── LEFT ────────────────────────────────────────────────────── */}
         <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.1s both" }}>
-
-          {/* Action items */}
-          {actionItems.length > 0 && (
-            <div>
-              <div style={sLabel}>Action items</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                {actionItems.map((item, i) => (
-                  <div key={i} style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderLeft:`3px solid ${item.borderColor}`, borderRadius:DS.radius.md, padding:"11px 13px", display:"flex", alignItems:"flex-start", gap:10 }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:12, fontWeight:600, color:C.mushroom900 }}>{item.title}</div>
-                      <div style={{ fontSize:11, color:C.mushroom500, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.sub}</div>
-                    </div>
-                    <button
-                      onClick={item.action}
-                      style={{ fontFamily:FF, fontSize:10, fontWeight:700, background:item.btnBg, color:item.btnColor, border:"none", borderRadius:DS.radius.sm, padding:"4px 10px", cursor:"pointer", flexShrink:0, marginTop:1 }}
-                    >{item.label}</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Your Garden */}
           <div>
