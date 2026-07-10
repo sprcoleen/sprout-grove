@@ -1415,6 +1415,73 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             <kbd style={{ fontFamily:FF, fontSize:10, color:C.mushroom400, background:C.mushroom50, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.sm, padding:"2px 6px" }}>⌘K</kbd>
           </div>
 
+          {/* Project Spotlight rotator */}
+          {sp && (() => {
+            const sc = STAGE_COLORS[sp.stage] || STAGE_COLORS.seedling;
+            const tb = tierBadgeStyle(sp.tier);
+            const depts = builtForArr(sp.builtFor);
+            const dc = builtForColor(sp.builtFor);
+            return (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <div style={sLabel}>Project spotlight</div>
+                  <span style={{ fontSize:10, color:C.mushroom400 }}>{spIdx + 1} / {spotlightProjects.length}</span>
+                </div>
+                <div
+                  onMouseEnter={() => { spHovRef.current = true; }}
+                  onMouseLeave={() => { spHovRef.current = false; }}
+                  onClick={() => onSelectProject(sp)}
+                  onMouseOver={e => { if (e.currentTarget === e.target || e.currentTarget.contains(e.target)) e.currentTarget.style.boxShadow = DS.shadow.md; }}
+                  onMouseOut={e => { e.currentTarget.style.boxShadow = DS.shadow.sm; }}
+                  style={{ background:`linear-gradient(135deg, ${sc.bg} 0%, ${C.white} 68%)`, border:`1px solid ${sc.border}`, borderRadius:DS.radius.md, overflow:"hidden", cursor:"pointer", transition:"box-shadow 0.2s", position:"relative", boxShadow:DS.shadow.sm }}
+                >
+                  <div style={{ position:"absolute", top:-30, right:-30, width:130, height:130, borderRadius:"50%", background:sc.dot, opacity:0.07, pointerEvents:"none" }}/>
+                  <div style={{ position:"absolute", bottom:-20, right:60, width:70, height:70, borderRadius:"50%", background:sc.dot, opacity:0.04, pointerEvents:"none" }}/>
+                  <div style={{ borderLeft:`3px solid ${sc.dot}`, padding:"14px 16px 15px", opacity:spFading?0:1, transition:"opacity 0.22s" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:sc.dot, textTransform:"uppercase", letterSpacing:"0.08em" }}>✦ Spotlight</span>
+                      <span style={{ fontSize:10, fontWeight:600, background:"rgba(255,255,255,0.75)", color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{STAGE_LABELS[sp.stage]}</span>
+                    </div>
+                    <div style={{ fontSize:15, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:6, letterSpacing:"-0.01em" }}>{sp.name}</div>
+                    <div style={{ fontSize:12, color:C.mushroom600, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:10 }}>
+                      {sp.description || sp.problemSpace || "An AI initiative by the Sprout team."}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap" }}>
+                      {depts.slice(0,2).map(d => (
+                        <span key={d} style={{ fontSize:10, fontWeight:600, background:"rgba(255,255,255,0.7)", color:dc.text||C.mushroom600, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px" }}>{d}</span>
+                      ))}
+                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"2px 8px" }}>T{sp.tier}</span>}
+                      {!tb && <span style={{ fontSize:10, fontWeight:600, background:C.mango100, color:C.mango600, borderRadius:DS.radius.full, padding:"2px 8px" }}>Unclassified</span>}
+                      <span style={{ fontSize:10, color:C.mushroom500, marginLeft:"auto" }}>by {sp.builder || "Sprout team"}</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
+                      <div style={{ display:"flex", gap:5 }}>
+                        {spotlightProjects.map((_, di) => (
+                          <div
+                            key={di}
+                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); }, 220); }}
+                            style={{ width:di===spIdx?18:6, height:6, borderRadius:DS.radius.full, background:di===spIdx?sc.dot:sc.border, transition:"all 0.3s", cursor:"pointer" }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display:"flex", gap:4 }}>
+                        {[{ dir:-1, d:"M6 2L3 5l3 3" }, { dir:1, d:"M4 2l3 3-3 3" }].map(({ dir, d }) => (
+                          <button
+                            key={dir}
+                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); }, 220); }}
+                            style={{ width:24, height:24, borderRadius:DS.radius.sm, border:`0.5px solid ${sc.border}`, background:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d={d} stroke={sc.dot} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Pipeline strip */}
           <div>
             <div style={sLabel}>Pipeline</div>
@@ -1447,72 +1514,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
               })}
             </div>
           </div>
-
-          {/* Project Spotlight rotator */}
-          {sp && (() => {
-            const sc = STAGE_COLORS[sp.stage] || STAGE_COLORS.seedling;
-            const tb = tierBadgeStyle(sp.tier);
-            const depts = builtForArr(sp.builtFor);
-            const dc = builtForColor(sp.builtFor);
-            return (
-              <div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                  <div style={sLabel}>Project spotlight</div>
-                  <span style={{ fontSize:10, color:C.mushroom400 }}>{spIdx + 1} / {spotlightProjects.length}</span>
-                </div>
-                <div
-                  onMouseEnter={() => { spHovRef.current = true; }}
-                  onMouseLeave={() => { spHovRef.current = false; }}
-                  onClick={() => onSelectProject(sp)}
-                  onMouseOver={e => { if (e.currentTarget === e.target || e.currentTarget.contains(e.target)) e.currentTarget.style.boxShadow = DS.shadow.md; }}
-                  onMouseOut={e => { e.currentTarget.style.boxShadow = "none"; }}
-                  style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden", cursor:"pointer", transition:"box-shadow 0.2s" }}
-                >
-                  <div style={{ height:4, background:sc.dot, transition:"background 0.5s" }}/>
-                  <div style={{ padding:"13px 15px 14px", opacity:spFading?0:1, transition:"opacity 0.22s" }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:C.mushroom500, textTransform:"uppercase", letterSpacing:"0.06em" }}>✦ Spotlight</span>
-                      <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{STAGE_LABELS[sp.stage]}</span>
-                    </div>
-                    <div style={{ fontSize:15, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:6, letterSpacing:"-0.01em" }}>{sp.name}</div>
-                    <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:10 }}>
-                      {sp.description || sp.problemSpace || "An AI initiative by the Sprout team."}
-                    </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap" }}>
-                      {depts.slice(0,2).map(d => (
-                        <span key={d} style={{ fontSize:10, fontWeight:600, background:dc.bg||C.mushroom100, color:dc.text||C.mushroom600, borderRadius:DS.radius.full, padding:"2px 8px" }}>{d}</span>
-                      ))}
-                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"2px 8px" }}>T{sp.tier}</span>}
-                      {!tb && <span style={{ fontSize:10, fontWeight:600, background:C.mango100, color:C.mango600, borderRadius:DS.radius.full, padding:"2px 8px" }}>Unclassified</span>}
-                      <span style={{ fontSize:10, color:C.mushroom400, marginLeft:"auto" }}>by {sp.builder || "Sprout team"}</span>
-                    </div>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
-                      <div style={{ display:"flex", gap:5 }}>
-                        {spotlightProjects.map((_, di) => (
-                          <div
-                            key={di}
-                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); }, 220); }}
-                            style={{ width:di===spIdx?18:6, height:6, borderRadius:DS.radius.full, background:di===spIdx?C.kangkong500:C.mushroom200, transition:"all 0.3s", cursor:"pointer" }}
-                          />
-                        ))}
-                      </div>
-                      <div style={{ display:"flex", gap:4 }}>
-                        {[{ dir:-1, d:"M6 2L3 5l3 3" }, { dir:1, d:"M4 2l3 3-3 3" }].map(({ dir, d }) => (
-                          <button
-                            key={dir}
-                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); }, 220); }}
-                            style={{ width:24, height:24, borderRadius:DS.radius.sm, border:`0.5px solid ${C.mushroom200}`, background:C.mushroom50, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
-                          >
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d={d} stroke={C.mushroom700} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Recently Active — list */}
           <div>
