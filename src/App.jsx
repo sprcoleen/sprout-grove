@@ -1104,7 +1104,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
   const [hoverPipe, setHoverPipe]   = useState(null);
   const [spIdx,     setSpIdx]       = useState(0);
   const [spFading,  setSpFading]    = useState(false);
-  const [spProgress,setSpProgress]  = useState(0);
   const spHovRef  = useRef(false);
   const SPOTLIGHT_MS = 12000;
 
@@ -1179,14 +1178,12 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     const tick = setInterval(() => {
       if (spHovRef.current) return;
       elapsed += 100;
-      setSpProgress(Math.min((elapsed / SPOTLIGHT_MS) * 100, 100));
       if (elapsed >= SPOTLIGHT_MS) {
         clearInterval(tick);
         setSpFading(true);
         setTimeout(() => {
           setSpIdx(prev => (prev + 1) % spotlightProjects.length);
           setSpFading(false);
-          setSpProgress(0);
         }, 220);
       }
     }, 100);
@@ -1472,9 +1469,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                   style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden", cursor:"pointer", transition:"box-shadow 0.2s" }}
                 >
                   <div style={{ height:4, background:sc.dot, transition:"background 0.5s" }}/>
-                  <div style={{ height:2, background:C.mushroom100, margin:"0 14px" }}>
-                    <div style={{ height:"100%", width:`${spProgress}%`, background:C.kangkong500, borderRadius:DS.radius.full, transition:"width 0.1s linear" }}/>
-                  </div>
                   <div style={{ padding:"13px 15px 14px", opacity:spFading?0:1, transition:"opacity 0.22s" }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
                       <span style={{ fontSize:9, fontWeight:700, color:C.mushroom500, textTransform:"uppercase", letterSpacing:"0.06em" }}>✦ Spotlight</span>
@@ -1489,6 +1483,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                         <span key={d} style={{ fontSize:10, fontWeight:600, background:dc.bg||C.mushroom100, color:dc.text||C.mushroom600, borderRadius:DS.radius.full, padding:"2px 8px" }}>{d}</span>
                       ))}
                       {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"2px 8px" }}>T{sp.tier}</span>}
+                      {!tb && <span style={{ fontSize:10, fontWeight:600, background:C.mango100, color:C.mango600, borderRadius:DS.radius.full, padding:"2px 8px" }}>Unclassified</span>}
                       <span style={{ fontSize:10, color:C.mushroom400, marginLeft:"auto" }}>by {sp.builder || "Sprout team"}</span>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
@@ -1496,7 +1491,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                         {spotlightProjects.map((_, di) => (
                           <div
                             key={di}
-                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); setSpProgress(0); }, 220); }}
+                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); }, 220); }}
                             style={{ width:di===spIdx?18:6, height:6, borderRadius:DS.radius.full, background:di===spIdx?C.kangkong500:C.mushroom200, transition:"all 0.3s", cursor:"pointer" }}
                           />
                         ))}
@@ -1505,7 +1500,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
                         {[{ dir:-1, d:"M6 2L3 5l3 3" }, { dir:1, d:"M4 2l3 3-3 3" }].map(({ dir, d }) => (
                           <button
                             key={dir}
-                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); setSpProgress(0); }, 220); }}
+                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); }, 220); }}
                             style={{ width:24, height:24, borderRadius:DS.radius.sm, border:`0.5px solid ${C.mushroom200}`, background:C.mushroom50, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
                           >
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d={d} stroke={C.mushroom700} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
