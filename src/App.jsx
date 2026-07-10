@@ -1256,7 +1256,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
       </div>
 
       {/* ── Two-column body ─────────────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1.6fr", gap:14, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,2.6fr)", gap:14, alignItems:"start" }}>
 
         {/* ─── LEFT — Personal ─────────────────────────────────────────── */}
         <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.1s both" }}>
