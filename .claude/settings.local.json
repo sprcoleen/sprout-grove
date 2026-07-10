@@ -33,7 +33,15 @@
       "Bash(~/git_log.txt:*)",
       "Bash(echo:*)",
       "Bash(printf %s\\\\n:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__6b9cb845-0a61-4b15-8f2e-18c0bf00fdc5__getAccessibleAtlassianResources",
+      "mcp__6b9cb845-0a61-4b15-8f2e-18c0bf00fdc5__lookupJiraAccountId",
+      "mcp__6b9cb845-0a61-4b15-8f2e-18c0bf00fdc5__searchJiraIssuesUsingJql",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3001)",
+      "Bash(findstr LISTENING)",
+      "Bash(findstr :5173)",
+      "Bash(wmic process *)"
     ]
   }
 }
