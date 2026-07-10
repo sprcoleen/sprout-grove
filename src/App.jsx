@@ -304,6 +304,7 @@ const DEPT_ZONES = {
   PeopleOps:          {x:51, y:81, w:23, h:17},
   Finance:            {x:76, y:81, w:23, h:17},
   ExCom:              {x:1,  y:101,w:23, h:17},
+  Technology:         {x:26, y:101,w:23, h:17},
 };
 
 const CAPABILITIES = ["All","LLM","Computer Vision","Automation","Prediction","NLP"];
@@ -1097,13 +1098,10 @@ function getDashboardSubline(projects, wishes) {
 }
 
 // ── Overview Dashboard ────────────────────────────────────────────────────────
-const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject }) => {
-  // ── Animation state ─────────────────────────────────────────────────────────
+const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject, onContribute }) => {
   const [counts, setCounts]       = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
   const [barsReady, setBarsReady] = useState(false);
-  const [hoverTile, setHoverTile] = useState(null);
-  const [clickTile, setClickTile] = useState(null);
-  const [rankView, setRankView]   = useState("people"); // "people" | "dept"
+  const [hoverPipe, setHoverPipe] = useState(null);
 
   // ── Computed data ────────────────────────────────────────────────────────────
   const pipeline = {
@@ -1115,86 +1113,30 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     thriving: projects.filter(p => p.stage === "thriving").length,
   };
 
-  // Activity log feed — already sorted newest-first from DB
-  const ACTIVITY_DOTS = {
-    project_added:          C.mushroom400,
-    stage_moved:            C.kangkong500,
-    submitted_for_approval: C.mango500,
-    approved:               C.blueberry400,
-    seed_planted:           C.ubas500,
-    seed_fulfilled:         C.wintermelon500,
-  };
-  const ACTIVITY_ACTION = {
-    project_added:          "added to Garden",
-    submitted_for_approval: "submitted for approval",
-    approved:               "approved → now in Sprout",
-    seed_planted:           "planted a new seed",
-    seed_fulfilled:         "seed fulfilled",
-  };
-  const getActivityActionText = (ev) => {
-    if (ev.event_type === "stage_moved") return `moved to ${STAGE_LABELS[ev.to_stage] || ev.to_stage}`;
-    return ACTIVITY_ACTION[ev.event_type] || ev.event_type;
-  };
+  const toolCounts = getToolCounts(projects);
 
-  // Rankings — people view
-  const topBuilders = (() => {
-    const map = {};
-    for (const p of projects) {
-      if (p.stage === "seedling") continue;
-      const key = p.builderEmail || p.builder;
-      if (!map[key]) map[key] = { name: p.builder || p.builderEmail, email: p.builderEmail, count: 0 };
-      map[key].count++;
-    }
-    return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 4);
-  })();
-
-  // Rankings — dept view
-  const topDepts = (() => {
-    const map = {};
-    for (const p of projects) {
-      if (!p.builtBy) continue;
-      map[p.builtBy] = (map[p.builtBy] || 0) + 1;
-    }
-    return Object.entries(map)
-      .map(([dept, count]) => ({ dept, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  })();
-
-  const topSeeds = wishes
-    .filter(w => w.upvoters.length > 0)
-    .sort((a, b) => b.upvoters.length - a.upvoters.length)
-    .slice(0, 3);
-
-  const toolCounts       = getToolCounts(projects);
-  const frameworkCounts  = getFrameworkCounts(projects);
-
-  // My Corner data
-  const _myEmail = authUser?.email?.toLowerCase()
-  const _myName  = authUser?.displayName?.toLowerCase()
+  const _myEmail = authUser?.email?.toLowerCase();
+  const _myName  = authUser?.displayName?.toLowerCase();
   const myProjects = projects
     .filter(p =>
       (_myEmail && p.builderEmail?.toLowerCase() === _myEmail) ||
       (_myName  && p.builder?.toLowerCase() === _myName)
     )
-    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999)); // newest first (0 = today)
-  const nurseryQueue = projects.filter(p => p.stage === "nursery")
-    .sort((a, b) => {
-      const aMs = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-      const bMs = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-      return aMs - bMs;
-    });
-  const stalePlants  = projects
-    .filter(p => p.lastUpdated > 30)
-    .sort((a, b) => b.lastUpdated - a.lastUpdated);
+    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999));
+
+  const myUnclassified = myProjects.filter(p => p.tier === null || p.tier === undefined);
+
   const seedsToClaim = wishes
     .filter(w => !w.claimedBy && !w.fulfilledBy)
     .sort((a, b) => b.upvoters.length - a.upvoters.length)
     .slice(0, 3);
-  const healthPct    = Math.round(
-    (projects.filter(p => p.stage === "bloom" || p.stage === "thriving").length /
-      Math.max(projects.length, 1)) * 100
-  );
+
+  const tierCounts = {
+    1:    projects.filter(p => p.tier === 1).length,
+    2:    projects.filter(p => p.tier === 2).length,
+    3:    projects.filter(p => p.tier === 3).length,
+    none: projects.filter(p => p.tier === null || p.tier === undefined).length,
+  };
 
   // ── CountUp animation (200ms delay, 600ms duration) ─────────────────────────
   useEffect(() => {
@@ -1228,10 +1170,11 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     return () => clearTimeout(t);
   }, []);
 
-  // ── Greeting ────────────────────────────────────────────────────────────────
+  // ── Greeting ─────────────────────────────────────────────────────────────────
   const hour      = new Date().getHours();
   const greeting  = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = authUser?.firstName?.trim() || authUser?.email?.split("@")[0] || "";
+  const today     = new Date().toLocaleDateString("en-PH", { month:"long", day:"numeric", year:"numeric" });
 
   const timeAgo = (ts) => {
     if (!ts) return "—";
@@ -1244,541 +1187,280 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     return days === 1 ? "yesterday" : `${days}d ago`;
   };
 
-  // ── Pipeline tile config ─────────────────────────────────────────────────────
-  const TILE_CFG = [
-    { key:"seeds",    label:"Seeds",    sub:"Got an idea? Anyone at Sprout can plant one.", accent:C.ubas500,         bg:C.ubas100,         border:C.ubas400,         countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
-    { key:"seedling", label:"Seedling", sub:"A builder claimed this and is making it real.", accent:C.mushroom400,     bg:C.mushroom100,     border:C.mushroom300,     countColor:C.mushroom700,    nav:()=>onNavigateGarden?.("board","seedling") },
-    { key:"nursery",  label:"Nursery",  sub:"A gut check before you go all in, with leadership in your corner.", accent:C.mango500,        bg:C.mango100,        border:C.mango500,        countColor:C.mango600,       nav:()=>onNavigateGarden?.("board","nursery") },
-    { key:"sprout",   label:"Sprout",   sub:"Approved and accelerating with full support.", accent:C.wintermelon400,  bg:C.wintermelon100,  border:C.wintermelon400,  countColor:C.wintermelon500, nav:()=>onNavigateGarden?.("board","sprout") },
-    { key:"bloom",    label:"Bloom",    sub:"In users' hands. Listening and refining.", accent:C.kangkong400,     bg:C.kangkong50,      border:C.kangkong200,     countColor:C.kangkong600,    nav:()=>onNavigateGarden?.("board","bloom") },
-    { key:"thriving", label:"Thriving", sub:"Started as a spark. Now relied on daily.", accent:C.blueberry500,    bg:C.blueberry100,    border:C.blueberry400,    countColor:C.blueberry500,   nav:()=>onNavigateGarden?.("board","thriving") },
+  const PIPE_CFG = [
+    { key:"seeds",    label:"Seeds",    accent:C.ubas500,        bg:C.ubas100,        border:"#b794f4",     countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
+    { key:"seedling", label:"Seedling", accent:C.mushroom400,    bg:C.mushroom100,    border:C.mushroom300, countColor:C.mushroom700,     nav:()=>onNavigateGarden?.("board","seedling") },
+    { key:"nursery",  label:"Nursery",  accent:C.mango500,       bg:C.mango100,       border:C.mango500,    countColor:C.mango600,        nav:()=>onNavigateGarden?.("board","nursery") },
+    { key:"sprout",   label:"Sprout",   accent:C.wintermelon400, bg:C.wintermelon100, border:C.wintermelon400, countColor:C.wintermelon500, nav:()=>onNavigateGarden?.("board","sprout") },
+    { key:"bloom",    label:"Bloom",    accent:C.kangkong400,    bg:C.kangkong50,     border:C.kangkong200, countColor:C.kangkong600,     nav:()=>onNavigateGarden?.("board","bloom") },
+    { key:"thriving", label:"Thriving", accent:C.blueberry500,   bg:C.blueberry100,   border:C.blueberry400,countColor:C.blueberry500,    nav:()=>onNavigateGarden?.("board","thriving") },
   ];
 
-  // ── Shared row-item hover helper ─────────────────────────────────────────────
-  const rowHoverOn  = e => { e.currentTarget.style.background=C.mushroom50; e.currentTarget.style.paddingLeft="18px"; };
-  const rowHoverOff = e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.paddingLeft="0"; };
+  const sLabel = { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:8 };
+
+  const getActivityText = (ev) => {
+    const stagePillStyle = { display:"inline-flex", alignItems:"center", padding:"1px 7px", borderRadius:DS.radius.full, fontSize:10, fontWeight:600, background:STAGE_COLORS[ev.to_stage]?.bg||C.mushroom100, color:STAGE_COLORS[ev.to_stage]?.text||C.mushroom700, border:`0.5px solid ${STAGE_COLORS[ev.to_stage]?.border||C.mushroom300}`, margin:"0 2px" };
+    if (ev.event_type === "stage_moved") return <><strong>{ev.entity_name}</strong> moved to <span style={stagePillStyle}>{STAGE_LABELS[ev.to_stage]||ev.to_stage}</span></>;
+    if (ev.event_type === "project_added") return <>added <strong>{ev.entity_name}</strong> to the garden</>;
+    if (ev.event_type === "seed_planted") return <>planted a seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "seed_fulfilled") return <>fulfilled seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "submitted_for_approval") return <>submitted <strong>{ev.entity_name}</strong> for approval</>;
+    if (ev.event_type === "approved") return <>approved <strong>{ev.entity_name}</strong></>;
+    return <>{(ev.event_type||"").replace(/_/g," ")} — <strong>{ev.entity_name}</strong></>;
+  };
+
+  const feedItems = (activityLog || [])
+    .filter(ev => !["deletion_requested","deletion_approved"].includes(ev.event_type))
+    .slice(0, 7);
 
   return (
-    <div style={{ padding:"28px 32px", background:"transparent", minHeight:"100%", overflowY:"auto", fontFamily:FF, position:"relative", zIndex:1 }}>
+    <div style={{ padding:"24px 28px", background:"transparent", minHeight:"100%", overflowY:"auto", fontFamily:FF, position:"relative", zIndex:1 }}>
       <style>{OVERVIEW_KF}</style>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom:20, animation:"fadeUp 0.4s ease both" }}>
-        <div style={{ fontSize:20, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em", marginBottom:3 }}>
-          {greeting}, {firstName}!
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18, animation:"fadeUp 0.35s ease both" }}>
+        <div>
+          <div style={{ fontSize:19, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em" }}>
+            {greeting}, {firstName}
+          </div>
+          <div style={{ fontSize:12, color:C.mushroom500, marginTop:3 }}>
+            {today} · Here's where the garden stands.
+          </div>
         </div>
-        <div style={{ fontSize:14, color:C.mushroom500 }}>
-          {getDashboardSubline(projects, wishes)}
-        </div>
+        {onContribute && (
+          <button
+            onClick={onContribute}
+            onMouseOver={e=>e.currentTarget.style.background=C.kangkong600}
+            onMouseOut={e=>e.currentTarget.style.background=C.kangkong500}
+            style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", background:C.kangkong500, border:"none", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:700, color:C.white, cursor:"pointer", transition:"background 0.15s", flexShrink:0 }}
+          >
+            <IcoAdd size={13} color={C.white}/> Add a Plant
+          </button>
+        )}
       </div>
 
-      {/* ── Pipeline ──────────────────────────────────────────────────────── */}
-      <div style={{
-        display:"flex", alignItems:"stretch", gap:0, marginBottom:24,
-        animation:"fadeUp 0.4s ease 0.05s both",
-      }}>
-        {TILE_CFG.map((t, i) => {
-          const isHov = hoverTile === i;
-          const isClk = clickTile === i;
-          const isLast = i === TILE_CFG.length - 1;
-          const isLive = t.key === "thriving";
-          const wmOpacity = isHov ? 0.14 : (t.key === "seedling" ? 0.07 : 0.09);
-          return (
-            <React.Fragment key={t.key}>
-              <div
-                onMouseEnter={() => setHoverTile(i)}
-                onMouseLeave={() => setHoverTile(null)}
-                onClick={() => { setClickTile(i); setTimeout(() => { setClickTile(null); t.nav(); }, 120); }}
-                style={{
-                  flex: 1,
-                  background: t.bg,
-                  border: `0.5px solid ${isHov ? t.accent : t.border}`,
-                  borderRadius: DS.radius.md,
-                  padding: "16px 12px 14px",
-                  cursor: "pointer",
-                  position: "relative",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: 148,
-                  transform: isClk ? "scale(0.97)" : isHov ? "translateY(-3px)" : "none",
-                  boxShadow: isHov ? DS.shadow.md : "none",
-                  transition: "all 0.2s ease",
-                  userSelect: "none",
-                }}
-              >
-                {/* Left accent bar */}
-                <div style={{ position:"absolute", left:0, top:0, bottom:0, width:4, background:t.accent, borderRadius:`${DS.radius.md} 0 0 ${DS.radius.md}` }}/>
-
-                {/* Oversized watermark icon */}
-                <div style={{
-                  position:"absolute", bottom:-14, right:-12,
-                  opacity: wmOpacity,
-                  transform: isHov ? "scale(1.07) rotate(5deg)" : "none",
-                  transition: "opacity 0.25s, transform 0.25s",
-                  pointerEvents: "none",
-                }}>
-                  {t.key === "seeds"
-                    ? <IcoWishlist size={140} color={t.accent} />
-                    : <StageIcon stage={t.key} size={140} color={t.accent} />}
-                </div>
-
-                {/* Content sits above watermark */}
-                <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", height:"100%" }}>
-                  {/* Small icon top-left */}
-                  <div style={{ marginBottom:10 }}>
-                    {t.key === "seeds"
-                      ? <IcoWishlist size={20} color={t.accent} />
-                      : <StageIcon stage={t.key} size={20} color={t.accent} />}
-                  </div>
-
-                  {/* Count */}
-                  <div style={{ fontSize:40, fontWeight:800, color:t.countColor, lineHeight:1, marginBottom:3 }}>
-                    {counts[t.key]}
-                  </div>
-
-                  {/* Stage name + live dot */}
-                  <div style={{ fontSize:13, fontWeight:700, color:t.countColor, letterSpacing:"0.02em", marginBottom:5, display:"flex", alignItems:"center", gap:4 }}>
-                    {t.label}
-                    {isLive && <span style={{ width:6, height:6, borderRadius:"50%", background:t.accent, display:"inline-block", animation:"ovPulse 1.8s infinite" }}/>}
-                  </div>
-
-                  {/* Description */}
-                  <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.55, flex:1 }}>
-                    {t.sub}
-                  </div>
-
-                  {/* CTA */}
-                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase", color:t.accent, marginTop:10, opacity:isHov?1:0, transition:"opacity 0.15s" }}>
-                    View all →
-                  </div>
-                </div>
-              </div>
-
-              {/* Chevron between tiles */}
-              {!isLast && (
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:20, flexShrink:0 }}>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 4L10 8L6 12" stroke={C.mushroom300} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
+      {/* ── 4 Stats ────────────────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18, animation:"fadeUp 0.35s ease 0.05s both" }}>
+        {[
+          { label:"Total projects",  value:projects.length,               sub:"across PH & TH",    accent:C.mushroom300,  textColor:C.mushroom800 },
+          { label:"Live & thriving", value:pipeline.thriving,             sub:"in production",      accent:C.blueberry500, textColor:C.blueberry500 },
+          { label:"Seeds waiting",   value:pipeline.seeds,                sub:"unclaimed ideas",    accent:C.ubas500,      textColor:C.ubas500 },
+          { label:"Need attention",  value:tierCounts.none,               sub:"unclassified",       accent:C.mango600,     textColor:C.mango600 },
+        ].map(s => (
+          <div key={s.label} style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 15px", borderLeft:`3px solid ${s.accent}` }}>
+            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:6 }}>{s.label}</div>
+            <div style={{ fontSize:26, fontWeight:800, color:s.textColor, lineHeight:1 }}>{s.value}</div>
+            <div style={{ fontSize:11, color:C.mushroom400, marginTop:3 }}>{s.sub}</div>
+          </div>
+        ))}
       </div>
 
       {/* ── Two-column body ─────────────────────────────────────────────── */}
-      <div style={{ display:"flex", gap:16, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1.6fr", gap:14, alignItems:"start" }}>
 
-        {/* ════════════════════════════════════════════════════
-            LEFT COLUMN — exec view (Momentum, Spotlight,
-            Tools in Use, Rankings)
-        ════════════════════════════════════════════════════ */}
-        <div style={{ flex:"1.55 1 0", minWidth:0, display:"flex", flexDirection:"column", gap:14 }}>
+        {/* ─── LEFT — Personal ─────────────────────────────────────────── */}
+        <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.1s both" }}>
 
-          {/* ── Momentum ──────────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.1s both" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500 }}>
-                Momentum
+          {/* My Garden */}
+          <div>
+            <div style={sLabel}>Your garden</div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {myProjects.length === 0 ? (
+                <div style={{ padding:"14px 14px", fontSize:12, color:C.mushroom400 }}>
+                  No plants yet — hit "Add a Plant" to log your first AI project.
+                </div>
+              ) : myProjects.slice(0,5).map((p, i) => {
+                const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+                const isStale = p.lastUpdated > 30;
+                return (
+                  <div key={p.id}
+                    onClick={() => onSelectProject(p)}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                    style={{ padding:"10px 14px", borderBottom:i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"center", gap:10, cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                  >
+                    <span style={{ width:7, height:7, borderRadius:"50%", background:sc.dot, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:isStale?C.mango600:C.mushroom400, marginTop:1 }}>
+                        {isStale ? `No update in ${p.lastUpdated}d` : p.lastUpdated === 0 ? "Updated today" : `Updated ${p.lastUpdated}d ago`}
+                      </div>
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px", flexShrink:0 }}>{STAGE_LABELS[p.stage]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Classification nudge */}
+          {myUnclassified.length > 0 && (
+            <div style={{ background:C.mango100, border:`1px solid ${C.mango500}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.mango600, marginBottom:4 }}>Classification needed</div>
+              <div style={{ fontSize:11, color:C.mushroom700, lineHeight:1.5 }}>
+                {myUnclassified.length === 1
+                  ? <><strong>{myUnclassified[0].name}</strong> is missing its Tier.</>
+                  : <>{myUnclassified.length} of your projects are missing Tier Classification.</>
+                }{" "}Answer 2 quick questions so they can move forward.
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <div style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, animation:"ovPulse 2s infinite", flexShrink:0 }}/>
+              <button
+                onClick={() => onSelectProject(myUnclassified[0])}
+                style={{ marginTop:10, padding:"6px 12px", background:C.mango600, border:"none", borderRadius:DS.radius.sm, fontFamily:FF, fontSize:11, fontWeight:700, color:C.white, cursor:"pointer" }}
+              >
+                Go to Classification →
+              </button>
+            </div>
+          )}
+
+          {/* Seeds to claim */}
+          <div>
+            <div style={sLabel}>Seeds you could claim</div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {seedsToClaim.length === 0 ? (
+                <div style={{ padding:"12px 14px", fontSize:11, color:C.mushroom400 }}>No unclaimed seeds right now.</div>
+              ) : seedsToClaim.map((w, i) => (
+                <div key={w.id}
+                  onClick={() => onNavigateWishlist?.()}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                  onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                  style={{ padding:"10px 14px", borderBottom:i<seedsToClaim.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                >
+                  <div style={{ fontSize:12, fontWeight:600, color:C.mushroom900, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{w.title}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:10, fontWeight:600, background:C.ubas100, color:C.ubas500, borderRadius:DS.radius.full, padding:"1px 8px" }}>▲ {w.upvoters.length}</span>
+                    {(Array.isArray(w.builtFor) ? w.builtFor : [w.builtFor]).filter(Boolean).slice(0,2).map(f => (
+                      <span key={f} style={{ fontSize:10, color:C.mushroom400 }}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>{/* end left */}
+
+        {/* ─── RIGHT — Org-wide ─────────────────────────────────────────── */}
+        <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.12s both" }}>
+
+          {/* Pipeline strip */}
+          <div>
+            <div style={sLabel}>Pipeline</div>
+            <div style={{ display:"flex", gap:0, alignItems:"stretch" }}>
+              {PIPE_CFG.map((t, i) => {
+                const isHov  = hoverPipe === i;
+                const isLast = i === PIPE_CFG.length - 1;
+                const isFirst = i === 0;
+                return (
+                  <React.Fragment key={t.key}>
+                    <div
+                      onClick={t.nav}
+                      onMouseEnter={() => setHoverPipe(i)}
+                      onMouseLeave={() => setHoverPipe(null)}
+                      style={{ flex:1, background:isHov?t.accent:t.bg, border:`0.5px solid ${t.border}`, borderRadius: isFirst ? `${DS.radius.md} 0 0 ${DS.radius.md}` : isLast ? `0 ${DS.radius.md} ${DS.radius.md} 0` : 0, padding:"10px 8px", textAlign:"center", cursor:"pointer", transition:"all 0.15s" }}
+                    >
+                      <div style={{ fontSize:18, fontWeight:800, color:isHov?C.white:t.countColor }}>{counts[t.key]}</div>
+                      <div style={{ fontSize:9, fontWeight:600, color:isHov?"rgba(255,255,255,0.85)":t.countColor, marginTop:2, display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}>
+                        {t.label}
+                        {t.key==="thriving" && <span style={{ width:4, height:4, borderRadius:"50%", background:isHov?C.white:t.accent, display:"inline-block", animation:"ovPulse 1.8s infinite" }}/>}
+                      </div>
+                    </div>
+                    {!isLast && (
+                      <div style={{ display:"flex", alignItems:"center", padding:"0 2px", background:C.mushroom50, zIndex:1 }}>
+                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M3 2l4 3-4 3" stroke={C.mushroom300} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Momentum feed */}
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={sLabel}>Recent momentum</div>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, display:"inline-block", animation:"ovPulse 2s infinite" }}/>
                 <span style={{ fontSize:9, fontWeight:600, color:C.kangkong600, letterSpacing:"0.04em" }}>live</span>
               </div>
             </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
-              {(() => {
-                const recent = [...projects]
-                  .filter(p => p.createdAt)
-                  .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-                return recent.length === 0 ? (
-                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No projects yet — they'll appear here as teams add them.</div>
-                ) : recent.map((p, i) => {
-                  const cc  = COVER_COLORS[p.builtBy] || COVER_COLORS.default;
-                  const sc  = STAGE_COLORS[p.stage]   || STAGE_COLORS.seedling;
-                  const initials = (p.builder||p.builderEmail||"?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
-                  const tierLabel = p.tier ? `T${p.tier}` : null;
-                  const tierColor = p.tier===1?C.mushroom600:p.tier===2?C.blueberry500:C.carrot500;
-                  const tierBg    = p.tier===1?C.mushroom100:p.tier===2?C.blueberry100:C.carrot100;
-                  return (
-                    <div key={p.id}
-                      onClick={() => onSelectProject(p)}
-                      onMouseEnter={e => e.currentTarget.style.background=C.mushroom50}
-                      onMouseLeave={e => e.currentTarget.style.background=C.white}
-                      style={{
-                        padding:"12px 14px",
-                        borderBottom: i < recent.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
-                        transition:"background 0.15s", cursor:"pointer", background:C.white,
-                        animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
-                      }}
-                    >
-                      {/* Stage line */}
-                      <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
-                        <span style={{ width:6, height:6, borderRadius:"50%", background:sc.dot, flexShrink:0, display:"inline-block" }}/>
-                        <span style={{ fontSize:10, fontWeight:600, color:sc.text, letterSpacing:"0.03em" }}>{STAGE_LABELS[p.stage]||p.stage}</span>
-                      </div>
-                      {/* Name */}
-                      <div style={{ fontSize:14, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
-                      {/* Description */}
-                      {p.description && (
-                        <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.5, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{p.description}</div>
-                      )}
-                      {/* Footer */}
-                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <span style={{ fontSize:11, fontWeight:600, color:cc.text, background:cc.bg, border:`1px solid ${cc.text}22`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{p.builtBy}</span>
-                        {tierLabel && <span style={{ fontSize:11, fontWeight:700, color:tierColor, background:tierBg, borderRadius:DS.radius.full, padding:"2px 8px" }}>{tierLabel}</span>}
-                        <span style={{ flex:1 }}/>
-                        <span style={{ fontSize:11, color:C.mushroom400, whiteSpace:"nowrap" }}>{timeAgo(p.createdAt)}</span>
-                        <div style={{ width:26, height:26, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0 }}>{initials}</div>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-
-          {/* ── Tools in Use ──────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.2s both" }}>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500, marginBottom:8 }}>
-              Tools in Use
-            </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"14px 16px" }}>
-              {toolCounts.length === 0 ? (
-                <div style={{ fontSize:11, color:C.mushroom400 }}>No tool data yet.</div>
-              ) : (() => {
-                const maxT = toolCounts[0]?.count || 1;
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {feedItems.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>Activity will appear here as the team makes moves.</div>
+              ) : feedItems.map((ev, i) => {
+                const initials = (ev.actor_name || ev.actor_email || "?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
                 return (
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {toolCounts.map(({ tool, count }) => (
-                      <div key={tool} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <span style={{ fontSize:13, fontWeight:500, color:C.mushroom800, width:130, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
-                        <div style={{ flex:1, height:8, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(count/maxT)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:11, color:C.mushroom500, width:24, textAlign:"right", flexShrink:0 }}>{count}</span>
+                  <div key={i} style={{ padding:"10px 14px", borderBottom:i<feedItems.length-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"flex-start", gap:10, animation:`slideIn 0.25s ease ${Math.min(i,6)*0.04}s both` }}>
+                    <div style={{ width:28, height:28, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, flexShrink:0, marginTop:1 }}>{initials}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, color:C.mushroom800, lineHeight:1.45 }}>
+                        <strong>{ev.actor_name || (ev.actor_email||"").split("@")[0]}</strong>{" "}
+                        {getActivityText(ev)}
                       </div>
-                    ))}
+                      <div style={{ fontSize:10, color:C.mushroom400, marginTop:3 }}>{timeAgo(ev.created_at)}</div>
+                    </div>
                   </div>
                 );
-              })()}
+              })}
             </div>
           </div>
 
-          {/* ── Agentic Frameworks ────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.25s both" }}>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500, marginBottom:8 }}>
-              Agentic Frameworks
-            </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"14px 16px" }}>
-              {frameworkCounts.length === 0 ? (
-                <div style={{ fontSize:11, color:C.mushroom400 }}>No framework data yet.</div>
-              ) : (() => {
-                const maxF = frameworkCounts[0]?.count || 1;
-                return (
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {frameworkCounts.map(({ framework, count }) => (
-                      <div key={framework} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <span style={{ fontSize:13, fontWeight:500, color:C.mushroom800, width:130, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{framework}</span>
-                        <div style={{ flex:1, height:8, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(count/maxF)*100}%` : 0, background:C.ubas500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:11, color:C.mushroom500, width:24, textAlign:"right", flexShrink:0 }}>{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
+          {/* Bottom 2-col: Tools + Tier */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
 
-          {/* ── Rankings ──────────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.25s both" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500 }}>
-                Rankings
-              </div>
-              {/* By People / By Dept toggle */}
-              <div style={{ display:"inline-flex", background:C.mushroom100, borderRadius:DS.radius.full, padding:2 }}>
-                {["people","dept"].map(v => (
-                  <button key={v} onClick={() => setRankView(v)} style={{
-                    fontFamily:FF, fontSize:10, fontWeight:600,
-                    padding:"3px 10px", borderRadius:DS.radius.full, border:"none", cursor:"pointer",
-                    transition:"all 0.15s",
-                    background: rankView === v ? C.white : "transparent",
-                    color:       rankView === v ? C.kangkong600 : C.mushroom500,
-                    boxShadow:   rankView === v ? DS.shadow.sm : "none",
-                  }}>
-                    {v === "people" ? "By People" : "By Dept"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ display:"flex", gap:12 }}>
-
-              {/* Builders / Depts panel */}
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:600, color:C.mushroom500, marginBottom:8 }}>
-                  {rankView === "people" ? "Top Builders" : "Top Departments"}
-                </div>
-                <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-                  {rankView === "people" ? (
-                    topBuilders.length === 0 ? (
-                      <div style={{ fontSize:11, color:C.mushroom400 }}>No data yet.</div>
-                    ) : (() => {
-                      const maxB = topBuilders[0]?.count || 1;
-                      return topBuilders.map((b, i) => (
-                        <div key={b.email || b.name} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topBuilders.length-1?9:0 }}>
-                          <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                          <div style={{ width:22, height:22, borderRadius:5, background:C.mushroom100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, fontWeight:700, color:C.mushroom600 }}>
-                            {(b.name||"?").slice(0,2).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
-                          <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                            <div style={{ height:"100%", width: barsReady ? `${(b.count/maxB)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                          </div>
-                          <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{b.count}</span>
-                        </div>
-                      ));
-                    })()
-                  ) : (
-                    topDepts.length === 0 ? (
-                      <div style={{ fontSize:11, color:C.mushroom400 }}>No data yet.</div>
-                    ) : (() => {
-                      const maxD = topDepts[0]?.count || 1;
-                      return topDepts.map(({ dept, count }, i) => (
-                        <div key={dept} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topDepts.length-1?9:0 }}>
-                          <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                          <div style={{ width:22, height:22, borderRadius:5, background:C.mushroom100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, fontWeight:700, color:C.mushroom600 }}>
-                            {dept.slice(0,2).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{dept}</span>
-                          <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                            <div style={{ height:"100%", width: barsReady ? `${(count/maxD)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                          </div>
-                          <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{count}</span>
-                        </div>
-                      ));
-                    })()
-                  )}
-                </div>
-              </div>
-
-              {/* Top Seeds */}
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:600, color:C.mushroom500, marginBottom:8 }}>Top Seeds by Demand</div>
-                <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-                  {topSeeds.length === 0 ? (
-                    <div style={{ fontSize:11, color:C.mushroom400 }}>No seeds with upvotes yet.</div>
-                  ) : (() => {
-                    const maxS = topSeeds[0]?.upvoters.length || 1;
-                    return topSeeds.map((w, i) => (
-                      <div key={w.id} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topSeeds.length-1?9:0 }}>
-                        <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                        <div style={{ width:22, height:22, borderRadius:5, background:C.ubas100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:11, color:C.ubas500 }}>▲</div>
-                        <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{w.title}</span>
-                        <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(w.upvoters.length/maxS)*100}%` : 0, background:C.ubas500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{w.upvoters.length}</span>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>{/* end left column */}
-
-        {/* ════════════════════════════════════════════════════
-            RIGHT COLUMN — personal view (My Corner)
-        ════════════════════════════════════════════════════ */}
-        <div style={{ flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.4s ease 0.1s both" }}>
-
-          {/* Section header */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ fontSize:13, fontWeight:700, color:C.mushroom800 }}>My Corner</div>
-            {authUser?.isApprover && (
-              <span style={{ fontSize:9, fontWeight:600, background:C.mango100, color:C.mango600, border:`0.5px solid ${C.mango500}`, borderRadius:DS.radius.full, padding:"1px 7px" }}>Approver</span>
-            )}
-            {authUser?.isAdmin && !authUser?.isApprover && (
-              <span style={{ fontSize:9, fontWeight:600, background:C.kangkong100, color:C.kangkong700, border:`0.5px solid ${C.kangkong200}`, borderRadius:DS.radius.full, padding:"1px 7px" }}>Admin</span>
-            )}
-          </div>
-
-          {/* ── Panel A: role-aware primary action ──────────────────────── */}
-          <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-            {authUser?.isApprover ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Nursery Queue
-                </div>
-                {nurseryQueue.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>No plants awaiting review.</div>
-                ) : nurseryQueue.slice(0,4).map((p, i) => {
-                  const submitted = p.submittedAt ? Math.floor((Date.now() - new Date(p.submittedAt).getTime()) / 86400000) : p.lastUpdated;
-                  const overdue = submitted > 7;
+            {/* Top tools */}
+            <div>
+              <div style={sLabel}>Top tools</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
+                {toolCounts.length === 0 ? (
+                  <div style={{ fontSize:11, color:C.mushroom400 }}>No tool data yet.</div>
+                ) : (() => {
+                  const maxT = toolCounts[0]?.count || 1;
                   return (
-                    <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                      style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(nurseryQueue.length,4)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                        <span style={{ fontSize:9, fontWeight:600, background:C.mango100, color:C.mango600, border:`0.5px solid ${C.mango500}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>Nursery</span>
-                        <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
-                      </div>
-                      {overdue && (
-                        <span style={{ fontSize:9, fontWeight:600, background:C.tomato100, color:C.tomato500, border:`0.5px solid ${C.tomato500}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0, marginLeft:6 }}>
-                          {submitted}d overdue
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            ) : authUser?.isAdmin ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Garden Health
-                </div>
-                {[
-                  { label:"Total plants", value:projects.length },
-                  { label:"Pipeline health", value:healthPct + "%" },
-                  { label:"Nursery queue", value:nurseryQueue.length },
-                  { label:"Pending release reviews", value:projects.filter(p=>p.releaseReviewStatus==="pending").length, highlight: projects.filter(p=>p.releaseReviewStatus==="pending").length > 0 },
-                  { label:"Unclassified projects", value:projects.filter(p=>p.tier===null||p.tier===undefined).length },
-                ].map(({ label, value, highlight }) => (
-                  <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:`0.5px solid ${C.mushroom100}` }}>
-                    <span style={{ fontSize:11, color:C.mushroom600 }}>{label}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color: highlight ? "#7c3aed" : C.mushroom900 }}>{value}</span>
-                  </div>
-                ))}
-                {/* ── Pending Release Reviews queue ── */}
-                {(() => {
-                  const pending = projects.filter(p=>p.releaseReviewStatus==="pending");
-                  if (pending.length === 0) return null;
-                  return (
-                    <div style={{ marginTop:10 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:"#6d28d9", marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
-                        🛡️ Pending Release Reviews
-                        <span style={{ background:"#7c3aed", color:"#fff", borderRadius:DS.radius.full, padding:"0px 6px", fontSize:9, fontWeight:800 }}>{pending.length}</span>
-                      </div>
-                      {pending.slice(0,4).map((p, i) => (
-                        <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff}
-                          onClick={() => onOpenProject?.(p)}
-                          style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(pending.length,4)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                        >
-                          <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                            <span style={{ fontSize:9, fontWeight:600, background:"#ede9fe", color:"#6d28d9", border:"0.5px solid #c4b5fd", borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>
-                              {STAGE_LABELS[p.stage]} →
-                            </span>
-                            <span style={{ fontSize:11, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {toolCounts.slice(0,5).map(({ tool, count }) => (
+                        <div key={tool} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <span style={{ fontSize:11, fontWeight:500, color:C.mushroom800, width:80, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
+                          <div style={{ flex:1, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
+                            <div style={{ height:"100%", width:barsReady?`${(count/maxT)*100}%`:0, background:C.kangkong500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
                           </div>
-                          <span style={{ fontSize:9, fontWeight:600, background:p.tier===3?C.carrot100:C.blueberry100, color:p.tier===3?C.carrot500:C.blueberry500, border:`0.5px solid ${p.tier===3?C.carrot500:C.blueberry400}`, borderRadius:DS.radius.full, padding:"1px 6px", flexShrink:0, marginLeft:6 }}>T{p.tier}</span>
+                          <span style={{ fontSize:11, color:C.mushroom500, width:20, textAlign:"right", flexShrink:0 }}>{count}</span>
                         </div>
                       ))}
                     </div>
                   );
                 })()}
-                {stalePlants.length > 0 && (
-                  <div style={{ marginTop:10 }}>
-                    <div style={{ fontSize:10, fontWeight:600, color:C.mushroom400, marginBottom:6 }}>Stale plants (&gt;30d)</div>
-                    {stalePlants.slice(0,3).map((p, i) => (
-                      <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                        style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", borderBottom: i<Math.min(stalePlants.length,3)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                      >
-                        <span style={{ fontSize:11, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</span>
-                        <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0, marginLeft:8 }}>{p.lastUpdated}d ago</span>
-                      </div>
-                    ))}
+              </div>
+            </div>
+
+            {/* Tier breakdown */}
+            <div>
+              <div style={sLabel}>Tier breakdown</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px", display:"flex", flexDirection:"column", gap:9 }}>
+                {[
+                  { label:"Tier 1 — Static",   count:tierCounts[1], bg:C.mushroom100, color:C.mushroom700, border:C.mushroom300 },
+                  { label:"Tier 2 — App",       count:tierCounts[2], bg:C.blueberry100,color:C.blueberry500,border:C.blueberry400 },
+                  { label:"Tier 3 — External",  count:tierCounts[3], bg:C.carrot100,   color:C.carrot500,  border:C.carrot500 },
+                ].map(t => (
+                  <div key={t.label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:11, fontWeight:600, background:t.bg, color:t.color, border:`0.5px solid ${t.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{t.label}</span>
+                    <span style={{ fontSize:15, fontWeight:800, color:t.color }}>{t.count}</span>
+                  </div>
+                ))}
+                {tierCounts.none > 0 && (
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:6, borderTop:`0.5px solid ${C.mushroom100}` }}>
+                    <span style={{ fontSize:11, color:C.mushroom400 }}>Unclassified</span>
+                    <span style={{ fontSize:14, fontWeight:700, color:C.mango600 }}>{tierCounts.none}</span>
                   </div>
                 )}
-                <button onClick={() => onNavigateGarden?.("board","All")} style={{ marginTop:10, fontSize:11, fontWeight:600, color:C.kangkong500, background:"none", border:`0.5px solid ${C.kangkong200}`, borderRadius:DS.radius.md, padding:"5px 10px", cursor:"pointer", width:"100%", fontFamily:FF }}>
-                  View Board →
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  My Plants
-                </div>
-                {myProjects.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>Nothing planted yet. Hit &ldquo;Contribute&rdquo; to log your first AI project.</div>
-                ) : myProjects.slice(0,5).map((p, i) => {
-                  let ctaText = null;
-                  if (p.stage === "seedling" && !p.prototypeLink) ctaText = "Add prototype →";
-                  else if (p.stage === "seedling" && p.prototypeLink) ctaText = "Submit for review →";
-                  else if (p.stage === "nursery" && p.reviewStatus === "needs_rework") ctaText = "View feedback →";
-                  else ctaText = "View →";
-                  return (
-                    <div key={p.id}
-                      onMouseEnter={e => { e.currentTarget.style.background=C.mushroom50; e.currentTarget.style.paddingLeft="8px"; const cta=e.currentTarget.querySelector(".mc-cta"); if(cta) cta.style.opacity=1; }}
-                      onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.paddingLeft="0"; const cta=e.currentTarget.querySelector(".mc-cta"); if(cta) cta.style.opacity=0; }}
-                      onClick={() => onSelectProject(p)}
-                      style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s", borderRadius:4 }}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                        <span style={{ fontSize:9, fontWeight:600, background:STAGE_COLORS[p.stage]?.bg, color:STAGE_COLORS[p.stage]?.text, border:`0.5px solid ${STAGE_COLORS[p.stage]?.border}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>
-                          {STAGE_LABELS[p.stage]}
-                        </span>
-                        <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
-                      </div>
-                      <span className="mc-cta" style={{ fontSize:11, fontWeight:600, color:C.kangkong500, flexShrink:0, marginLeft:8, opacity:0, transition:"opacity 0.15s" }}>{ctaText}</span>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
 
-          {/* ── Panel B: role-aware secondary ───────────────────────────── */}
-          <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-            {authUser?.isApprover ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  My Plants
-                </div>
-                {myProjects.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>You haven&rsquo;t added any plants yet.</div>
-                ) : myProjects.slice(0,5).map((p, i) => (
-                  <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                    style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                  >
-                    <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</span>
-                    <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0, marginLeft:8 }}>{p.lastUpdated}d ago</span>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Seeds to Claim
-                </div>
-                {seedsToClaim.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>No unclaimed seeds right now. Check the Wishlist to see what the team needs built.</div>
-                ) : seedsToClaim.map((w, i) => (
-                  <div key={w.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onNavigateWishlist?.()}
-                    style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<seedsToClaim.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                  >
-                    <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{w.title}</span>
-                    <span style={{ fontSize:10, color:C.ubas500, fontWeight:600, flexShrink:0, marginLeft:8 }}>▲ {w.upvoters.length}</span>
-                  </div>
-                ))}
-                <div style={{ marginTop:8, textAlign:"center" }}>
-                  <button onClick={() => onNavigateWishlist?.()} style={{ fontFamily:FF, fontSize:11, fontWeight:600, color:C.kangkong500, background:"none", border:"none", cursor:"pointer", padding:0 }}>
-                    Browse all Seeds →
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          </div>{/* end bottom 2-col */}
 
-        </div>{/* end right column */}
+        </div>{/* end right */}
 
-      </div>{/* end two-column body */}
+      </div>{/* end two-column */}
 
     </div>
   );
@@ -6264,6 +5946,8 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
   const [gatewayChoice, setGatewayChoice] = React.useState(null);
   const [plantName, setPlantName] = React.useState("");
   const [plantStarting, setPlantStarting] = React.useState(false);
+  const [plantBuiltBy, setPlantBuiltBy] = React.useState(PLANT_DEPTS[0]);
+  const [plantBuiltFor, setPlantBuiltFor] = React.useState([]);
   const [plantHasBackend, setPlantHasBackend] = React.useState(null);
   const [plantTargetUsers, setPlantTargetUsers] = React.useState(null);
 
@@ -6441,9 +6125,12 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
     const handleStart = async () => {
       if (!canStart || plantStarting || !onStartProject) return;
       setPlantStarting(true);
-      await onStartProject(plantName.trim(), { hasBackend: plantHasBackend, targetUsers: plantTargetUsers });
+      await onStartProject(plantName.trim(), { hasBackend: plantHasBackend, targetUsers: plantTargetUsers, builtBy: plantBuiltBy, builtFor: plantBuiltFor });
       setPlantStarting(false);
     };
+    const FOR_VISIBLE = ["Marketing","CSM","Engineering","Data","PeopleOps","RevOps","All Teams"];
+    const FOR_HIDDEN  = Object.keys(DEPT_ZONES).filter(d => !FOR_VISIBLE.includes(d));
+    const [forExpanded, setForExpanded] = React.useState(false);
     const ToggleBtn = ({ active, onClick, children }) => (
       <button type="button" onClick={onClick} style={{
         padding:"7px 14px", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:600,
@@ -6478,6 +6165,34 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
               placeholder="e.g. SmartSort AI"
               style={inputStyle}
             />
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Your team</label>
+              <select value={plantBuiltBy} onChange={e=>setPlantBuiltBy(e.target.value)} style={{...inputStyle,cursor:"pointer",paddingTop:8,paddingBottom:8}}>
+                {PLANT_DEPTS.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>For</label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                {(forExpanded ? [...FOR_VISIBLE,...FOR_HIDDEN] : FOR_VISIBLE).map(d=>{
+                  const active = plantBuiltFor.includes(d);
+                  return (
+                    <button key={d} type="button" onClick={()=>setPlantBuiltFor(prev=>active?prev.filter(x=>x!==d):[...prev,d])} style={{
+                      padding:"4px 9px",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:active?700:400,
+                      border:`1.5px solid ${active?C.kangkong500:C.mushroom200}`,
+                      background:active?C.kangkong50:C.white,
+                      color:active?C.kangkong700:C.mushroom500,cursor:"pointer",transition:"all 0.12s",
+                    }}>{d}</button>
+                  );
+                })}
+                <button type="button" onClick={()=>setForExpanded(v=>!v)} style={{padding:"4px 9px",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,border:`1.5px dashed ${C.mushroom200}`,background:"none",color:C.mushroom400,cursor:"pointer"}}>
+                  {forExpanded?"less ↑":"more ↓"}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div style={{background:C.mushroom50,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,padding:"14px 16px",marginBottom:18,display:"flex",flexDirection:"column",gap:14}}>
@@ -9323,7 +9038,7 @@ export default function SproutAIGarden() {
   const handleStartProject = async (name, classification = {}) => {
     // Bypass fromProject to avoid inserting v2 columns that may not exist yet.
     // Only send the safe core columns present in all schema versions.
-    const { hasBackend = null, targetUsers = null } = classification;
+    const { hasBackend = null, targetUsers = null, builtBy = "Marketing", builtFor = [] } = classification;
     const tier = hasBackend === null || targetUsers === null ? null
                : hasBackend === false && targetUsers === "internal" ? 1
                : hasBackend === true  && targetUsers !== "internal" ? 3
@@ -9333,8 +9048,8 @@ export default function SproutAIGarden() {
       builder:             authUser.displayName,
       builder_email:       authUser.email,
       stage:               "seedling",
-      built_by:            "Marketing",
-      built_for:           [],
+      built_by:            builtBy,
+      built_for:           builtFor,
       description:         "",
       demo_link:           "",
       collaborator_emails: [],
@@ -10071,7 +9786,7 @@ export default function SproutAIGarden() {
       {/* ── Main content + Detail Panel ── */}
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
+          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}} onContribute={()=>{setContributeInitialFlow("plant");setShowContribute(true);}}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={visibleProjects} wishes={visibleWishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser} rootingReviews={rootingReviews}/>}
