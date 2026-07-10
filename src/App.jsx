@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo, loadDeleteRequests, toDeleteRequest } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
@@ -1099,9 +1099,14 @@ function getDashboardSubline(projects, wishes) {
 
 // ── Overview Dashboard ────────────────────────────────────────────────────────
 const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject, onContribute }) => {
-  const [counts, setCounts]       = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
-  const [barsReady, setBarsReady] = useState(false);
-  const [hoverPipe, setHoverPipe] = useState(null);
+  const [counts, setCounts]         = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
+  const [barsReady, setBarsReady]   = useState(false);
+  const [hoverPipe, setHoverPipe]   = useState(null);
+  const [spIdx,     setSpIdx]       = useState(0);
+  const [spFading,  setSpFading]    = useState(false);
+  const [spProgress,setSpProgress]  = useState(0);
+  const spHovRef  = useRef(false);
+  const SPOTLIGHT_MS = 12000;
 
   // ── Computed data ────────────────────────────────────────────────────────────
   const pipeline = {
@@ -1124,7 +1129,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     )
     .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999));
 
-  const myUnclassified = myProjects.filter(p => p.tier === null || p.tier === undefined);
+  const myStale = myProjects.filter(p => (p.lastUpdated ?? 0) > 30);
 
   const seedsToClaim = wishes
     .filter(w => !w.claimedBy && !w.fulfilledBy)
@@ -1138,7 +1143,80 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     none: projects.filter(p => p.tier === null || p.tier === undefined).length,
   };
 
-  // ── CountUp animation (200ms delay, 600ms duration) ─────────────────────────
+  // Recently active — sorted by lastUpdated asc (smallest = most recently updated)
+  const recentProjects = [...projects]
+    .filter(p => p.lastUpdated !== null && p.lastUpdated !== undefined)
+    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999))
+    .slice(0, 6);
+
+  // Builder spotlight — count activity events in the last 7 days
+  const builderMap = {};
+  (activityLog || []).forEach(ev => {
+    if (!ev.actor_name) return;
+    const days = Math.floor((Date.now() - new Date(ev.created_at).getTime()) / 86400000);
+    if (days > 7) return;
+    builderMap[ev.actor_name] = (builderMap[ev.actor_name] || 0) + 1;
+  });
+  const topBuilders = Object.entries(builderMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => ({ name, count }));
+
+  // Spotlight projects — shuffled once on mount
+  const spotlightProjects = useMemo(() => {
+    if (!projects.length) return [];
+    const arr = [...projects];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, Math.min(arr.length, 10));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dynamic action items (cap at 3)
+  const actionItems = [
+    ...(tierCounts.none > 0 ? [{
+      borderColor: C.mango600, btnBg: C.mango100, btnColor: C.mango600,
+      title: tierCounts.none === 1 ? "1 project needs classification" : `${tierCounts.none} projects need classification`,
+      sub: "Required before they can advance stages",
+      label: "View", action: () => onNavigateGarden?.("list", null),
+    }] : []),
+    ...(myStale.length > 0 ? [{
+      borderColor: C.tomato500, btnBg: C.tomato100, btnColor: C.tomato600,
+      title: `Stale — no update in ${myStale[0].lastUpdated}d`,
+      sub: myStale[0].name,
+      label: "View", action: () => onSelectProject(myStale[0]),
+    }] : []),
+    ...(seedsToClaim.length > 0 ? [{
+      borderColor: C.ubas500, btnBg: C.ubas100, btnColor: C.ubas500,
+      title: `${seedsToClaim.length} seed${seedsToClaim.length > 1 ? "s" : ""} waiting to be claimed`,
+      sub: seedsToClaim[0].title,
+      label: "Claim", action: () => onNavigateWishlist?.(),
+    }] : []),
+  ].slice(0, 3);
+
+  // ── Spotlight timer (tick-based, pauses on hover) ────────────────────────────
+  useEffect(() => {
+    if (!spotlightProjects.length) return;
+    let elapsed = 0;
+    const tick = setInterval(() => {
+      if (spHovRef.current) return;
+      elapsed += 100;
+      setSpProgress(Math.min((elapsed / SPOTLIGHT_MS) * 100, 100));
+      if (elapsed >= SPOTLIGHT_MS) {
+        clearInterval(tick);
+        setSpFading(true);
+        setTimeout(() => {
+          setSpIdx(prev => (prev + 1) % spotlightProjects.length);
+          setSpFading(false);
+          setSpProgress(0);
+        }, 220);
+      }
+    }, 100);
+    return () => clearInterval(tick);
+  }, [spIdx, spotlightProjects.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── CountUp animation ────────────────────────────────────────────────────────
   useEffect(() => {
     const targets = { ...pipeline };
     const steps = 600 / 16;
@@ -1170,7 +1248,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     return () => clearTimeout(t);
   }, []);
 
-  // ── Greeting ─────────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────────
   const hour      = new Date().getHours();
   const greeting  = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = authUser?.firstName?.trim() || authUser?.email?.split("@")[0] || "";
@@ -1188,30 +1266,37 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
   };
 
   const PIPE_CFG = [
-    { key:"seeds",    label:"Seeds",    accent:C.ubas500,        bg:C.ubas100,        border:"#b794f4",     countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
-    { key:"seedling", label:"Seedling", accent:C.mushroom400,    bg:C.mushroom100,    border:C.mushroom300, countColor:C.mushroom700,     nav:()=>onNavigateGarden?.("board","seedling") },
-    { key:"nursery",  label:"Nursery",  accent:C.mango500,       bg:C.mango100,       border:C.mango500,    countColor:C.mango600,        nav:()=>onNavigateGarden?.("board","nursery") },
+    { key:"seeds",    label:"Seeds",    accent:C.ubas500,        bg:C.ubas100,        border:"#b794f4",        countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
+    { key:"seedling", label:"Seedling", accent:C.mushroom400,    bg:C.mushroom100,    border:C.mushroom300,    countColor:C.mushroom700,    nav:()=>onNavigateGarden?.("board","seedling") },
+    { key:"nursery",  label:"Nursery",  accent:C.mango500,       bg:C.mango100,       border:C.mango500,       countColor:C.mango600,       nav:()=>onNavigateGarden?.("board","nursery") },
     { key:"sprout",   label:"Sprout",   accent:C.wintermelon400, bg:C.wintermelon100, border:C.wintermelon400, countColor:C.wintermelon500, nav:()=>onNavigateGarden?.("board","sprout") },
-    { key:"bloom",    label:"Bloom",    accent:C.kangkong400,    bg:C.kangkong50,     border:C.kangkong200, countColor:C.kangkong600,     nav:()=>onNavigateGarden?.("board","bloom") },
-    { key:"thriving", label:"Thriving", accent:C.blueberry500,   bg:C.blueberry100,   border:C.blueberry400,countColor:C.blueberry500,    nav:()=>onNavigateGarden?.("board","thriving") },
+    { key:"bloom",    label:"Bloom",    accent:C.kangkong400,    bg:C.kangkong50,     border:C.kangkong200,    countColor:C.kangkong600,    nav:()=>onNavigateGarden?.("board","bloom") },
+    { key:"thriving", label:"Thriving", accent:C.blueberry500,   bg:C.blueberry100,   border:C.blueberry400,   countColor:C.blueberry500,   nav:()=>onNavigateGarden?.("board","thriving") },
   ];
 
   const sLabel = { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:8 };
 
+  const tierBadgeStyle = (tier) => {
+    const map = { 1:{bg:C.mushroom100,color:C.mushroom700}, 2:{bg:C.blueberry100,color:C.blueberry500}, 3:{bg:C.carrot100,color:C.carrot500} };
+    return map[tier] || null;
+  };
+
   const getActivityText = (ev) => {
     const stagePillStyle = { display:"inline-flex", alignItems:"center", padding:"1px 7px", borderRadius:DS.radius.full, fontSize:10, fontWeight:600, background:STAGE_COLORS[ev.to_stage]?.bg||C.mushroom100, color:STAGE_COLORS[ev.to_stage]?.text||C.mushroom700, border:`0.5px solid ${STAGE_COLORS[ev.to_stage]?.border||C.mushroom300}`, margin:"0 2px" };
-    if (ev.event_type === "stage_moved") return <><strong>{ev.entity_name}</strong> moved to <span style={stagePillStyle}>{STAGE_LABELS[ev.to_stage]||ev.to_stage}</span></>;
-    if (ev.event_type === "project_added") return <>added <strong>{ev.entity_name}</strong> to the garden</>;
-    if (ev.event_type === "seed_planted") return <>planted a seed — <strong>{ev.entity_name}</strong></>;
-    if (ev.event_type === "seed_fulfilled") return <>fulfilled seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "stage_moved")          return <><strong>{ev.entity_name}</strong> moved to <span style={stagePillStyle}>{STAGE_LABELS[ev.to_stage]||ev.to_stage}</span></>;
+    if (ev.event_type === "project_added")        return <>added <strong>{ev.entity_name}</strong> to the garden</>;
+    if (ev.event_type === "seed_planted")         return <>planted a seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "seed_fulfilled")       return <>fulfilled seed — <strong>{ev.entity_name}</strong></>;
     if (ev.event_type === "submitted_for_approval") return <>submitted <strong>{ev.entity_name}</strong> for approval</>;
-    if (ev.event_type === "approved") return <>approved <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "approved")             return <>approved <strong>{ev.entity_name}</strong></>;
     return <>{(ev.event_type||"").replace(/_/g," ")} — <strong>{ev.entity_name}</strong></>;
   };
 
   const feedItems = (activityLog || [])
     .filter(ev => !["deletion_requested","deletion_approved"].includes(ev.event_type))
-    .slice(0, 7);
+    .slice(0, 5);
+
+  const sp = spotlightProjects[spIdx] || null;
 
   return (
     <div style={{ padding:"24px 28px", background:"transparent", minHeight:"100%", overflowY:"auto", fontFamily:FF, position:"relative", zIndex:1 }}>
@@ -1220,12 +1305,8 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18, animation:"fadeUp 0.35s ease both" }}>
         <div>
-          <div style={{ fontSize:19, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em" }}>
-            {greeting}, {firstName}
-          </div>
-          <div style={{ fontSize:12, color:C.mushroom500, marginTop:3 }}>
-            {today} · Here's where the garden stands.
-          </div>
+          <div style={{ fontSize:19, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em" }}>{greeting}, {firstName}</div>
+          <div style={{ fontSize:12, color:C.mushroom500, marginTop:3 }}>{today} · Here's where the garden stands.</div>
         </div>
         {onContribute && (
           <button
@@ -1240,12 +1321,12 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
       </div>
 
       {/* ── 4 Stats ────────────────────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18, animation:"fadeUp 0.35s ease 0.05s both" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:14, animation:"fadeUp 0.35s ease 0.05s both" }}>
         {[
-          { label:"Total projects",  value:projects.length,               sub:"across PH & TH",    accent:C.mushroom300,  textColor:C.mushroom800 },
-          { label:"Live & thriving", value:pipeline.thriving,             sub:"in production",      accent:C.blueberry500, textColor:C.blueberry500 },
-          { label:"Seeds waiting",   value:pipeline.seeds,                sub:"unclaimed ideas",    accent:C.ubas500,      textColor:C.ubas500 },
-          { label:"Need attention",  value:tierCounts.none,               sub:"unclassified",       accent:C.mango600,     textColor:C.mango600 },
+          { label:"Total projects",  value:projects.length,   sub:"across PH & TH", accent:C.mushroom300,  textColor:C.mushroom800 },
+          { label:"Live & thriving", value:pipeline.thriving, sub:"in production",   accent:C.blueberry500, textColor:C.blueberry500 },
+          { label:"Seeds waiting",   value:pipeline.seeds,    sub:"unclaimed ideas", accent:C.ubas500,      textColor:C.ubas500 },
+          { label:"Need attention",  value:tierCounts.none,   sub:"unclassified",    accent:C.mango600,     textColor:C.mango600 },
         ].map(s => (
           <div key={s.label} style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 15px", borderLeft:`3px solid ${s.accent}` }}>
             <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:6 }}>{s.label}</div>
@@ -1258,20 +1339,39 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
       {/* ── Two-column body ─────────────────────────────────────────────── */}
       <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,2.6fr)", gap:14, alignItems:"start" }}>
 
-        {/* ─── LEFT — Personal ─────────────────────────────────────────── */}
+        {/* ─── LEFT ────────────────────────────────────────────────────── */}
         <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.1s both" }}>
 
-          {/* My Garden */}
+          {/* Action items */}
+          {actionItems.length > 0 && (
+            <div>
+              <div style={sLabel}>Action items</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                {actionItems.map((item, i) => (
+                  <div key={i} style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderLeft:`3px solid ${item.borderColor}`, borderRadius:DS.radius.md, padding:"11px 13px", display:"flex", alignItems:"flex-start", gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:C.mushroom900 }}>{item.title}</div>
+                      <div style={{ fontSize:11, color:C.mushroom500, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.sub}</div>
+                    </div>
+                    <button
+                      onClick={item.action}
+                      style={{ fontFamily:FF, fontSize:10, fontWeight:700, background:item.btnBg, color:item.btnColor, border:"none", borderRadius:DS.radius.sm, padding:"4px 10px", cursor:"pointer", flexShrink:0, marginTop:1 }}
+                    >{item.label}</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Your Garden */}
           <div>
             <div style={sLabel}>Your garden</div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
               {myProjects.length === 0 ? (
-                <div style={{ padding:"14px 14px", fontSize:12, color:C.mushroom400 }}>
-                  No plants yet — hit "Add a Plant" to log your first AI project.
-                </div>
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No plants yet — hit "Add a Plant" to log your first AI project.</div>
               ) : myProjects.slice(0,5).map((p, i) => {
                 const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
-                const isStale = p.lastUpdated > 30;
+                const isStale = (p.lastUpdated ?? 0) > 30;
                 return (
                   <div key={p.id}
                     onClick={() => onSelectProject(p)}
@@ -1292,25 +1392,6 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
               })}
             </div>
           </div>
-
-          {/* Classification nudge */}
-          {myUnclassified.length > 0 && (
-            <div style={{ background:C.mango100, border:`1px solid ${C.mango500}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.mango600, marginBottom:4 }}>Classification needed</div>
-              <div style={{ fontSize:11, color:C.mushroom700, lineHeight:1.5 }}>
-                {myUnclassified.length === 1
-                  ? <><strong>{myUnclassified[0].name}</strong> is missing its Tier.</>
-                  : <>{myUnclassified.length} of your projects are missing Tier Classification.</>
-                }{" "}Answer 2 quick questions so they can move forward.
-              </div>
-              <button
-                onClick={() => onSelectProject(myUnclassified[0])}
-                style={{ marginTop:10, padding:"6px 12px", background:C.mango600, border:"none", borderRadius:DS.radius.sm, fontFamily:FF, fontSize:11, fontWeight:700, color:C.white, cursor:"pointer" }}
-              >
-                Go to Classification →
-              </button>
-            </div>
-          )}
 
           {/* Seeds to claim */}
           <div>
@@ -1337,26 +1418,65 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             </div>
           </div>
 
+          {/* Momentum feed */}
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={sLabel}>Momentum</div>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, display:"inline-block", animation:"ovPulse 2s infinite" }}/>
+                <span style={{ fontSize:9, fontWeight:600, color:C.kangkong600, letterSpacing:"0.04em" }}>live</span>
+              </div>
+            </div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {feedItems.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>Activity will appear here as the team makes moves.</div>
+              ) : feedItems.map((ev, i) => {
+                const initials = (ev.actor_name || ev.actor_email || "?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
+                return (
+                  <div key={i} style={{ padding:"9px 13px", borderBottom:i<feedItems.length-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"flex-start", gap:9 }}>
+                    <div style={{ width:26, height:26, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, flexShrink:0, marginTop:1 }}>{initials}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:11, color:C.mushroom800, lineHeight:1.45, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        <strong>{ev.actor_name || (ev.actor_email||"").split("@")[0]}</strong>{" "}{getActivityText(ev)}
+                      </div>
+                      <div style={{ fontSize:10, color:C.mushroom400, marginTop:2 }}>{timeAgo(ev.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
         </div>{/* end left */}
 
-        {/* ─── RIGHT — Org-wide ─────────────────────────────────────────── */}
+        {/* ─── RIGHT ───────────────────────────────────────────────────── */}
         <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.12s both" }}>
+
+          {/* Quick-jump search */}
+          <div
+            onClick={() => onNavigateGarden?.("list", null)}
+            style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"9px 14px", display:"flex", alignItems:"center", gap:10, cursor:"text" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke={C.mushroom400} strokeWidth="1.6"/><path d="M13.5 13.5l3 3" stroke={C.mushroom400} strokeWidth="1.6" strokeLinecap="round"/></svg>
+            <span style={{ fontSize:13, color:C.mushroom300, flex:1, fontFamily:FF }}>Jump to any project…</span>
+            <kbd style={{ fontFamily:FF, fontSize:10, color:C.mushroom400, background:C.mushroom50, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.sm, padding:"2px 6px" }}>⌘K</kbd>
+          </div>
 
           {/* Pipeline strip */}
           <div>
             <div style={sLabel}>Pipeline</div>
             <div style={{ display:"flex", gap:0, alignItems:"stretch" }}>
               {PIPE_CFG.map((t, i) => {
-                const isHov  = hoverPipe === i;
-                const isLast = i === PIPE_CFG.length - 1;
+                const isHov   = hoverPipe === i;
                 const isFirst = i === 0;
+                const isLast  = i === PIPE_CFG.length - 1;
                 return (
                   <React.Fragment key={t.key}>
                     <div
                       onClick={t.nav}
                       onMouseEnter={() => setHoverPipe(i)}
                       onMouseLeave={() => setHoverPipe(null)}
-                      style={{ flex:1, background:isHov?t.accent:t.bg, border:`0.5px solid ${t.border}`, borderRadius: isFirst ? `${DS.radius.md} 0 0 ${DS.radius.md}` : isLast ? `0 ${DS.radius.md} ${DS.radius.md} 0` : 0, padding:"10px 8px", textAlign:"center", cursor:"pointer", transition:"all 0.15s" }}
+                      style={{ flex:1, background:isHov?t.accent:t.bg, border:`0.5px solid ${t.border}`, borderRadius:isFirst?`${DS.radius.md} 0 0 ${DS.radius.md}`:isLast?`0 ${DS.radius.md} ${DS.radius.md} 0`:0, padding:"10px 8px", textAlign:"center", cursor:"pointer", transition:"all 0.15s" }}
                     >
                       <div style={{ fontSize:18, fontWeight:800, color:isHov?C.white:t.countColor }}>{counts[t.key]}</div>
                       <div style={{ fontSize:9, fontWeight:600, color:isHov?"rgba(255,255,255,0.85)":t.countColor, marginTop:2, display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}>
@@ -1375,29 +1495,104 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             </div>
           </div>
 
-          {/* Momentum feed */}
+          {/* Project Spotlight rotator */}
+          {sp && (() => {
+            const sc = STAGE_COLORS[sp.stage] || STAGE_COLORS.seedling;
+            const tb = tierBadgeStyle(sp.tier);
+            const depts = builtForArr(sp.builtFor);
+            const dc = builtForColor(sp.builtFor);
+            return (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <div style={sLabel}>Project spotlight</div>
+                  <span style={{ fontSize:10, color:C.mushroom400 }}>{spIdx + 1} / {spotlightProjects.length}</span>
+                </div>
+                <div
+                  onMouseEnter={() => { spHovRef.current = true; }}
+                  onMouseLeave={() => { spHovRef.current = false; }}
+                  onClick={() => onSelectProject(sp)}
+                  onMouseOver={e => { if (e.currentTarget === e.target || e.currentTarget.contains(e.target)) e.currentTarget.style.boxShadow = DS.shadow.md; }}
+                  onMouseOut={e => { e.currentTarget.style.boxShadow = "none"; }}
+                  style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden", cursor:"pointer", transition:"box-shadow 0.2s" }}
+                >
+                  <div style={{ height:4, background:sc.dot, transition:"background 0.5s" }}/>
+                  <div style={{ height:2, background:C.mushroom100, margin:"0 14px" }}>
+                    <div style={{ height:"100%", width:`${spProgress}%`, background:C.kangkong500, borderRadius:DS.radius.full, transition:"width 0.1s linear" }}/>
+                  </div>
+                  <div style={{ padding:"13px 15px 14px", opacity:spFading?0:1, transition:"opacity 0.22s" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:C.mushroom500, textTransform:"uppercase", letterSpacing:"0.06em" }}>✦ Spotlight</span>
+                      <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{STAGE_LABELS[sp.stage]}</span>
+                    </div>
+                    <div style={{ fontSize:15, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:6, letterSpacing:"-0.01em" }}>{sp.name}</div>
+                    <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:10 }}>
+                      {sp.description || sp.problemSpace || "An AI initiative by the Sprout team."}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap" }}>
+                      {depts.slice(0,2).map(d => (
+                        <span key={d} style={{ fontSize:10, fontWeight:600, background:dc.bg||C.mushroom100, color:dc.text||C.mushroom600, borderRadius:DS.radius.full, padding:"2px 8px" }}>{d}</span>
+                      ))}
+                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"2px 8px" }}>T{sp.tier}</span>}
+                      <span style={{ fontSize:10, color:C.mushroom400, marginLeft:"auto" }}>by {sp.builder || "Sprout team"}</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
+                      <div style={{ display:"flex", gap:5 }}>
+                        {spotlightProjects.map((_, di) => (
+                          <div
+                            key={di}
+                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); setSpProgress(0); }, 220); }}
+                            style={{ width:di===spIdx?18:6, height:6, borderRadius:DS.radius.full, background:di===spIdx?C.kangkong500:C.mushroom200, transition:"all 0.3s", cursor:"pointer" }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display:"flex", gap:4 }}>
+                        {[{ dir:-1, d:"M6 2L3 5l3 3" }, { dir:1, d:"M4 2l3 3-3 3" }].map(({ dir, d }) => (
+                          <button
+                            key={dir}
+                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); setSpProgress(0); }, 220); }}
+                            style={{ width:24, height:24, borderRadius:DS.radius.sm, border:`0.5px solid ${C.mushroom200}`, background:C.mushroom50, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d={d} stroke={C.mushroom700} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Recently Active — list */}
           <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={sLabel}>Recent momentum</div>
-              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, display:"inline-block", animation:"ovPulse 2s infinite" }}/>
-                <span style={{ fontSize:9, fontWeight:600, color:C.kangkong600, letterSpacing:"0.04em" }}>live</span>
-              </div>
+              <div style={sLabel}>Recently active</div>
+              <span onClick={() => onNavigateGarden?.("list", null)} style={{ fontSize:11, color:C.mushroom500, cursor:"pointer" }}>View all →</span>
             </div>
             <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
-              {feedItems.length === 0 ? (
-                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>Activity will appear here as the team makes moves.</div>
-              ) : feedItems.map((ev, i) => {
-                const initials = (ev.actor_name || ev.actor_email || "?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
+              {recentProjects.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No project activity yet.</div>
+              ) : recentProjects.map((p, i) => {
+                const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+                const tb = tierBadgeStyle(p.tier);
                 return (
-                  <div key={i} style={{ padding:"10px 14px", borderBottom:i<feedItems.length-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"flex-start", gap:10, animation:`slideIn 0.25s ease ${Math.min(i,6)*0.04}s both` }}>
-                    <div style={{ width:28, height:28, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, flexShrink:0, marginTop:1 }}>{initials}</div>
+                  <div key={p.id}
+                    onClick={() => onSelectProject(p)}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                    style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderBottom:i<recentProjects.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                  >
+                    <div style={{ width:4, minHeight:36, borderRadius:DS.radius.full, background:sc.dot, flexShrink:0 }}/>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:12, color:C.mushroom800, lineHeight:1.45 }}>
-                        <strong>{ev.actor_name || (ev.actor_email||"").split("@")[0]}</strong>{" "}
-                        {getActivityText(ev)}
+                      <div style={{ fontSize:13, fontWeight:600, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:C.mushroom500, marginTop:2, display:"flex", alignItems:"center", gap:6 }}>
+                        {builtForArr(p.builtFor)[0] && <><span>{builtForArr(p.builtFor)[0]}</span><span style={{ color:C.mushroom200 }}>·</span></>}
+                        <span>{p.lastUpdated === 0 ? "Updated today" : `Updated ${p.lastUpdated}d ago`}</span>
                       </div>
-                      <div style={{ fontSize:10, color:C.mushroom400, marginTop:3 }}>{timeAgo(ev.created_at)}</div>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                      <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px" }}>{STAGE_LABELS[p.stage]}</span>
+                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"1px 7px" }}>T{p.tier}</span>}
                     </div>
                   </div>
                 );
@@ -1405,26 +1600,61 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             </div>
           </div>
 
-          {/* Bottom 2-col: Tools + Tier */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          {/* Bottom 3-col: Builder Spotlight | Top Tools | Tier Breakdown */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+
+            {/* Builder spotlight */}
+            <div>
+              <div style={sLabel}>Builder spotlight</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px" }}>
+                {topBuilders.length === 0 ? (
+                  <div style={{ fontSize:11, color:C.mushroom400 }}>No activity this week yet.</div>
+                ) : (
+                  <>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:11 }}>
+                      <span style={{ fontSize:13 }}>🏆</span>
+                      <span style={{ fontSize:10, fontWeight:700, color:C.mushroom500, textTransform:"uppercase", letterSpacing:"0.06em" }}>This week</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:11 }}>
+                      <div style={{ width:34, height:34, borderRadius:"50%", background:C.mango100, border:`2px solid ${C.gold}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:"#744210", flexShrink:0 }}>{getInitials(topBuilders[0].name)}</div>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:700, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{topBuilders[0].name}</div>
+                        <div style={{ fontSize:11, color:C.mushroom500 }}>{topBuilders[0].count} event{topBuilders[0].count !== 1 ? "s" : ""} this week</div>
+                      </div>
+                    </div>
+                    {topBuilders.length > 1 && (
+                      <div style={{ display:"flex", flexDirection:"column", gap:6, paddingTop:9, borderTop:`0.5px solid ${C.mushroom100}` }}>
+                        {topBuilders.slice(1).map(b => (
+                          <div key={b.name} style={{ display:"flex", alignItems:"center", gap:7 }}>
+                            <div style={{ width:22, height:22, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:700, flexShrink:0 }}>{getInitials(b.name)}</div>
+                            <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
+                            <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0 }}>{b.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
 
             {/* Top tools */}
             <div>
               <div style={sLabel}>Top tools</div>
-              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px" }}>
                 {toolCounts.length === 0 ? (
                   <div style={{ fontSize:11, color:C.mushroom400 }}>No tool data yet.</div>
                 ) : (() => {
                   const maxT = toolCounts[0]?.count || 1;
                   return (
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
                       {toolCounts.slice(0,5).map(({ tool, count }) => (
                         <div key={tool} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontSize:11, fontWeight:500, color:C.mushroom800, width:80, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
-                          <div style={{ flex:1, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
+                          <span style={{ fontSize:11, fontWeight:500, color:C.mushroom800, width:72, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
+                          <div style={{ flex:1, height:5, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
                             <div style={{ height:"100%", width:barsReady?`${(count/maxT)*100}%`:0, background:C.kangkong500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
                           </div>
-                          <span style={{ fontSize:11, color:C.mushroom500, width:20, textAlign:"right", flexShrink:0 }}>{count}</span>
+                          <span style={{ fontSize:10, color:C.mushroom500, width:20, textAlign:"right", flexShrink:0 }}>{count}</span>
                         </div>
                       ))}
                     </div>
@@ -1436,11 +1666,11 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
             {/* Tier breakdown */}
             <div>
               <div style={sLabel}>Tier breakdown</div>
-              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px", display:"flex", flexDirection:"column", gap:9 }}>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px", display:"flex", flexDirection:"column", gap:9 }}>
                 {[
-                  { label:"Tier 1 — Static",   count:tierCounts[1], bg:C.mushroom100, color:C.mushroom700, border:C.mushroom300 },
-                  { label:"Tier 2 — App",       count:tierCounts[2], bg:C.blueberry100,color:C.blueberry500,border:C.blueberry400 },
-                  { label:"Tier 3 — External",  count:tierCounts[3], bg:C.carrot100,   color:C.carrot500,  border:C.carrot500 },
+                  { label:"Tier 1 — Static",  count:tierCounts[1], bg:C.mushroom100,  color:C.mushroom700,  border:C.mushroom300 },
+                  { label:"Tier 2 — App",      count:tierCounts[2], bg:C.blueberry100, color:C.blueberry500, border:C.blueberry400 },
+                  { label:"Tier 3 — External", count:tierCounts[3], bg:C.carrot100,    color:C.carrot500,    border:C.carrot500 },
                 ].map(t => (
                   <div key={t.label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <span style={{ fontSize:11, fontWeight:600, background:t.bg, color:t.color, border:`0.5px solid ${t.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{t.label}</span>
@@ -1456,7 +1686,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
               </div>
             </div>
 
-          </div>{/* end bottom 2-col */}
+          </div>{/* end bottom 3-col */}
 
         </div>{/* end right */}
 
