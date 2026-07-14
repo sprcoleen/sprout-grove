@@ -4,8 +4,6 @@ import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, f
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
 import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
-import { notifyProjectCreated, notifySupportRequested } from "./lib/gchat.js";
-
 // ── Sprout Design System Tokens ───────────────────────────────────────────────
 const DS = {
   colors: {
@@ -42,6 +40,49 @@ const C = DS.colors;
 // ── Country constants ─────────────────────────────────────────────────────────
 const COUNTRY_MAP  = {"sprout.ph":"PH", "sproutsolutions.io":"TH"};
 const JIRA_BOARD_URL = "https://sprouthq.atlassian.net/jira/software/c/projects/DEV/boards/233";
+
+// ── Google Chat notifications ─────────────────────────────────────────────────
+function gchatTierLine(tier) {
+  if (tier === 1) return "• Tier: T1 — Static/Internal\n• Support: No Groundskeeper needed — owner uploads to Markup directly.";
+  if (tier === 2) return "• Tier: T2 — Internal App\n• Support: Groundskeeper team (Coleen, Blaise, Nikki, Raffy). IS/Execom approval required.";
+  if (tier === 3) return "• Tier: T3 — External-Facing\n• Support: Groundskeeper team (Coleen, Blaise, Nikki, Raffy). IS/Execom approval + DPO/privacy review required.";
+  return "• Tier: Unclassified — owner should complete classification.";
+}
+function notifyProjectCreated(project) {
+  const url = import.meta.env.VITE_GOOGLE_CHAT_WEBHOOK_URL;
+  if (!url) return;
+  const stageLabel = { seedling:"Seedling", nursery:"Nursery", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving" };
+  const dept = Array.isArray(project.builtFor) ? project.builtFor.join(", ") : (project.builtFor || "—");
+  const text = [
+    "🌱 *New project added on Grove*", "",
+    `*${project.name}* was added by ${project.builder || project.builderEmail}.`,
+    `• Stage: ${stageLabel[project.stage] || project.stage || "—"}`,
+    `• Department: ${dept}`,
+    gchatTierLine(project.tier),
+  ].join("\n");
+  fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ text }) })
+    .catch(e => console.warn("gchat notify failed:", e));
+}
+function notifySupportRequested({ projectName, requestedBy, tier, jiraTicketKey }) {
+  const url = import.meta.env.VITE_GOOGLE_CHAT_WEBHOOK_URL;
+  if (!url) return;
+  const tierLabels = { 1:"T1 — Static/Internal", 2:"T2 — Internal App", 3:"T3 — External-Facing" };
+  const handler = tier === 1
+    ? "No Groundskeeper needed for T1 projects."
+    : tier === 2 || tier === 3
+      ? "Groundskeeper team (Coleen, Blaise, Nikki, Raffy)"
+      : "Unclassified — classify the project first.";
+  const lines = [
+    "🔧 *Setup support requested on Grove*", "",
+    `*${projectName}* needs infrastructure setup.`,
+    `• Requested by: ${requestedBy}`,
+    `• Tier: ${tierLabels[tier] || "Unclassified"}`,
+    `• Who handles: ${handler}`,
+  ];
+  if (jiraTicketKey) lines.push(`• Jira: ${jiraTicketKey}`);
+  fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ text: lines.join("\n") }) })
+    .catch(e => console.warn("gchat notify failed:", e));
+}
 
 // Inline SVG flag — no emoji, no external images, renders everywhere
 const FlagPH = ({w=24,h=16}) => (
