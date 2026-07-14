@@ -1193,6 +1193,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
   const builderMap = {};
   (activityLog || []).forEach(ev => {
     if (!ev.actor_name) return;
+    if (ev.actor_email === "cbasis@sprout.ph") return;
     const days = Math.floor((Date.now() - new Date(ev.created_at).getTime()) / 86400000);
     if (days > 7) return;
     builderMap[ev.actor_name] = (builderMap[ev.actor_name] || 0) + 1;
@@ -1205,7 +1206,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
   // Spotlight projects — shuffled once on mount
   const spotlightProjects = useMemo(() => {
     if (!projects.length) return [];
-    const arr = [...projects];
+    const arr = projects.filter(p => p.builderEmail !== "cbasis@sprout.ph");
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -1310,6 +1311,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
 
   const feedItems = (activityLog || [])
     .filter(ev => !["deletion_requested","deletion_approved"].includes(ev.event_type))
+    .filter(ev => ev.actor_email !== "cbasis@sprout.ph")
     .slice(0, 5);
 
   const sp = spotlightProjects[spIdx] || null;
