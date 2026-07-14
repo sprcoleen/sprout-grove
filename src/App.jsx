@@ -1206,7 +1206,7 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
   // Spotlight projects — shuffled once on mount
   const spotlightProjects = useMemo(() => {
     if (!projects.length) return [];
-    const arr = projects.filter(p => p.builderEmail !== "cbasis@sprout.ph");
+    const arr = [...projects];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
