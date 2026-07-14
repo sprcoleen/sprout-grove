@@ -3948,6 +3948,7 @@ const ProjectDetailPage = ({
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
   onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
   devopsRequests, pendingDeleteIds,
+  justCreated = false, onDismissCreated,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -4376,6 +4377,25 @@ const ProjectDetailPage = ({
         <TierBadge tier={project.tier} size="lg"/>
         <div style={{flex:1}}/>
       </div>
+
+      {/* Just-created banner */}
+      {justCreated && (
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 24px", background:C.kangkong500, flexShrink:0 }}>
+          <svg width={18} height={18} viewBox="0 0 18 18" fill="none" style={{flexShrink:0}}>
+            <circle cx="9" cy="9" r="8.5" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)"/>
+            <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div style={{ flex:1 }}>
+            <span style={{ fontFamily:FF, fontSize:13, fontWeight:700, color:C.white }}>Project created! </span>
+            <span style={{ fontFamily:FF, fontSize:13, color:"rgba(255,255,255,0.85)" }}>Add a description, tools used, and demo link below so your team can discover it.</span>
+          </div>
+          <button
+            onClick={onDismissCreated}
+            style={{ background:"none", border:"none", cursor:"pointer", padding:"2px 4px", color:"rgba(255,255,255,0.7)", fontFamily:FF, fontSize:18, lineHeight:1, flexShrink:0 }}
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+      )}
 
       {/* Sidebar + main content */}
       <div style={{flex:1,display:"flex",flexDirection:"row",alignItems:"flex-start",padding:"0"}}>
@@ -8790,6 +8810,7 @@ export default function SproutAIGarden() {
   const [detailProject, setDetailProject] = useState(null);
   const [showContribute, setShowContribute] = useState(false);
   const [contributeInitialFlow, setContributeInitialFlow] = useState(null);
+  const [justCreatedId, setJustCreatedId] = useState(null);
 
   const [editingProject, setEditingProject] = useState(null);
   const [gardenNav, setGardenNav] = useState({key:0, viewMode:"grouped", stageFilter:"All"});
@@ -9312,6 +9333,7 @@ export default function SproutAIGarden() {
     notifyProjectCreated(saved);
     setShowContribute(false);
     setContributeInitialFlow(null);
+    setJustCreatedId(saved.id);
     setDetailProject(saved);
     setView("project-detail");
   };
@@ -10033,7 +10055,9 @@ export default function SproutAIGarden() {
               project={visibleProjects.find(p=>p.id===detailProject.id)||detailProject}
               allProjects={visibleProjects}
               authUser={authUser}
-              onBack={()=>{setView("garden");setDetailProject(null);}}
+              onBack={()=>{setView("garden");setDetailProject(null);setJustCreatedId(null);}}
+              justCreated={justCreatedId === detailProject?.id}
+              onDismissCreated={() => setJustCreatedId(null)}
               onNote={addNote}
               onUpdateProject={handleUpdateProject}
               onViewRelated={r=>{setDetailProject(r);}}
