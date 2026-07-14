@@ -4,6 +4,7 @@ import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, f
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
 import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
+import { notifyProjectCreated, notifySupportRequested } from "./lib/gchat.js";
 
 // ── Sprout Design System Tokens ───────────────────────────────────────────────
 const DS = {
@@ -8014,6 +8015,7 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
       remarks:      notes,
       status:       'todo',
       country:      project.country,
+      tier,
     });
     if (res?.ok && onSaveProject) {
       const toArr = s => s.split(',').map(x=>x.trim()).filter(Boolean);
@@ -9060,6 +9062,12 @@ export default function SproutAIGarden() {
     const { data, error } = await supabase.from("devops_requests").insert(fromDevopsRequest({ ...req, jiraTicketKey })).select().single();
     if (error) { console.error("createDevopsRequest:", error); return { ok: false, message: error.message }; }
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
+    notifySupportRequested({
+      projectName:  req.projectName,
+      requestedBy:  authUser?.displayName || req.requestedBy,
+      tier:         req.tier ?? null,
+      jiraTicketKey,
+    });
     return { ok: true, jiraTicketKey };
   };
 
@@ -9214,6 +9222,7 @@ export default function SproutAIGarden() {
     const saved = toProject(data);
     setProjects(prev => [saved, ...prev]);
     logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
+    notifyProjectCreated(saved);
     return saved;
   };
 
@@ -9256,6 +9265,7 @@ export default function SproutAIGarden() {
     const saved = toProject(data);
     setProjects(prev => [saved, ...prev]);
     logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
+    notifyProjectCreated(saved);
     setShowContribute(false);
     setContributeInitialFlow(null);
     setDetailProject(saved);
