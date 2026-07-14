@@ -6218,6 +6218,9 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
   const [aiOverlapChecked, setAiOverlapChecked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Must be at top level — used inside the flow === "plant" branch
+  const [forExpanded, setForExpanded] = React.useState(false);
+
   // Tier computation (derived from yes/no answers)
   const plantTier =
     plant.hasBackend === null || plant.targetUsers === null ? null :
@@ -6355,7 +6358,6 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
     };
     const FOR_VISIBLE = ["Marketing","CSM","Engineering","Data","PeopleOps","RevOps","All Teams"];
     const FOR_HIDDEN  = Object.keys(DEPT_ZONES).filter(d => !FOR_VISIBLE.includes(d));
-    const [forExpanded, setForExpanded] = React.useState(false);
     const ToggleBtn = ({ active, onClick, children }) => (
       <button type="button" onClick={onClick} style={{
         padding:"7px 14px", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:600,
