@@ -6496,7 +6496,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
             }}>
               {plantStarting
                 ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</span> Creating…</>
-                : <>Open Details Form →</>
+                : <>Submit and Continue →</>
               }
             </button>
           </div>
@@ -8818,6 +8818,7 @@ export default function SproutAIGarden() {
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
   const isPopNavRef    = useRef(false); // true while syncing state from a popstate event
+  const urlInitEmailRef = useRef(null); // email of the user who last ran URL→state init
   const [gateToast, setGateToast] = useState(null); // { message, reason } | null
   const [deleteRequests, setDeleteRequests] = useState([]);
   const [deleteReqModal, setDeleteReqModal] = useState(null); // { entity, entityType } | null
@@ -9039,9 +9040,11 @@ export default function SproutAIGarden() {
     }
   };
 
-  // ── URL → state: read params on initial load ──────────────────────────────
+  // ── URL → state: read params on initial load (once per login session) ────
   useEffect(() => {
     if (!authUser || projects.length === 0) return;
+    if (urlInitEmailRef.current === authUser.email) return;
+    urlInitEmailRef.current = authUser.email;
     applyUrlToState(new URLSearchParams(window.location.search));
   }, [authUser?.email, projects.length]);
 
