@@ -6165,6 +6165,8 @@ const TooltipLabel = ({tooltip}) => {
 
 // ── ContributeModal ────────────────────────────────────────────────────────────
 const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projects, authUser, initialFlow=null}) => {
+  const PLANT_DEPTS = Object.keys(DEPT_ZONES);
+
   const [flow, setFlow] = React.useState(initialFlow);
   const [step, setStep] = React.useState(1);
   const [gatewayChoice, setGatewayChoice] = React.useState(null);
@@ -6176,7 +6178,6 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
   const [plantTargetUsers, setPlantTargetUsers] = React.useState(null);
 
   // Plant form
-  const PLANT_DEPTS = Object.keys(DEPT_ZONES);
   const [plant, setPlantRaw] = React.useState({
     name:"", builtBy:PLANT_DEPTS[0], builtFor:[], stage:"seedling",
     aiAssistant:[], aiAssistantOther:"",
