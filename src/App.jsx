@@ -8516,19 +8516,23 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
     };
     const headers = [
       "Name","Stage","Country","Tier","Builder","Builder Email","Department",
-      "Description","Demo Link","GitHub Repo","Tools Used","Agentic Frameworks",
+      "Description","Demo Link","GitHub Repo",
+      "AI Tools Used","Agentic Frameworks","Data Sources",
+      "Hosting","Database","Auth Type","Version Control","Builder Tools",
       "Requires Auth","Has Database","Connects Sprout DB","Sends to External AI",
       "Data Sensitivity","Last Updated",
     ];
+    const arr2str = v => (Array.isArray(v) ? v : v ? [v] : []).join("; ");
+    const bool2str = v => v === true ? "Yes" : v === false ? "No" : "";
     const rows = projects.map(p => [
       p.name, p.stage, p.country, TIER_LABEL[p.tier] || "Unclassified",
       p.builder, p.builderEmail, p.builtBy,
       p.description, p.demoLink, p.githubRepo,
-      (p.toolUsed || []).join("; "), (p.agenticFramework || []).join("; "),
-      p.requiresAuth === true ? "Yes" : p.requiresAuth === false ? "No" : "",
-      p.hasDatabase  === true ? "Yes" : p.hasDatabase  === false ? "No" : "",
-      p.connectsSproutDb === true ? "Yes" : p.connectsSproutDb === false ? "No" : "",
-      p.sendsToExternalAI === true ? "Yes" : p.sendsToExternalAI === false ? "No" : "",
+      arr2str(p.toolUsed), arr2str(p.agenticFramework), arr2str(p.dataSources),
+      arr2str(p.hosting), arr2str(p.database), arr2str(p.authType),
+      arr2str(p.versionControl), arr2str(p.builderTools),
+      bool2str(p.requiresAuth), bool2str(p.hasDatabase),
+      bool2str(p.connectsSproutDb), bool2str(p.sendsToExternalAI),
       p.dataSensitivity || "",
       p.lastUpdatedAt ? new Date(p.lastUpdatedAt).toLocaleDateString("en-PH") : "",
     ].map(esc));
