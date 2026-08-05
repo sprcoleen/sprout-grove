@@ -8592,22 +8592,10 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
       <div style={{marginBottom:24}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
           <IcoAdmin size={28} color={"#805ad5"}/>
-          <div style={{flex:1}}>
+          <div>
             <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1.1}}>Admin Dashboard</div>
             <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Release Manager · RTE view · {authUser?.displayName}</div>
           </div>
-          <button onClick={exportProjectsCSV} style={{
-            display:"flex",alignItems:"center",gap:6,padding:"8px 14px",
-            background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,
-            cursor:"pointer",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,
-            boxShadow:DS.shadow.sm,transition:"all 0.15s",flexShrink:0,
-          }}
-            onMouseEnter={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.borderColor=C.mushroom300;}}
-            onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.mushroom200;}}
-          >
-            <svg width={14} height={14} viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke={C.mushroom600} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Export CSV
-          </button>
         </div>
 
         {/* Summary stats */}
@@ -8627,16 +8615,30 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
           ))}
         </div>
 
-        {/* Tab bar */}
-        <div style={{display:"flex",gap:2,background:C.mushroom100,borderRadius:DS.radius.lg,padding:3,alignSelf:"flex-start",width:"fit-content"}}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
-              padding:"7px 18px",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,borderRadius:DS.radius.md,transition:"all 0.15s",
-              background:activeTab===t.id?C.white:"transparent",
-              color:activeTab===t.id?C.mushroom900:C.mushroom500,
-              boxShadow:activeTab===t.id?DS.shadow.sm:"none",
-            }}>{t.label}</button>
-          ))}
+        {/* Tab bar + Export */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",gap:2,background:C.mushroom100,borderRadius:DS.radius.lg,padding:3}}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                padding:"7px 18px",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,borderRadius:DS.radius.md,transition:"all 0.15s",
+                background:activeTab===t.id?C.white:"transparent",
+                color:activeTab===t.id?C.mushroom900:C.mushroom500,
+                boxShadow:activeTab===t.id?DS.shadow.sm:"none",
+              }}>{t.label}</button>
+            ))}
+          </div>
+          <button onClick={exportProjectsCSV} style={{
+            display:"flex",alignItems:"center",gap:6,padding:"8px 14px",
+            background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,
+            cursor:"pointer",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,
+            boxShadow:DS.shadow.sm,transition:"all 0.15s",
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.borderColor=C.mushroom300;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.mushroom200;}}
+          >
+            <svg width={14} height={14} viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke={C.mushroom600} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Export CSV
+          </button>
         </div>
       </div>
 
