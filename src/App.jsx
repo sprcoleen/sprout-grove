@@ -8507,6 +8507,40 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
     [p.requiresAuth, p.externalAccess, p.hasSensitiveData, p.sendsToExternalAI, p.storesUserInputs]
       .every(v => v !== null && v !== undefined);
 
+  const exportProjectsCSV = () => {
+    const TIER_LABEL = { 1: "T1 – Static/Internal", 2: "T2 – Internal App", 3: "T3 – External-Facing" };
+    const esc = v => {
+      if (v === null || v === undefined) return "";
+      const s = Array.isArray(v) ? v.join("; ") : String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = [
+      "Name","Stage","Country","Tier","Builder","Builder Email","Department",
+      "Description","Demo Link","GitHub Repo","Tools Used","Agentic Frameworks",
+      "Requires Auth","Has Database","Connects Sprout DB","Sends to External AI",
+      "Data Sensitivity","Last Updated",
+    ];
+    const rows = projects.map(p => [
+      p.name, p.stage, p.country, TIER_LABEL[p.tier] || "Unclassified",
+      p.builder, p.builderEmail, p.builtBy,
+      p.description, p.demoLink, p.githubRepo,
+      (p.toolUsed || []).join("; "), (p.agenticFramework || []).join("; "),
+      p.requiresAuth === true ? "Yes" : p.requiresAuth === false ? "No" : "",
+      p.hasDatabase  === true ? "Yes" : p.hasDatabase  === false ? "No" : "",
+      p.connectsSproutDb === true ? "Yes" : p.connectsSproutDb === false ? "No" : "",
+      p.sendsToExternalAI === true ? "Yes" : p.sendsToExternalAI === false ? "No" : "",
+      p.dataSensitivity || "",
+      p.lastUpdatedAt ? new Date(p.lastUpdatedAt).toLocaleDateString("en-PH") : "",
+    ].map(esc));
+    const csv = [headers.map(esc).join(","), ...rows.map(r => r.join(","))].join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `grove-projects-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleNudge = async (ids) => {
     setNudgeSending(true);
     const targets = unclassified.filter(p => ids.has(String(p.id)));
@@ -8558,10 +8592,22 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
       <div style={{marginBottom:24}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
           <IcoAdmin size={28} color={"#805ad5"}/>
-          <div>
+          <div style={{flex:1}}>
             <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1.1}}>Admin Dashboard</div>
             <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Release Manager · RTE view · {authUser?.displayName}</div>
           </div>
+          <button onClick={exportProjectsCSV} style={{
+            display:"flex",alignItems:"center",gap:6,padding:"8px 14px",
+            background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,
+            cursor:"pointer",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,
+            boxShadow:DS.shadow.sm,transition:"all 0.15s",flexShrink:0,
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.borderColor=C.mushroom300;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.mushroom200;}}
+          >
+            <svg width={14} height={14} viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke={C.mushroom600} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Export CSV
+          </button>
         </div>
 
         {/* Summary stats */}
