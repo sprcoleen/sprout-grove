@@ -9014,7 +9014,7 @@ export default function SproutAIGarden() {
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin, scopes: "profile email" },
+      options: { redirectTo: window.location.href, scopes: "profile email" },
     });
     // If error (e.g. provider not enabled), surface it and unblock
     if (error) {
