@@ -1,627 +1,705 @@
 /**
  * src/guide/ProcessFlowGuide.jsx
- * Stage Gate & Review Queue — Process Flow page for the Grove Guide section.
+ * Grove Developer Guide — single-page layout with left sidebar nav.
  * Receives design-system tokens (C, FF, DS) as props from GuideView in App.jsx.
  */
-import React from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 
 export default function ProcessFlowGuide({ C, FF, DS }) {
-  const Section = ({ title, icon, children, id }) => (
-    <div id={id} style={{ marginBottom: 40 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
-        <div style={{ fontFamily: FF, fontSize: 20, fontWeight: 800, color: C.mushroom900 }}>{title}</div>
-      </div>
-      {children}
+  const PURPLE    = "#805ad5";
+  const PURPLE_BG = "#faf5ff";
+  const PURPLE_BD = "#c4b5fd";
+  const TEAL      = "#2c7a7b";
+  const TEAL_BG   = "#e6fffa";
+  const TEAL_BD   = "#38b2ac";
+  const BLUE_TEXT = "#2c5282";
+  const OG_TEXT   = "#7b341e";
+
+  const [activeSection, setActiveSection] = useState("overview");
+  const scrollContainerRef = useRef(null);
+
+  // ── Section refs for smooth scroll ────────────────────────────────────────
+  const refs = {
+    overview:  useRef(null),
+    start:     useRef(null),
+    classify:  useRef(null),
+    standards: useRef(null),
+    register:  useRef(null),
+    golive:    useRef(null),
+    tips:      useRef(null),
+  };
+
+  const NAV_KEYS = ["overview","start","classify","standards","register","golive","tips"];
+
+  const scrollTo = (key) => {
+    const el = refs[key]?.current;
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const offset = elRect.top - containerRect.top + container.scrollTop - 24;
+    container.scrollTo({ top: offset, behavior: "smooth" });
+  };
+
+  const onScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const scrollTop = container.scrollTop + 80;
+    let current = "overview";
+    for (const key of NAV_KEYS) {
+      const el = refs[key]?.current;
+      if (el && el.offsetTop - container.offsetTop <= scrollTop) current = key;
+    }
+    setActiveSection(current);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
+
+  const NAV = [
+    { key: "overview",  label: "Overview",         num: "1" },
+    { key: "start",     label: "Getting started",  num: "2" },
+    { key: "classify",  label: "Classify",         num: "3" },
+    { key: "standards", label: "Dev standards",    num: "4" },
+    { key: "register",  label: "Register",         num: "5" },
+    { key: "golive",    label: "Go-live & Review", num: "6" },
+    { key: "tips",      label: "Tips & Gotchas",   num: "7" },
+  ];
+
+  // ── Shared primitives ──────────────────────────────────────────────────────
+
+  const Pill = ({ label, color, bg, border }) => (
+    <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, padding: "2px 9px",
+      borderRadius: DS.radius.full, border: "1px solid " + border, background: bg, color, whiteSpace: "nowrap" }}>
+      {label}
+    </span>
+  );
+
+  const Alert = ({ title, body, color, bg, border }) => (
+    <div style={{ background: bg, border: "0.5px solid " + border, borderRadius: DS.radius.md,
+      padding: "10px 14px", marginBottom: 10, fontSize: 12, lineHeight: 1.55, color, fontFamily: FF }}>
+      {title && <div style={{ fontWeight: 700, marginBottom: 3 }}>{title}</div>}
+      <div dangerouslySetInnerHTML={{ __html: body }} />
     </div>
+  );
+
+  const SectionLabel = ({ children, pill }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+      {pill}
+      <span style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+        letterSpacing: "0.07em", color: C.mushroom400 }}>{children}</span>
+      <div style={{ flex: 1, height: 0.5, background: C.mushroom200 }} />
+    </div>
+  );
+
+  const SecH = ({ num, children, sectionRef }) => (
+    <div ref={sectionRef} style={{ display: "flex", alignItems: "center", gap: 10,
+      marginBottom: 18, paddingTop: 4 }}>
+      <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.mushroom900,
+        color: C.white, display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: FF, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{num}</div>
+      <div style={{ fontFamily: FF, fontSize: 19, fontWeight: 800, color: C.mushroom900 }}>{children}</div>
+    </div>
+  );
+
+  const SubH = ({ children }) => (
+    <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 700, color: C.mushroom900,
+      marginBottom: 10, marginTop: 20 }}>{children}</div>
+  );
+
+  const Divider = () => (
+    <div style={{ height: 0.5, background: C.mushroom200, margin: "32px 0" }} />
   );
 
   const Card = ({ children, bg = C.white, border = C.mushroom200, style = {} }) => (
-    <div style={{ background: bg, border: "1px solid " + border, borderRadius: DS.radius.xl, padding: "20px 24px", boxShadow: DS.shadow.sm, ...style }}>
-      {children}
+    <div style={{ background: bg, border: "1px solid " + border, borderRadius: DS.radius.xl,
+      padding: "18px 20px", boxShadow: DS.shadow.sm, ...style }}>{children}</div>
+  );
+
+  const ReviewCard = ({ initials, name, role, avatarBg, avatarColor, bullets, tierPills }) => (
+    <div style={{ background: C.white, border: "1px solid " + C.mushroom200,
+      borderRadius: DS.radius.lg, padding: 14 }}>
+      <div style={{ width: 34, height: 34, borderRadius: "50%", background: avatarBg,
+        color: avatarColor, display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{initials}</div>
+      <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.mushroom900, marginBottom: 2 }}>{name}</div>
+      <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom400, fontStyle: "italic", marginBottom: 8 }}>{role}</div>
+      {tierPills && <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>{tierPills}</div>}
+      {bullets.map((b, i) => (
+        <div key={i} style={{ display: "flex", gap: 5, alignItems: "flex-start", marginBottom: 3 }}>
+          <span style={{ color: C.mushroom400, flexShrink: 0, fontSize: 11 }}>→</span>
+          <span style={{ fontFamily: FF, fontSize: 11, color: C.mushroom600, lineHeight: 1.4 }}>{b}</span>
+        </div>
+      ))}
     </div>
   );
 
-  const Badge = ({ label, color, bg, border }) => (
-    <span style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, color, background: bg, border: "1px solid " + border, borderRadius: DS.radius.full, padding: "2px 10px", whiteSpace: "nowrap" }}>
-      {label}
-    </span>
+  const Step = ({ num, numColor, numBg, numBd, title, body }) => (
+    <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 10 }}>
+      <div style={{ width: 30, height: 30, borderRadius: "50%", background: numBg,
+        border: "2px solid " + numBd, display: "flex", alignItems: "center",
+        justifyContent: "center", fontFamily: FF, fontSize: 13, fontWeight: 800,
+        color: numColor, flexShrink: 0, marginTop: 2 }}>{num}</div>
+      <div style={{ flex: 1, background: numBg, border: "1px solid " + numBd,
+        borderRadius: DS.radius.lg, padding: "13px 16px" }}>
+        <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.mushroom900, marginBottom: 4 }}>{title}</div>
+        <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom600, lineHeight: 1.6 }}
+          dangerouslySetInnerHTML={{ __html: body }} />
+      </div>
+    </div>
   );
 
-  const TierBadge = ({ tier }) => {
-    const map = {
-      1: { label: "Tier 1 — Low Risk",    color: C.mushroom700, bg: C.mushroom50,   border: C.mushroom300 },
-      2: { label: "Tier 2 — Medium Risk", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400 },
-      3: { label: "Tier 3 — High Risk",   color: C.carrot500,   bg: C.carrot100,    border: C.carrot500 },
-    };
-    const t = map[tier];
-    return <Badge label={t.label} color={t.color} bg={t.bg} border={t.border} />;
-  };
-
-  const StatusTag = ({ label, color, bg }) => (
-    <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color, background: bg, borderRadius: DS.radius.full, padding: "2px 8px" }}>
-      {label}
-    </span>
+  const CheckItem = ({ label, sub, border = C.mushroom200 }) => (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+      border: "1px solid " + border, borderRadius: DS.radius.md, background: C.white, marginBottom: 7 }}>
+      <div style={{ width: 16, height: 16, border: "1.5px solid " + C.mushroom300,
+        borderRadius: 4, flexShrink: 0, marginTop: 1 }} />
+      <div>
+        <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom800, lineHeight: 1.5 }}>{label}</div>
+        {sub && <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500, marginTop: 2 }}>{sub}</div>}
+      </div>
+    </div>
   );
 
-  // ── Phase steps data ──────────────────────────────────────────────────────────
-  const phases = [
-    {
-      num: "1", color: C.kangkong500, bg: C.kangkong50, border: C.kangkong200,
-      title: "Project Registration",
-      body: "Any Sprout employee logs into Grove, clicks Add Plant, fills in the project name, description, problem space, data sources, and tools used. The system auto-sets the country from your email domain (@sprout.ph = PH, @sproutsolutions.io = TH) — this is locked forever.",
-      tag: { label: "ALL TIERS", color: C.kangkong600, bg: C.kangkong50 },
-    },
-    {
-      num: "2", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
-      title: "Security & Data Classification",
-      body: "Go to the Technical tab and answer all 5 security questions. This step is mandatory — a project at the Sprout stage is blocked from advancing to Bloom until all 5 questions are answered and a tier is assigned.",
-      tag: { label: "MANDATORY GATE", color: C.carrot500, bg: C.carrot100 },
-    },
-    {
-      num: "3", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400,
-      title: "Tier Auto-Assignment",
-      body: "Grove computes your tier automatically based on your answers. Tier 1 = low risk, Tier 2 = medium risk (needs deployment), Tier 3 = high risk (external APIs, external AI, or auth + sensitive data). Unclassified projects are blocked from all stage changes.",
-      tag: { label: "AUTO-COMPUTED", color: C.blueberry500, bg: C.blueberry100 },
-    },
-    {
-      num: "4", color: C.mango600, bg: C.mango50, border: C.mango300,
-      title: "Stage Advancement (with Gate Checks)",
-      body: "As you build, move your project through stages using the stage buttons on the project page. Gates are enforced at Sprout → Bloom and Bloom → Thriving. Tier 1 moves freely once classified; Tier 2 and 3 need RM approval. A blocked move shows a purple notification at the bottom of the screen.",
-      tag: { label: "GATES ENFORCED", color: C.mango600, bg: C.mango50 },
-    },
-    {
-      num: "5", color: C.carrot500, bg: C.carrot100, border: C.carrot500,
-      title: "Release Manager Review",
-      body: "For Tier 2 and Tier 3 projects, click Submit for Release Review before advancing past a gate. The Release Manager reviews your classification, data sources, and tier, then approves, rejects, or requests changes. Tier 3 projects also get a Jira DevOps ticket auto-created.",
-      tag: { label: "TIER 2 & 3 ONLY", color: C.carrot500, bg: C.carrot100 },
-    },
-    {
-      num: "6", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200,
-      title: "Go Live (Thriving)",
-      body: "Once all gates are cleared, your project reaches Thriving — it's live, reviewed, and part of Sprout's AI portfolio. Tier 3 projects must also complete the policy compliance checklist before this final step.",
-      tag: { label: "PRODUCTION", color: C.kangkong600, bg: C.kangkong50 },
-    },
-  ];
+  const TierBlock = ({ tier, label, color, bg, border, items }) => (
+    <div style={{ background: bg, border: "1px solid " + border, borderRadius: DS.radius.lg, padding: "14px 16px", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Pill label={"Tier " + tier} color={color} bg={C.white} border={border} />
+        <span style={{ fontFamily: FF, fontSize: 12, fontWeight: 600, color }}>{label}</span>
+      </div>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 4 }}>
+          <span style={{ color, fontWeight: 700, fontSize: 12, flexShrink: 0 }}>·</span>
+          <span style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700 }}>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
 
-  // ── Security questions ────────────────────────────────────────────────────────
-  const securityQs = [
-    { q: "Does this tool require user login / authentication?",        risk: "Access control layer needed",                                         escalate: false },
-    { q: "Does it access external APIs or third-party services?",      risk: "Data egress risk",                                                    escalate: true },
-    { q: "Does it handle or display sensitive employee/client data?",  risk: "PDPA / Data Privacy Act compliance required",                         escalate: false },
-    { q: "Does it send data to an external AI service?",               risk: "Data-sharing policy review required",                                 escalate: true },
-    { q: "Does it store user inputs in a database?",                   risk: "Data retention policy applies",                                       escalate: false },
-  ];
+  const StdTable = ({ headers, rows }) => (
+    <div style={{ overflowX: "auto", marginBottom: 12 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
+        <thead>
+          <tr style={{ background: C.mushroom100 }}>
+            {headers.map((h, i) => (
+              <th key={i} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 700,
+                color: C.mushroom600, borderBottom: "2px solid " + C.mushroom200,
+                fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.mushroom50 }}>
+              {row.map((cell, j) => (
+                <td key={j} style={{ padding: "9px 12px", color: C.mushroom700,
+                  borderBottom: "0.5px solid " + C.mushroom100 }}
+                  dangerouslySetInnerHTML={{ __html: cell }} />
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
-  // ── Stage gate rules — reflects actual DB stage names ────────────────────────
-  const gateRows = [
-    {
-      from: "🌿 Sprout", to: "🌸 Bloom",
-      t1: "✅ Security classification complete + tier assigned",
-      t2: "✅ Classification + RM acknowledgment required",
-      t3: "✅ Classification + full RM sign-off required",
-    },
-    {
-      from: "🌸 Bloom", to: "🌳 Thriving",
-      t1: "✅ No additional gate",
-      t2: "🔍 RM final approval required",
-      t3: "🔐 RM final approval required",
-    },
-  ];
-
-  // ── Compliance checklist ──────────────────────────────────────────────────────
-  const checklist = [
-    "Data Minimization — only collecting what is strictly necessary for the tool's purpose",
-    "Access Control — access is restricted to authorized users only",
-    "No hardcoded credentials or API keys in source code",
-    "No PII stored in application logs",
-    "Compliant with PH Data Privacy Act and / or TH PDPA",
-    "Reviewed by at least one person who is not the builder",
-    "DevOps infrastructure confirmed — GitHub repo, hosting, database",
-    "Release Manager has reviewed and signed off",
-  ];
-
-  // ── Quick reference ───────────────────────────────────────────────────────────
-  const quickRef = [
-    { scenario: "New tool, Tier 1",                        builder: "Register → Classify → Advance freely",                                          rm: "No action required" },
-    { scenario: "New tool, Tier 2",                        builder: "Register → Classify → Submit for review → Wait → Advance",                      rm: "Acknowledge at Growing→Blooming and Blooming→Thriving" },
-    { scenario: "New tool, Tier 3",                        builder: "Register → Classify → Submit for review → DevOps ticket → Checklist → Advance", rm: "Full sign-off at every gate + Jira ticket tracking" },
-    { scenario: "Existing tool not yet in Grove",          builder: "Register immediately at the correct current stage",                              rm: "Review retroactively if Tier 2 or 3" },
-    { scenario: "Tier escalation (data scope increased)",  builder: "Update classification → Re-submit for review",                                  rm: "Re-review triggered automatically" },
-  ];
-
-  // ── Monitoring schedule ───────────────────────────────────────────────────────
-  const monitoring = [
-    { activity: "Review pending projects in the queue",              frequency: "Weekly",        owner: "Release Manager" },
-    { activity: "Audit unclassified projects (no tier assigned)",    frequency: "Bi-weekly",     owner: "Release Manager" },
-    { activity: "Re-review all Thriving projects",                   frequency: "Every 6 months",owner: "Release Manager" },
-    { activity: "Check for ghost projects built outside Grove",      frequency: "Monthly",       owner: "Release Manager + Team Leads" },
-    { activity: "Review Tier 3 projects accessing internal DBs",     frequency: "Quarterly",     owner: "Release Manager + IT Security" },
-  ];
+  const Bl = ({ items, color = C.mushroom600 }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+          <span style={{ color: C.mushroom400, fontSize: 16, lineHeight: 0.9, flexShrink: 0 }}>·</span>
+          <span style={{ fontFamily: FF, fontSize: 12, color, lineHeight: 1.4 }}>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", background: C.mushroom50, fontFamily: FF }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden" }}>
 
-      {/* ── Hero ── */}
-      <div style={{ background: "linear-gradient(135deg,#3b2d6e 0%,#805ad5 100%)", padding: "40px 48px 36px", color: C.white }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <span style={{ fontSize: 32 }}>🛡️</span>
-          <div>
-            <div style={{ fontFamily: FF, fontSize: 26, fontWeight: 800, lineHeight: 1 }}>Stage Gate & Review Process</div>
-            <div style={{ fontFamily: FF, fontSize: 13, opacity: 0.8, marginTop: 2 }}>Grove Governance · Release Managers: Belle Asis, Diane Litan</div>
-          </div>
+      {/* ── Left sidebar nav ────────────────────────────────────────────────── */}
+      <div style={{ width: 192, flexShrink: 0, background: C.white,
+        borderRight: "1px solid " + C.mushroom200, display: "flex", flexDirection: "column",
+        overflowY: "auto", padding: "24px 0 32px" }}>
+        <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.1em", color: C.mushroom400, padding: "0 20px", marginBottom: 12 }}>
+          On this page
         </div>
-        <div style={{ fontFamily: FF, fontSize: 14, opacity: 0.9, maxWidth: 680, lineHeight: 1.7 }}>
-          Every AI or internal tool built at Sprout must pass through this process before going live.
-          It ensures all projects are classified, reviewed, and safe — regardless of whether they were built by Product Engineering.
-        </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, background: "rgba(72,187,120,0.2)", border: "1px solid rgba(72,187,120,0.5)", borderRadius: DS.radius.full, padding: "4px 12px" }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#68d391", display: "inline-block" }} />
-          <span style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, color: "#c6f6d5" }}>Live in Grove — June 2026</span>
-        </div>
-        {/* Quick jump links */}
-        <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
-          {["Process Flow", "Stage Transition", "IS / Execom Gate", "Security Questions", "Stage Gates", "Review Queue", "Compliance Checklist", "Quick Reference"].map(label => (
-            <a key={label} href={"#" + label.toLowerCase().replace(/[\s/]+/g, "-")}
-              style={{ fontFamily: FF, fontSize: 11, fontWeight: 600, color: C.white, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: DS.radius.full, padding: "4px 12px", textDecoration: "none" }}>
-              {label}
-            </a>
-          ))}
-        </div>
+        {NAV.map(item => {
+          const isActive = activeSection === item.key;
+          return (
+            <button key={item.key} onClick={() => scrollTo(item.key)}
+              style={{ display: "flex", alignItems: "center", gap: 9, width: "100%",
+                background: isActive ? C.kangkong50 : "none",
+                border: "none", borderLeft: "3px solid " + (isActive ? C.kangkong500 : "transparent"),
+                padding: "8px 20px 8px 17px", cursor: "pointer", textAlign: "left",
+                transition: "all 0.15s" }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.mushroom50; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "none"; }}>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                background: isActive ? C.kangkong500 : C.mushroom200,
+                color: isActive ? C.white : C.mushroom500,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, fontWeight: 800, fontFamily: FF, transition: "all 0.15s" }}>
+                {item.num}
+              </div>
+              <span style={{ fontFamily: FF, fontSize: 12, fontWeight: isActive ? 700 : 500,
+                color: isActive ? C.kangkong700 : C.mushroom600, lineHeight: 1.3,
+                transition: "all 0.15s" }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <div style={{ padding: "36px 48px", maxWidth: 960, margin: "0 auto" }}>
+      {/* ── Scrolling body ──────────────────────────────────────────────────── */}
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", background: C.mushroom50 }}>
 
-        {/* ── Why this exists ── */}
-        <div style={{ marginBottom: 36, padding: "16px 20px", background: C.mango50, border: "1px solid " + C.mango300, borderRadius: DS.radius.xl }}>
-          <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.mango700, marginBottom: 6 }}>⚠️ Why this matters</div>
-          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom700, lineHeight: 1.7 }}>
-            Sprout employees can build and ship internal tools using Claude, AI platforms, and other services — many of which can access internal databases, handle employee PII, or send data to external AI providers.
-            Without a governance process, these tools may violate the PH Data Privacy Act, TH PDPA, or Sprout's internal data policies.
-            This process is the safeguard.
+        {/* ── Hero ── */}
+        <div style={{ background: "linear-gradient(135deg," + C.kangkong700 + " 0%," + C.kangkong500 + " 100%)",
+          padding: "36px 48px 32px", color: C.white }}>
+          <div style={{ fontFamily: FF, fontSize: 11, fontWeight: 500, textTransform: "uppercase",
+            letterSpacing: "1px", opacity: 0.75, marginBottom: 8 }}>Grove · Developer Guide</div>
+          <div style={{ fontFamily: FF, fontSize: 24, fontWeight: 800, lineHeight: 1.15, marginBottom: 8 }}>
+            Build it right, ship it safely
+          </div>
+          <div style={{ fontFamily: FF, fontSize: 14, opacity: 0.88, lineHeight: 1.65, maxWidth: 600, marginBottom: 18 }}>
+            Everything you need to know before, during, and after building an AI or internal tool at Sprout — from first idea to go-live in Grove.
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {["Philippines & Thailand", "2026", "All tiers"].map(tag => (
+              <span key={tag} style={{ fontFamily: FF, fontSize: 11, fontWeight: 600, padding: "3px 12px",
+                borderRadius: DS.radius.full, background: "rgba(255,255,255,0.18)",
+                border: "1px solid rgba(255,255,255,0.35)", color: C.white }}>{tag}</span>
+            ))}
           </div>
         </div>
 
-        {/* ── Roles ── */}
-        <Section title="Roles in this Process" icon="👥">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+        <div style={{ padding: "40px 48px", maxWidth: 960, margin: "0 auto" }}>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 1 — OVERVIEW
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="1" sectionRef={refs.overview}>Overview</SecH>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
             {[
-              { icon: "🌱", role: "Builder", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200,
-                who: "Any Sprout employee",
-                does: ["Registers the project in Grove", "Completes security classification", "Submits for release review", "Advances stages after approval"] },
-              { icon: "🔍", role: "Release Manager", color: "#805ad5", bg: "#faf5ff", border: "#c4b5fd",
-                who: "Belle Asis, Diane Litan",
-                does: ["Reviews Tier 2 & 3 projects", "Approves or rejects stage advancement", "Monitors the governance dashboard", "Manages the review queue"] },
-              { icon: "🌿", role: "Admin (Gardener)", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400,
-                who: "Same as Release Manager",
-                does: ["All Release Manager actions", "Edit any project or seed", "Skip stages in any direction", "Delete records and moderate Grove"] },
-            ].map(r => (
-              <Card key={r.role} bg={r.bg} border={r.border}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 20 }}>{r.icon}</span>
-                  <div>
-                    <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 800, color: r.color }}>{r.role}</div>
-                    <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500 }}>{r.who}</div>
-                  </div>
-                </div>
-                {r.does.map(d => (
-                  <div key={d} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 4 }}>
-                    <span style={{ color: r.color, fontWeight: 700, flexShrink: 0, fontSize: 11 }}>✓</span>
-                    <span style={{ fontFamily: FF, fontSize: 11, color: C.mushroom700 }}>{d}</span>
-                  </div>
-                ))}
+              { title: "Capture ideas",  body: "Submit seed ideas to the Wishlist. Teammates upvote the ones they want built." },
+              { title: "Track projects", body: "Document AI initiatives as they're being built — stage, tools used, who's building." },
+              { title: "Stay safe",      body: "Classify by tier so DevOps, IS, and leadership know when to review before you ship." },
+            ].map(card => (
+              <Card key={card.title}>
+                <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.mushroom900, marginBottom: 4 }}>{card.title}</div>
+                <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom600, lineHeight: 1.65 }}>{card.body}</div>
               </Card>
             ))}
           </div>
-        </Section>
 
-        {/* ── Process Flow ── */}
-        <Section id="process-flow" title="End-to-End Process Flow" icon="🗺️">
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {phases.map((p, i) => (
-              <div key={p.num} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                {/* Step number */}
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: p.bg, border: "2px solid " + p.border, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FF, fontSize: 15, fontWeight: 800, color: p.color, flexShrink: 0, marginTop: 2 }}>
-                  {p.num}
-                </div>
-                {/* Content */}
-                <div style={{ flex: 1, background: p.bg, border: "1px solid " + p.border, borderRadius: DS.radius.lg, padding: "14px 18px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                    <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 700, color: C.mushroom900 }}>{p.title}</div>
-                    <StatusTag label={p.tag.label} color={p.tag.color} bg={p.tag.bg} />
-                  </div>
-                  <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.65 }}>{p.body}</div>
-                </div>
-                {/* Connector arrow */}
-                {i < phases.length - 1 && (
-                  <div style={{ position: "absolute", marginLeft: 16, marginTop: 50, fontSize: 18, color: C.mushroom300, pointerEvents: "none" }} />
-                )}
-              </div>
-            ))}
+          <SubH>Project Stages</SubH>
+          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 14 }}>
+            Every project grows through five stages — starting as a <strong>Seed</strong> in the Wishlist, then maturing from a claimed idea to a live, thriving product.
           </div>
-        </Section>
 
-        {/* ── Stage Transition Overview ── */}
-        <Section id="stage-transition" title="Stage Transition Overview" icon="🔀">
-          <Card>
-            <div style={{ fontFamily: FF, fontSize: 11, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Stage Lifecycle</div>
-            <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom400, marginBottom: 16 }}>Projects start at Sprout by default. Admins can set any initial stage and bypass all gates.</div>
-
-            {/* Pipeline */}
-            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              {/* SPROUT */}
-              <div style={{ flexShrink: 0, background: "#f0faf0", border: "1.5px solid #aadcaa", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2d8c2d", margin: "0 auto 5px" }} />
-                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#1f6e1f", letterSpacing: "0.04em" }}>SPROUT</div>
-                <div style={{ fontFamily: FF, fontSize: 9, color: "#2d8c2d", marginTop: 2 }}>Early idea</div>
-                <div style={{ marginTop: 5, background: "transparent", border: "1px dashed #38b2ac", borderRadius: DS.radius.sm, padding: "2px 4px", fontSize: 8, color: "#2c7a7b", fontFamily: FF, fontWeight: 600, whiteSpace: "nowrap" }}>IS/Execom optional</div>
-              </div>
-              {/* Arrow 1 */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
-                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#2d8c2d", background: "#f0faf0", border: "1px solid #aadcaa", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>All tiers</div>
-                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <div style={{ flex: 1, height: 1.5, background: "#2d8c2d" }} />
-                  <span style={{ color: "#2d8c2d", fontSize: 11 }}>▶</span>
-                </div>
-              </div>
-              {/* GROWING */}
-              <div style={{ flexShrink: 0, background: "#fefcbf", border: "1.5px solid #d69e2e", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#b7791f", margin: "0 auto 5px" }} />
-                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#744210", letterSpacing: "0.04em" }}>GROWING</div>
-                <div style={{ fontFamily: FF, fontSize: 9, color: "#b7791f", marginTop: 2 }}>In development</div>
-                <div style={{ marginTop: 5, background: "#c4f0ec", border: "1px solid #38b2ac", borderRadius: DS.radius.sm, padding: "2px 4px", fontSize: 8, color: "#2c7a7b", fontFamily: FF, fontWeight: 700, whiteSpace: "nowrap" }}>IS/Execom req.</div>
-              </div>
-              {/* Arrow 2 */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
-                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#c05621", background: "#feebc8", border: "1px solid #dd6b20", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>T2+ gate</div>
-                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <div style={{ flex: 1, height: 1.5, background: "#dd6b20" }} />
-                  <span style={{ color: "#dd6b20", fontSize: 11 }}>▶</span>
-                </div>
-              </div>
-              {/* BLOOMING */}
-              <div style={{ flexShrink: 0, background: "#feebc8", border: "1.5px solid #dd6b20", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c05621", margin: "0 auto 5px" }} />
-                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#7b341e", letterSpacing: "0.04em" }}>BLOOMING</div>
-                <div style={{ fontFamily: FF, fontSize: 9, color: "#c05621", marginTop: 2 }}>Live & used</div>
-              </div>
-              {/* Arrow 3 */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 3px" }}>
-                <div style={{ fontFamily: FF, fontSize: 9, fontWeight: 700, color: "#553c9a", background: "#faf5ff", border: "1px solid #9f7aea", borderRadius: DS.radius.sm, padding: "1px 5px", marginBottom: 5, whiteSpace: "nowrap" }}>T2+ gate</div>
-                <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                  <div style={{ flex: 1, height: 1.5, background: "#3182ce" }} />
-                  <span style={{ color: "#3182ce", fontSize: 11 }}>▶</span>
-                </div>
-              </div>
-              {/* THRIVING */}
-              <div style={{ flexShrink: 0, background: "#ebf8ff", border: "1.5px solid #63b3ed", borderRadius: DS.radius.md, padding: "10px", textAlign: "center", width: 110 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3182ce", margin: "0 auto 5px" }} />
-                <div style={{ fontFamily: FF, fontWeight: 700, fontSize: 11, color: "#2c5282", letterSpacing: "0.04em" }}>THRIVING</div>
-                <div style={{ fontFamily: FF, fontSize: 9, color: "#3182ce", marginTop: 2 }}>Fully deployed</div>
-              </div>
-            </div>
-
-            {/* IS/Execom annotation */}
-            <div style={{ display: "flex", marginTop: 12 }}>
-              <div style={{ width: "45%", background: "#e6fffa", border: "1.5px solid #38b2ac", borderRadius: DS.radius.lg, padding: "10px 12px" }}>
-                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", marginBottom: 6 }}>IS / Execom Approval — Coleen, Blaise, Nikki, Raffy</div>
-                <div style={{ fontFamily: FF, fontSize: 10, color: "#2c7a7b", lineHeight: 1.7 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-                    <span style={{ background: "transparent", border: "1px dashed #38b2ac", borderRadius: 3, padding: "0 5px", fontSize: 9, whiteSpace: "nowrap", flexShrink: 0 }}>Sprout</span>
-                    <span>Optional — encouraged before creating tickets</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ background: "#c4f0ec", border: "1px solid #38b2ac", borderRadius: 3, padding: "0 5px", fontSize: 9, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>Growing</span>
-                    <span>Required to proceed to Blooming</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Who + what triggers */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid " + C.mushroom100, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Who Can Change Stages</div>
-                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom600, lineHeight: 1.7 }}>
-                  <div style={{ marginBottom: 6 }}><span style={{ color: C.kangkong600, fontWeight: 700 }}>Builder</span> — own project, adjacent stages only (±1), must pass gate</div>
-                  <div><span style={{ color: C.blueberry500, fontWeight: 700 }}>Admin</span> — any project, skip stages in any direction, bypass gates</div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.mushroom500, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Every Change Records</div>
-                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom600, lineHeight: 1.7 }}>
-                  Permission check → adjacency check → gate check → milestone appended → Supabase update → activity log → last_updated reset
-                </div>
-              </div>
-            </div>
-          </Card>
-        </Section>
-
-        {/* ── IS/Execom Approval Gate ── */}
-        <Section id="is-execom-gate" title="IS / Execom Approval Gate" icon="✅">
-          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.7, marginBottom: 16 }}>
-            Before any Jira ticket or work item is created for <strong>Coleen, Blaise, Nikki,</strong> or <strong>Raffy</strong> on an AI or internal tool project, IS (Information Security) or Execom (Executive Committee) approval must be in place. The requirement level depends on the project's current stage.
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <div style={{ background: C.mushroom50, border: "1.5px dashed #38b2ac", borderRadius: DS.radius.xl, padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2d8c2d" }} />
-                <div style={{ fontFamily: FF, fontWeight: 800, fontSize: 14, color: "#1f6e1f" }}>Sprout Stage</div>
-                <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: "#2c7a7b", background: "transparent", border: "1px dashed #38b2ac", borderRadius: DS.radius.full, padding: "2px 8px" }}>Optional</span>
-              </div>
-              <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.7 }}>
-                IS / Execom approval is <strong>encouraged but not blocking</strong> at this stage. Teams should proactively seek approval early to avoid delays later.
-              </div>
-              <div style={{ marginTop: 12, padding: "8px 12px", background: "#e6fffa", borderRadius: DS.radius.md, fontFamily: FF, fontSize: 11, color: "#2c7a7b" }}>
-                💡 Best practice: secure approval during Sprout so Growing → Blooming is unblocked
-              </div>
-            </div>
-            <div style={{ background: "#e6fffa", border: "1.5px solid #38b2ac", borderRadius: DS.radius.xl, padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#b7791f" }} />
-                <div style={{ fontFamily: FF, fontWeight: 800, fontSize: 14, color: "#744210" }}>Growing Stage</div>
-                <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.white, background: "#2c7a7b", borderRadius: DS.radius.full, padding: "2px 8px" }}>Required</span>
-              </div>
-              <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.7 }}>
-                IS / Execom approval is <strong>mandatory</strong> before any ticket for Coleen, Blaise, Nikki, or Raffy can be created. Without it, the project is blocked from advancing to Blooming.
-              </div>
-              <div style={{ marginTop: 12, padding: "8px 12px", background: C.white, borderRadius: DS.radius.md, border: "1px solid #38b2ac", fontFamily: FF, fontSize: 11, color: "#2c7a7b" }}>
-                🚦 Gate: Advancing Growing → Blooming requires this approval on record
-              </div>
-            </div>
-          </div>
-          <div style={{ padding: "14px 18px", background: C.mango100, border: "1px solid " + C.mango500, borderRadius: DS.radius.xl, fontFamily: FF, fontSize: 12, color: C.mango700, lineHeight: 1.6 }}>
-            <strong>Who gives approval?</strong> IS (Information Security team) or Execom (Executive Committee). Approval must be documented before the project builder requests stage advancement or creates tickets for the named individuals. This requirement applies regardless of the project's tier.
-          </div>
-        </Section>
-
-        {/* ── Security Questions ── */}
-        <Section id="security-questions" title="Security & Data Classification Questions" icon="🔐">
-          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 16 }}>
-            These 5 questions must be answered in the <strong>Technical tab</strong> of every project before it can advance past Sprout.
-            Answering YES to Q2 or Q4 automatically escalates the project to <strong>Tier 3</strong>.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {securityQs.map((item, i) => (
-              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 16px", background: C.white, border: "1px solid " + C.mushroom200, borderRadius: DS.radius.lg, boxShadow: DS.shadow.sm }}>
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#805ad5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FF, fontSize: 11, fontWeight: 800, color: C.white, flexShrink: 0 }}>
-                  Q{i + 1}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 600, color: C.mushroom900, marginBottom: 3 }}>{item.q}</div>
-                  <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom500 }}>If YES: {item.risk}</div>
-                </div>
-                {item.escalate && (
-                  <span style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.carrot500, background: C.carrot100, border: "1px solid " + C.carrot500, borderRadius: DS.radius.full, padding: "2px 8px", whiteSpace: "nowrap", flexShrink: 0 }}>
-                    → Tier 3
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 14, padding: "12px 16px", background: C.mango100, border: "1px solid " + C.mango500, borderRadius: DS.radius.lg }}>
-            <strong style={{ fontFamily: FF, fontSize: 12, color: C.mango700 }}>⚠ Auto-escalation rule: </strong>
-            <span style={{ fontFamily: FF, fontSize: 12, color: C.mango700 }}>
-              If a project requires authentication AND handles sensitive data, it is automatically classified as <strong>Tier 3</strong> regardless of other answers. Coordinate with Belle or Coleen before shipping.
-            </span>
-          </div>
-        </Section>
-
-        {/* ── Tier Assignment ── */}
-        <Section title="Tier Assignment" icon="🏷️">
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Stage pipeline */}
+          <div style={{ display: "flex", alignItems: "stretch", marginBottom: 12 }}>
             {[
-              { num: 1, label: "Low Risk — Static / Internal", color: C.mushroom700, bg: C.mushroom50, border: C.mushroom300, accent: C.mushroom400,
-                criteria: "No backend + internal users only. No release review required.",
-                review: "Self-declaration only — no RM review required",
-                hosting: "Markup — uploaded directly by the project owner",
-                examples: "ChatGPT prompt library, email templates, simple internal dashboards" },
-              { num: 2, label: "Medium Risk — Internal App", color: C.blueberry500, bg: C.blueberry100, border: C.blueberry400, accent: C.blueberry500,
-                criteria: "Has backend + internal users only, OR no backend + external/both users",
-                review: "Release Manager acknowledgment required before Blooming and Thriving",
-                hosting: "Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
-                examples: "HR dashboards, internal chatbots, payroll tools, team utilities" },
-              { num: 3, label: "High Risk — External-Facing", color: C.carrot500, bg: C.carrot100, border: C.carrot500, accent: C.carrot500,
-                criteria: "Has backend + accessible to external or both internal and external users",
-                review: "Full RM sign-off + Jira DevOps ticket + policy compliance checklist before Thriving",
-                hosting: "Sprout Vercel or Sprout Azure (Company Repository) — requires IS / Execom approval to go Live",
-                examples: "Client portals, public-facing AI tools, partner integrations, customer apps" },
-            ].map(t => (
-              <div key={t.num} style={{ position: "relative", background: t.bg, border: "1px solid " + t.border, borderRadius: DS.radius.xl, padding: "18px 20px 18px 26px", overflow: "hidden" }}>
-                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, background: t.accent, borderRadius: DS.radius.xl + " 0 0 " + DS.radius.xl }} />
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 260 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontFamily: FF, fontSize: 14, fontWeight: 800, color: t.color, background: C.white, border: "2px solid " + t.border, borderRadius: DS.radius.full, padding: "2px 12px" }}>Tier {t.num}</span>
-                      <span style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: t.color }}>{t.label}</span>
-                    </div>
-                    <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, marginBottom: 6, lineHeight: 1.5 }}><strong>Criteria:</strong> {t.criteria}</div>
-                    <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom500 }}><strong>Examples:</strong> {t.examples}</div>
-                  </div>
-                  <div style={{ minWidth: 220, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ padding: "10px 14px", background: C.white, border: "1px solid " + t.border, borderRadius: DS.radius.lg }}>
-                      <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: t.color, marginBottom: 4 }}>Review Required</div>
-                      <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{t.review}</div>
-                    </div>
-                    <div style={{ padding: "10px 14px", background: C.white, border: "1px solid " + t.border, borderRadius: DS.radius.lg }}>
-                      <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: t.color, marginBottom: 4 }}>Hosting</div>
-                      <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{t.hosting}</div>
-                    </div>
-                  </div>
+              { label: "Seed",     sub: "Wishlist idea",        note: "An idea or wish anyone can plant. Lives in the Wishlist until someone claims it.",
+                bg: "#f2f1ed", bd: "#b0ac9c", dot: "#928e7c", text: "#565244", first: true, dashed: true },
+              { label: "Seedling", sub: "Someone's building it", note: "Claimed and actively built — a working prototype and a short deck come together here.",
+                bg: "#f2f1ed", bd: "#ccc9bc", dot: "#b0ac9c", text: "#736f5e" },
+              { label: "Rooting",  sub: "Leadership review",     note: "Taking Root — Leadership reviews the prototype and deck before you scale — guidance, not gatekeeping.",
+                bg: "#fefcbf", bd: "#d69e2e", dot: "#b7791f", text: "#744210" },
+              { label: "Sprout",   sub: "Full speed ahead",      note: "Approved by leadership — building the full product with momentum and company backing.",
+                bg: "#e6fffa", bd: "#38b2ac", dot: "#2c7a7b", text: "#285e5e" },
+              { label: "Bloom",    sub: "Live & used",           note: "Live with real users. Tier 2 & 3 need RM review to reach this.",
+                bg: "#d6f0d6", bd: "#aadcaa", dot: "#2d8c2d", text: "#1f6e1f" },
+              { label: "Thriving", sub: "Making an impact",      note: "Fully rolled out, delivering real, measurable value. Tier 3 needs full sign-off.",
+                bg: "#ebf8ff", bd: "#63b3ed", dot: "#3182ce", text: "#2c5282", last: true },
+            ].map((s, i, arr) => (
+              <React.Fragment key={s.label}>
+                <div style={{ flex: 1, background: s.bg,
+                  border: (s.dashed ? "1.5px dashed " : "1.5px solid ") + s.bd, padding: "12px 10px",
+                  borderRadius: s.first ? DS.radius.lg + " 0 0 " + DS.radius.lg : s.last ? "0 " + DS.radius.lg + " " + DS.radius.lg + " 0" : 0,
+                  display: "flex", flexDirection: "column" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.dot, marginBottom: 6 }} />
+                  <div style={{ fontFamily: FF, fontSize: 12, fontWeight: 700, color: s.text, marginBottom: 2 }}>{s.label}</div>
+                  <div style={{ fontFamily: FF, fontSize: 9, color: s.dot, marginBottom: 7 }}>{s.sub}</div>
+                  <div style={{ fontFamily: FF, fontSize: 10, color: s.text, opacity: 0.82, lineHeight: 1.5 }}>{s.note}</div>
                 </div>
+                {i < arr.length - 1 && (
+                  <div style={{ display: "flex", alignItems: "center", padding: "0 3px",
+                    background: s.first ? "transparent" : C.mushroom100 }}>
+                    <span style={{ color: C.mushroom400, fontSize: 15 }}>›</span>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          <div style={{ padding: "10px 14px", background: C.mushroom100, borderRadius: DS.radius.md,
+            fontFamily: FF, fontSize: 12, color: C.mushroom600, marginBottom: 20 }}>
+            Stage changes move <strong>one step at a time</strong> for builders.
+            Leadership signs off at <strong>Rooting</strong>; Tier 2 and 3 projects also need a Release Manager review gate before <strong>Bloom</strong> and <strong>Thriving</strong>.
+            Admins can skip stages in any direction.
+          </div>
+
+          <SubH>Quick path to go-live</SubH>
+          <div style={{ background: C.kangkong50, border: "1px solid " + C.kangkong200,
+            borderRadius: DS.radius.xl, padding: "16px 20px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              {["Classify", "Register in Grove", "Build & fill Technical tab",
+                "Secure IS/Execom approval", "Release review (Tier 2/3)", "Go live"].map((s, i, arr) => (
+                <React.Fragment key={s}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.kangkong500,
+                      color: C.white, fontSize: 10, fontWeight: 800, display: "flex",
+                      alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                    <span style={{ fontFamily: FF, fontSize: 12, color: C.kangkong700 }}>{s}</span>
+                  </div>
+                  {i < arr.length - 1 && <span style={{ color: C.kangkong200, fontSize: 14 }}>›</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 2 — GETTING STARTED
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="2" sectionRef={refs.start}>Getting Started</SecH>
+
+          <Step num="1" numColor={C.kangkong500} numBg={C.kangkong50} numBd={C.kangkong200}
+            title="Classify before you build"
+            body="One question determines your tier: does the app have a backend? No backend = Tier 1, regardless of who uses it. Backend + internal only = Tier 2. Backend + external or mixed = Tier 3. Knowing your tier early sets your auth, hosting, and DB standards upfront." />
+          <Step num="2" numColor={PURPLE} numBg={PURPLE_BG} numBd={PURPLE_BD}
+            title="Register in Grove early"
+            body="Add your project as soon as the idea is real. Log in at grove.sprout.solutions → click <strong>Add Plant</strong>. Fill in the name, description, problem space, tools, and data sources." />
+          <Step num="3" numColor={C.blueberry500} numBg={C.blueberry100} numBd={C.blueberry400}
+            title="Fill in the Technical tab"
+            body="Answer the classification questions to lock in your tier. Then complete the per-tier checklist (hosting, auth, database, repo). Mandatory before any stage change." />
+          <Step num="4" numColor={TEAL} numBg={TEAL_BG} numBd={TEAL_BD}
+            title="Declare your approver & secure IS/Execom sign-off"
+            body="Every project needs a named approver — your IS contact or an Execom member. Record the name and email in the Overview tab. Optional early on — mandatory before going live (Bloom)." />
+          <Step num="5" numColor={C.carrot500} numBg={C.carrot100} numBd={C.carrot500}
+            title="Submit for release review (Tier 2 & 3)"
+            body="When ready to go live, click <strong>Submit for Release Review</strong>. Belle Asis reviews your classification, data sources, and tech stack. Tier 3 gets a Jira DevOps ticket. Wait for approval before advancing." />
+          <Step num="6" numColor={C.kangkong500} numBg={C.kangkong50} numBd={C.kangkong200}
+            title="Move stages & go live"
+            body="Advance one stage at a time — Seedling → Rooting → Sprout → Bloom → Thriving. Click the stage card on your project overview. Bloom = live. Thriving = full Sprout portfolio product." />
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 3 — CLASSIFY
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="3" sectionRef={refs.classify}>Classify Your Project</SecH>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {[
+              { title: "Does it have a backend?",
+                body: "Any code running outside the browser — APIs, servers, data pipelines, scheduled jobs, databases. <strong>No backend = Tier 1, no matter who uses it.</strong>" },
+              { title: "Who uses it? (backend projects only)",
+                body: "Only relevant if the project has a backend. Internal = Sprout employees only → Tier 2. External or Both = clients, partners, public, or mixed → Tier 3." },
+            ].map(card => (
+              <Card key={card.title} bg={PURPLE_BG} border={PURPLE_BD}>
+                <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: PURPLE, marginBottom: 6 }}>{card.title}</div>
+                <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom600, lineHeight: 1.65 }}
+                  dangerouslySetInnerHTML={{ __html: card.body }} />
+              </Card>
+            ))}
+          </div>
+
+          <SubH>Tier Matrix</SubH>
+          <StdTable
+            headers={["Backend?", "Users", "Label", "Tier"]}
+            rows={[
+              ["No", "Internal, External, or Both", "Static / Markup",
+                `<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:9999px;border:1px solid #ccc9bc;background:#f2f1ed;color:#565244">Tier 1</span>`],
+              ["Yes", "Internal only", "Internal App",
+                `<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:9999px;border:1px solid #63b3ed;background:#ebf8ff;color:#2c5282">Tier 2</span>`],
+              ["Yes", "External or Both", "External-Facing",
+                `<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:9999px;border:1px solid #dd6b20;background:#feebc8;color:#7b341e">Tier 3</span>`],
+            ]}
+          />
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+            {[
+              { tier: 1, label: "Static / Markup", color: C.mushroom700, bg: "#f2f1ed", bd: C.mushroom300,
+                items: ["No backend — any users", "Prompt libraries, templates, static dashboards", "Hosted on Markup by you", "No infra migration needed"] },
+              { tier: 2, label: "Internal App", color: C.blueberry500, bg: C.blueberry100, bd: C.blueberry400,
+                items: ["Backend + internal users only", "HR/payroll tools, chatbots", "Sprout Vercel or Azure at go-live", "IS/Execom approval needed"] },
+              { tier: 3, label: "External-Facing", color: C.carrot500, bg: C.carrot100, bd: C.carrot500,
+                items: ["Backend + external or both users", "Client portals, partner tools", "Keycloak auth required", "Full DevOps + RM review"] },
+            ].map(t => (
+              <div key={t.tier} style={{ background: t.bg, border: "1px solid " + t.bd, borderRadius: DS.radius.lg, padding: "14px 16px" }}>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: t.color, marginBottom: 3 }}>Tier {t.tier}</div>
+                <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 8 }}>{t.label}</div>
+                <Bl items={t.items} color={t.color} />
               </div>
             ))}
           </div>
-        </Section>
 
-        {/* ── Stage Gates ── */}
-        <Section id="stage-gates" title="Stage Gate Rules" icon="🚦">
-          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 16 }}>
-            Two gate checkpoints are enforced by Grove: <strong>Sprout → Bloom</strong> (going live) and <strong>Bloom → Thriving</strong> (production-ready). Earlier transitions (Seedling → Nursery → Sprout) follow the separate nursery prototype review process.
+          <SubH>Security Questions (Technical tab)</SubH>
+          <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom600, lineHeight: 1.6, marginBottom: 12 }}>
+            Answer all 5 questions before any stage change. YES to Q2 or Q4 auto-escalates to Tier 3.
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: C.mushroom100 }}>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200, whiteSpace: "nowrap" }}>Transition</th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}><TierBadge tier={1} /></th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}><TierBadge tier={2} /></th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}><TierBadge tier={3} /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {gateRows.map((row, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.mushroom50 }}>
-                    <td style={{ padding: "12px 14px", fontWeight: 700, color: C.mushroom800, borderBottom: "1px solid " + C.mushroom100, whiteSpace: "nowrap" }}>
-                      {row.from} → {row.to}
-                    </td>
-                    <td style={{ padding: "12px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{row.t1}</td>
-                    <td style={{ padding: "12px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{row.t2}</td>
-                    <td style={{ padding: "12px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{row.t3}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 12, padding: "10px 14px", background: C.mushroom100, borderRadius: DS.radius.md, fontFamily: FF, fontSize: 12, color: C.mushroom600 }}>
-            💡 Stage gates are enforced both in the Grove UI <strong>and</strong> at the database level (Supabase RLS) — bypassing the UI still blocks the change at the database.
-          </div>
-        </Section>
-
-        {/* ── Review Queue ── */}
-        <Section id="review-queue" title="Review Queue Flow (Tier 2 & Tier 3)" icon="🔍">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-            {/* Builder column */}
-            <Card bg={C.kangkong50} border={C.kangkong200}>
-              <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 800, color: C.kangkong600, marginBottom: 14 }}>🌱 Builder Steps</div>
-              {[
-                "Open your project page — the Release Gate Banner appears automatically on Sprout or Bloom stage projects (Tier 2 & 3)",
-                "Click Submit for Release Review on the banner",
-                "System sets release_review_status = pending",
-                "For Tier 3: Grove auto-creates a Jira ticket (label: Src-Grove) assigned to the Release Manager",
-                "Wait for the review outcome — the banner updates in real time",
-                "If Rejected: read the comment, fix the issue, re-submit via the banner",
-                "If Changes Requested: update the record as instructed, re-submit",
-                "If Approved: stage advancement button is now unlocked — proceed",
-              ].map((step, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.kangkong500, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FF, fontSize: 10, fontWeight: 800, color: C.white, flexShrink: 0, marginTop: 1 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{step}</div>
-                </div>
-              ))}
-            </Card>
-
-            {/* Release Manager column */}
-            <Card bg="#faf5ff" border="#c4b5fd">
-              <div style={{ fontFamily: FF, fontSize: 14, fontWeight: 800, color: "#805ad5", marginBottom: 14 }}>🔍 Release Manager Steps</div>
-              {[
-                "Open Grove and go to the Overview view — the Garden Health section (admin-only) shows Pending Release Reviews",
-                "Click any pending project in the queue to open its detail panel",
-                "Review: security classification, data sources, tier, description, and Technical tab answers",
-                "Take one of three actions:",
-              ].map((step, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#805ad5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FF, fontSize: 10, fontWeight: 800, color: C.white, flexShrink: 0, marginTop: 1 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.5 }}>{step}</div>
-                </div>
-              ))}
-              {/* Decision options */}
-              {[
-                { icon: "✅", label: "Approve", desc: "Add optional note — unlocks stage advancement", color: C.kangkong600, bg: C.kangkong50, border: C.kangkong200 },
-                { icon: "❌", label: "Reject", desc: "Required comment — blocks advancement until resubmitted", color: C.tomato600, bg: C.tomato100, border: C.tomato500 },
-                { icon: "🔁", label: "Request Changes", desc: "Sends back to builder with specific items to fix", color: C.mango600, bg: C.mango50, border: C.mango300 },
-              ].map(opt => (
-                <div key={opt.label} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 10px", background: opt.bg, border: "1px solid " + opt.border, borderRadius: DS.radius.md, marginBottom: 6, marginLeft: 30 }}>
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>{opt.icon}</span>
-                  <div>
-                    <div style={{ fontFamily: FF, fontSize: 12, fontWeight: 700, color: opt.color }}>{opt.label}</div>
-                    <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500 }}>{opt.desc}</div>
-                  </div>
-                </div>
-              ))}
-              <div style={{ marginTop: 10, padding: "8px 10px", background: C.mushroom50, borderRadius: DS.radius.md }}>
-                <div style={{ fontFamily: FF, fontSize: 11, color: C.mushroom500 }}>System records: <code>release_reviewed_by</code>, <code>release_reviewed_at</code>, and <code>release_review_comment</code> on the project. Approval resets when the project advances to the next stage.</div>
+          {[
+            { q: "Does this tool require user login / authentication?",       sub: "If YES → access control layer needed", escalate: false },
+            { q: "Does it access external APIs or third-party services?",     sub: "If YES → data egress risk · auto-escalates to Tier 3", escalate: true },
+            { q: "Does it handle or display sensitive employee/client data?", sub: "If YES → PDPA / Data Privacy Act compliance required", escalate: false },
+            { q: "Does it send data to an external AI service?",              sub: "If YES → data-sharing policy review required · auto-escalates to Tier 3", escalate: true },
+            { q: "Does it store user inputs in a database?",                  sub: "If YES → data retention policy applies", escalate: false },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px",
+              border: "1px solid " + (item.escalate ? C.carrot500 : C.mushroom200),
+              borderRadius: DS.radius.md, background: C.white, marginBottom: 7 }}>
+              <div style={{ width: 22, height: 22, borderRadius: "50%",
+                background: item.escalate ? C.carrot500 : PURPLE, color: C.white, fontSize: 10,
+                fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0 }}>Q{i + 1}</div>
+              <div>
+                <div style={{ fontFamily: FF, fontSize: 12, fontWeight: 600, color: C.mushroom900, marginBottom: 2 }}>{item.q}</div>
+                <div style={{ fontFamily: FF, fontSize: 11, color: item.escalate ? C.carrot500 : C.mushroom500,
+                  fontWeight: item.escalate ? 600 : 400 }}>{item.sub}</div>
               </div>
+            </div>
+          ))}
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 4 — DEV STANDARDS
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="4" sectionRef={refs.standards}>Dev Standards</SecH>
+
+          <SubH>Authentication</SubH>
+          <Alert title="Tier 1 — no authentication required"
+            body="No login or session management needed for static tools, regardless of who accesses them."
+            color={C.kangkong700} bg={C.kangkong50} border={C.kangkong200} />
+          <Alert title="Tier 2 — internal auth is sufficient"
+            body="Sprout Google email is the standard for internal apps. No Keycloak required at this tier."
+            color={BLUE_TEXT} bg={C.blueberry100} border={C.blueberry400} />
+          <Alert title="Tier 3 — Keycloak is required"
+            body="External-facing apps must use Keycloak. Coordinate with Coleen Bartido (DevOps) before setting up auth. Follow the existing Keycloak setup guide — escalate only after reading it."
+            color={OG_TEXT} bg={C.carrot100} border={C.carrot500} />
+
+          <SubH>Database</SubH>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <Card>
+              <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.kangkong600, marginBottom: 8 }}>✓ Preferred</div>
+              <Bl items={["Supabase — preferred for most app databases", "PostgreSQL / Azure SQL for complex needs",
+                "Move DB to Sprout ownership at go-live (Tier 2/3)", "No credentials hardcoded in the repo"]} />
+            </Card>
+            <Card border={C.carrot500}>
+              <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.carrot500, marginBottom: 8 }}>✗ Avoid in production</div>
+              <Bl items={["Airtable — not suitable for a production database", "Google Sheets — fine for prototypes, not production",
+                "Personal Supabase / Firebase accounts at go-live", "Secrets stored in plain text / committed to git"]} />
             </Card>
           </div>
-        </Section>
 
-        {/* ── Compliance Checklist ── */}
-        <Section id="compliance-checklist" title="Compliance Checklist (Tier 3 — Required Before Thriving)" icon="📋">
-          <Card bg={C.carrot100} border={C.carrot500}>
-            <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom700, lineHeight: 1.6, marginBottom: 16 }}>
-              All 8 items below must be confirmed by the builder and verified by the Release Manager before a Tier 3 project can move to <strong>Thriving</strong>.
+          <SubH>Hosting</SubH>
+          <Alert title="Tier 1 — Markup"
+            body="Upload directly to Markup. No deployment infrastructure required. No DevOps ticket needed."
+            color={C.kangkong700} bg={C.kangkong50} border={C.kangkong200} />
+          <Alert title="Tier 2 & 3 — Personal repo is fine during development"
+            body="You can develop and iterate in your own personal repository. However, <strong>before going live</strong>, all assets — repository, hosting, database, configs, and secrets — must be transferred to the <strong>Company Repository</strong> (Sprout Vercel or Sprout Azure). Raise a DevOps ticket for Coleen Bartido once IS/Execom approval is in place."
+            color={BLUE_TEXT} bg={C.blueberry100} border={C.blueberry400} />
+          <div style={{ background: C.white, border: "1px solid " + C.blueberry400, borderRadius: DS.radius.md,
+            padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 20 }}>
+            <span style={{ fontSize: 16, flexShrink: 0, color: C.mushroom400 }}>→</span>
+            <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom700, lineHeight: 1.55 }}>
+              <strong>Development</strong> — personal GitHub repo, personal Vercel, local DB: all fine.<br />
+              <strong>Go-live (Bloom)</strong> — everything must move to Sprout-owned accounts. IS/Execom approval must come <em>before</em> the DevOps ticket.
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {checklist.map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 14px", background: C.white, border: "1px solid " + C.carrot500, borderRadius: DS.radius.md }}>
-                  <div style={{ width: 20, height: 20, borderRadius: DS.radius.sm, border: "2px solid " + C.carrot500, flexShrink: 0, marginTop: 1 }} />
-                  <div style={{ fontFamily: FF, fontSize: 13, color: C.mushroom800, lineHeight: 1.5 }}>{item}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Section>
-
-        {/* ── Monitoring ── */}
-        <Section title="Ongoing Monitoring" icon="📊">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: C.mushroom100 }}>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Activity</th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Frequency</th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Owner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monitoring.map((m, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.mushroom50 }}>
-                    <td style={{ padding: "10px 14px", color: C.mushroom700, borderBottom: "1px solid " + C.mushroom100 }}>{m.activity}</td>
-                    <td style={{ padding: "10px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100, whiteSpace: "nowrap" }}>{m.frequency}</td>
-                    <td style={{ padding: "10px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{m.owner}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-          <div style={{ marginTop: 12, padding: "12px 16px", background: C.mango50, border: "1px solid " + C.mango300, borderRadius: DS.radius.lg, fontFamily: FF, fontSize: 12, color: C.mango700 }}>
-            <strong>⚠️ Ghost Project Policy:</strong> Any internal tool accessed by more than 3 people OR that connects to a company system MUST be registered in Grove — regardless of how it was built. Team leads are responsible for ensuring their teams comply.
-          </div>
-        </Section>
 
-        {/* ── Quick Reference ── */}
-        <Section id="quick-reference" title="Quick Reference" icon="⚡">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FF, fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: C.mushroom100 }}>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Scenario</th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Builder Action</th>
-                  <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: C.mushroom700, borderBottom: "2px solid " + C.mushroom200 }}>Release Manager</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quickRef.map((r, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.mushroom50 }}>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: C.mushroom800, borderBottom: "1px solid " + C.mushroom100 }}>{r.scenario}</td>
-                    <td style={{ padding: "10px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{r.builder}</td>
-                    <td style={{ padding: "10px 14px", color: C.mushroom600, borderBottom: "1px solid " + C.mushroom100 }}>{r.rm}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
+          <SubH>Who to Route To</SubH>
 
-        {/* ── Footer ── */}
-        <div style={{ textAlign: "center", padding: "20px 0 40px", fontFamily: FF, fontSize: 12, color: C.mushroom400 }}>
-          Grove Stage Gate & Review Process · Last updated June 2026 · Questions? Reach out to Belle Asis or Diane Litan.
+          <SectionLabel pill={<Pill label="Tier 3" color={OG_TEXT} bg={C.carrot100} border={C.carrot500} />}>
+            DevOps &amp; go-live support
+          </SectionLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+            <ReviewCard initials="BB" name="Blaise Brandon Solis Cosico" role="Python standards review"
+              avatarBg="#EEEDFE" avatarColor="#534AB7"
+              tierPills={[<Pill key="t3" label="Tier 3" color={OG_TEXT} bg={C.carrot100} border={C.carrot500} />]}
+              bullets={["Python app review before deploy", "Run standard checklist first, then escalate", "IS/Execom approval must be secured first"]} />
+            <ReviewCard initials="CB" name="Coleen Bartido" role="C# / .NET · DevOps & deployment"
+              avatarBg="#E1F5EE" avatarColor="#0F6E56"
+              tierPills={[<Pill key="t3" label="Tier 3" color={OG_TEXT} bg={C.carrot100} border={C.carrot500} />]}
+              bullets={["C# / .NET app review", "Deployment & environment migration", "DevOps tickets — after IS/Execom approval only", "Grove site feedback and improvement requests"]} />
+          </div>
+
+          <SectionLabel pill={<Pill label="Tier 2" color={BLUE_TEXT} bg={C.blueberry100} border={C.blueberry400} />}>
+            Internal product sign-off
+          </SectionLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+            <ReviewCard initials="RE" name="Raphael Enriquez" role="Internal product sign-off"
+              avatarBg="#FAECE7" avatarColor="#993C1D"
+              tierPills={[<Pill key="t2" label="Tier 2" color={BLUE_TEXT} bg={C.blueberry100} border={C.blueberry400} />]}
+              bullets={["Internal product movement & go-live sign-off", "IS/Execom approval must be secured first"]} />
+            <ReviewCard initials="RQ" name="Remedios Monica Quitasol" role="Internal product sign-off"
+              avatarBg="#FAECE7" avatarColor="#993C1D"
+              tierPills={[<Pill key="t2" label="Tier 2" color={BLUE_TEXT} bg={C.blueberry100} border={C.blueberry400} />]}
+              bullets={["Internal product movement & go-live sign-off", "IS/Execom approval must be secured first"]} />
+          </div>
+
+          <SectionLabel pill={<Pill label="Release Manager" color={C.kangkong700} bg={C.kangkong50} border={C.kangkong200} />}>
+            Grove oversight
+          </SectionLabel>
+          <div style={{ maxWidth: "calc(50% - 5px)" }}>
+            <ReviewCard initials="BA" name="Belle Asis" role="Release Manager"
+              avatarBg={C.kangkong100} avatarColor={C.kangkong700}
+              tierPills={[<Pill key="rm" label="Release Manager" color={C.kangkong700} bg={C.kangkong50} border={C.kangkong200} />]}
+              bullets={["Manages release process", "Grove site feedback and improvement requests"]} />
+          </div>
+
+          <SubH>Data Sensitivity</SubH>
+          <StdTable
+            headers={["Level", "Examples", "Action required"]}
+            rows={[
+              ["None", "Public content, anonymised summaries", "No special handling"],
+              ["Internal (non-sensitive)", "Meeting notes, process docs", "Access control recommended"],
+              ["Sensitive (PII, HR, payroll)", "Employee records, salary data", "PDPA / Data Privacy Act compliance"],
+              ["Highly sensitive", "Health, financial, legal data", "DPO review + Legal sign-off required"],
+            ]}
+          />
+          <Alert title="Sensitive data + external AI"
+            body="If your project sends sensitive or PII data to an external AI model — a DPO/privacy review is required before launch. Coordinate with Belle Asis."
+            color={C.mango600} bg={C.mango100} border={C.mango500} />
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 5 — REGISTER
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="5" sectionRef={refs.register}>Register in Grove</SecH>
+
+          <Step num="1" numColor={C.kangkong500} numBg={C.kangkong50} numBd={C.kangkong200}
+            title="Log in to Grove"
+            body="Go to <strong>grove.sprout.solutions</strong>. Sign in with your Sprout Google account (<code>@sprout.ph</code> or <code>@sproutsolutions.io</code>). Your country is auto-set and cannot be changed." />
+          <Step num="2" numColor={PURPLE} numBg={PURPLE_BG} numBd={PURPLE_BD}
+            title={`Click "Add Plant"`}
+            body="From the Garden view, click <strong>Add Plant</strong>. Fill in: project name, description, problem space, department, tools used, and data sources. Technical details can come later." />
+          <Step num="3" numColor={C.blueberry500} numBg={C.blueberry100} numBd={C.blueberry400}
+            title="Complete the Technical tab"
+            body="Answer all 5 security questions — tier is computed automatically. Then fill the per-tier checklist that appears." />
+          <Step num="4" numColor={TEAL} numBg={TEAL_BG} numBd={TEAL_BD}
+            title="Declare your approver"
+            body="In the <strong>Overview tab</strong>, find the <strong>Approver</strong> section. Enter the name and email of your IS contact or Execom member. Click <strong>Send Approval Request</strong>." />
+
+          <SubH>Per-Tier Checklist Fields</SubH>
+          <TierBlock tier={1} label="Static / Markup" color={C.mushroom700} bg="#f2f1ed" border={C.mushroom300}
+            items={["Live URL (optional)", "Version control — repo URL if applicable"]} />
+          <TierBlock tier={2} label="Internal App" color={C.blueberry500} bg={C.blueberry100} border={C.blueberry400}
+            items={["Live URL", "Hosting platform", "Version control — repo URL if applicable", "Authentication — type if yes", "Database — platform + does it connect to Sprout DB?"]} />
+          <TierBlock tier={3} label="External-Facing" color={C.carrot500} bg={C.carrot100} border={C.carrot500}
+            items={["Live URL", "Hosting platform", "Version control — repo URL if applicable", "Authentication — Keycloak is required", "Database — platform + connects to Sprout DB?", "Data sensitivity level", "Does it send data to an external AI model?"]} />
+
+          <Alert title="Existing tools not yet in Grove"
+            body="If your tool is already live and used by more than 3 people, register it in Grove immediately at the correct current stage. Belle Asis will review retroactively if Tier 2 or 3."
+            color={C.mango600} bg={C.mango100} border={C.mango500} />
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 6 — GO-LIVE & REVIEW
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="6" sectionRef={refs.golive}>Go-Live &amp; Review</SecH>
+
+          <SubH>Stage Gates</SubH>
+          <StdTable
+            headers={["Transition", "Tier 1", "Tier 2", "Tier 3"]}
+            rows={[
+              ["<strong>Sprout → Bloom</strong>", `<span style="color:#1f6e1f">Free — no RM review</span>`, "RM review required", "Full RM sign-off required"],
+              ["<strong>Bloom → Thriving</strong>", `<span style="color:#1f6e1f">No additional gate</span>`, "RM final approval required", "RM approval + compliance checklist"],
+            ]}
+          />
+          <Alert title="IS / Execom approval gate"
+            body="Required before any ticket is raised for Blaise, Coleen, Raphael, or Remedios. Optional early on — mandatory before going live (Bloom)."
+            color={TEAL} bg={TEAL_BG} border={TEAL_BD} />
+
+          <SubH>Submitting for Release Review (Tier 2 &amp; 3)</SubH>
+          <CheckItem label="Open your project page → find the Release Gate Banner" />
+          <CheckItem label="Click 'Submit for Release Review'" sub="Status changes to pending — Belle Asis is notified" />
+          <CheckItem label="For Tier 3: a Jira DevOps ticket is created automatically" />
+          <CheckItem label="Wait for RM outcome — banner updates in real time" sub="Approved → stage button unlocked. Rejected → read comment, fix, resubmit." />
+
+          <SubH>Tier 3 Compliance Checklist (required before Thriving)</SubH>
+          {[
+            "Data Minimization — only collecting what is strictly necessary",
+            "Access Control — restricted to authorized users only",
+            "No hardcoded credentials or API keys in source code",
+            "No PII stored in application logs",
+            "Compliant with PH Data Privacy Act and/or TH PDPA",
+            "Reviewed by at least one person who is not the builder",
+            "DevOps infrastructure confirmed — GitHub repo, hosting, database",
+            "Release Manager (Belle Asis) has reviewed and signed off",
+          ].map((item, i) => <CheckItem key={i} label={item} border={C.carrot500} />)}
+
+          <SubH>Moving Assets to Sprout at Go-Live</SubH>
+          <Alert title="Required for Tier 2 & 3 before Bloom"
+            body="Personal accounts are fine during development. Before going live, transfer the repository, hosting environment, database, configuration, and secrets to Sprout-owned accounts. Tier 1 apps are exempt."
+            color={C.mango600} bg={C.mango100} border={C.mango500} />
+
+          <Divider />
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SECTION 7 — TIPS
+          ══════════════════════════════════════════════════════════════════ */}
+          <SecH num="7" sectionRef={refs.tips}>Tips &amp; Gotchas</SecH>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            {[
+              { title: "Classify before you build, not after",
+                body: "One question tells you most of what you need: does it have a backend? No backend = Tier 1, no matter who uses it. This saves rearchitecting later." },
+              { title: "Register early — stages are just a label",
+                body: "You don't need to finish building before registering. Add a plant as soon as the idea is real. It lets you track progress and start the approval clock early." },
+              { title: "Secure your approver early",
+                body: "IS/Execom approval is required before any DevOps ticket. If you wait too long, you might block yourself from Bloom. Get the approval early." },
+              { title: "Read the Keycloak guide before asking Coleen",
+                body: "There's an existing Keycloak setup guide. Work through it first. Coleen Bartido is available for escalations — not setup walkthroughs." },
+              { title: "Supabase for databases — not Airtable",
+                body: "Airtable and Sheets are fine for prototyping. For a production tool used by real users, use Supabase. It avoids a painful migration at go-live review." },
+              { title: "If it's used by 3+ people, it belongs in Grove",
+                body: "Any internal tool accessed by more than 3 people, or that connects to a company system, must be registered. Don't wait to be asked." },
+              { title: "A rejection is not the end",
+                body: "If your release review is rejected, read the comment carefully, fix the flagged issue, and resubmit. The review queue moves quickly once resolved." },
+            ].map((tip, i) => (
+              <Card key={i}>
+                <div style={{ fontFamily: FF, fontSize: 10, fontWeight: 700, color: C.mushroom400,
+                  marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Tip {i + 1}</div>
+                <div style={{ fontFamily: FF, fontSize: 13, fontWeight: 700, color: C.mushroom900, marginBottom: 5 }}>{tip.title}</div>
+                <div style={{ fontFamily: FF, fontSize: 12, color: C.mushroom600, lineHeight: 1.6 }}>{tip.body}</div>
+              </Card>
+            ))}
+          </div>
+
+          <SubH>Common Mistakes</SubH>
+          <StdTable
+            headers={["Mistake", "What to do instead"]}
+            rows={[
+              ["Waiting until launch to register in Grove", "Register early — even when the idea is rough"],
+              ["Using Airtable or Sheets as a production DB", "Switch to Supabase before go-live"],
+              ["Raising a DevOps ticket before IS/Execom approval", "Get approval first, then raise the ticket"],
+              ["Hardcoding API keys or credentials", "Use environment variables; never commit secrets"],
+              ["Building Tier 3 auth without Keycloak", "Keycloak is mandatory for external-facing apps"],
+              ["Skipping the Technical tab classification", "No stage changes are possible without a tier"],
+              ["Keeping the repo on personal accounts at go-live", "Move all assets to Sprout-owned accounts before Bloom"],
+              ["Sending sensitive PII to an external AI without review", "Check Q4; get DPO review if needed"],
+            ]}
+          />
+
+          {/* Footer */}
+          <div style={{ textAlign: "center", padding: "24px 0 40px", fontFamily: FF, fontSize: 12, color: C.mushroom400 }}>
+            Grove Developer Guide · June 2026 · Questions? Reach out to Belle Asis.
+          </div>
+
         </div>
       </div>
     </div>

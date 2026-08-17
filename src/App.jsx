@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./lib/supabase";
 import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo, loadDeleteRequests, toDeleteRequest } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
 import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
-
 // ── Sprout Design System Tokens ───────────────────────────────────────────────
 const DS = {
   colors: {
@@ -41,6 +40,49 @@ const C = DS.colors;
 // ── Country constants ─────────────────────────────────────────────────────────
 const COUNTRY_MAP  = {"sprout.ph":"PH", "sproutsolutions.io":"TH"};
 const JIRA_BOARD_URL = "https://sprouthq.atlassian.net/jira/software/c/projects/DEV/boards/233";
+
+// ── Google Chat notifications ─────────────────────────────────────────────────
+function gchatTierLine(tier) {
+  if (tier === 1) return "• Tier: T1 — Static/Internal\n• Support: No Groundskeeper needed — owner uploads to Markup directly.";
+  if (tier === 2) return "• Tier: T2 — Internal App\n• Support: Groundskeeper team (Coleen, Blaise, Nikki, Raffy). IS/Execom approval required.";
+  if (tier === 3) return "• Tier: T3 — External-Facing\n• Support: Groundskeeper team (Coleen, Blaise, Nikki, Raffy). IS/Execom approval + DPO/privacy review required.";
+  return "• Tier: Unclassified — owner should complete classification.";
+}
+function notifyProjectCreated(project) {
+  const url = import.meta.env.VITE_GOOGLE_CHAT_WEBHOOK_URL;
+  if (!url) return;
+  const stageLabel = { seedling:"Seedling", nursery:"Nursery", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving" };
+  const dept = Array.isArray(project.builtFor) ? project.builtFor.join(", ") : (project.builtFor || "—");
+  const text = [
+    "🌱 *New project added on Grove*", "",
+    `*${project.name}* was added by ${project.builder || project.builderEmail}.`,
+    `• Stage: ${stageLabel[project.stage] || project.stage || "—"}`,
+    `• Department: ${dept}`,
+    gchatTierLine(project.tier),
+  ].join("\n");
+  fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ text }) })
+    .catch(e => console.warn("gchat notify failed:", e));
+}
+function notifySupportRequested({ projectName, requestedBy, tier, jiraTicketKey }) {
+  const url = import.meta.env.VITE_GOOGLE_CHAT_WEBHOOK_URL;
+  if (!url) return;
+  const tierLabels = { 1:"T1 — Static/Internal", 2:"T2 — Internal App", 3:"T3 — External-Facing" };
+  const handler = tier === 1
+    ? "No Groundskeeper needed for T1 projects."
+    : tier === 2 || tier === 3
+      ? "Groundskeeper team (Coleen, Blaise, Nikki, Raffy)"
+      : "Unclassified — classify the project first.";
+  const lines = [
+    "🔧 *Setup support requested on Grove*", "",
+    `*${projectName}* needs infrastructure setup.`,
+    `• Requested by: ${requestedBy}`,
+    `• Tier: ${tierLabels[tier] || "Unclassified"}`,
+    `• Who handles: ${handler}`,
+  ];
+  if (jiraTicketKey) lines.push(`• Jira: ${jiraTicketKey}`);
+  fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ text: lines.join("\n") }) })
+    .catch(e => console.warn("gchat notify failed:", e));
+}
 
 // Inline SVG flag — no emoji, no external images, renders everywhere
 const FlagPH = ({w=24,h=16}) => (
@@ -113,19 +155,19 @@ const getCountry   = (email="") => {
 // ── Stage constants ────────────────────────────────────────────────────────────
 const STAGES      = ["seedling","nursery","sprout","bloom","thriving"];
 const STAGE_LABELS = {
-  seedling:"Seedling", nursery:"Nursery", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving",
+  seedling:"Seedling", nursery:"Rooting", sprout:"Sprout", bloom:"Bloom", thriving:"Thriving",
 };
 const STAGE_DESC = {
-  seedling: "Someone's building this!",
-  nursery:  "Getting leadership love before scaling",
-  sprout:   "Full speed ahead",
-  bloom:    "Real people, real feedback",
-  thriving: "Live, loved, and making an impact",
+  seedling: "Someone's building it",
+  nursery:  "Leadership review",
+  sprout:   "Readying to go live",
+  bloom:    "Live & used",
+  thriving: "Making an impact",
 };
 const STAGE_FLORA = STAGE_DESC;
 const STAGE_ORDER = {seedling:0,nursery:1,sprout:2,bloom:3,thriving:4};
 
-// ── Release Gate — checks if a project can advance past sprout or bloom ────────
+// ── Release Gate — checks if a project can advance past seedling, sprout, or bloom ─
 // Returns { blocked, reason, message }
 function getStageGate(project) {
   const { tier, stage, requiresAuth, externalAccess, hasSensitiveData,
@@ -133,6 +175,10 @@ function getStageGate(project) {
   const securityComplete = [requiresAuth, externalAccess, hasSensitiveData,
                             sendsToExternalAI, storesUserInputs]
                            .every(v => v !== null && v !== undefined);
+  if (stage === "seedling") {
+    if (tier === null || tier === undefined)
+      return { blocked:true, reason:"unclassified", message:"Complete Tier Classification (Seedling tab) before your project can advance." };
+  }
   if (stage === "sprout") {
     if (!securityComplete)
       return { blocked:true, reason:"classification", message:"Complete Security & Data Classification (Technical tab) before going live." };
@@ -200,7 +246,7 @@ const STAGE_GUIDE = [
         bg: C.mango100, border: C.mango500, textColor: C.mango700,
         icon: "📋",
         title: "What you need at this stage",
-        body: "A working prototype (something people can try) and a short deck explaining what you're building and its impact. Both are required before moving to Nursery.",
+        body: "A working prototype (something people can try) and a short deck explaining what you're building and its impact. Both are required before moving to Rooting.",
       },
       {
         id: "ai-help",
@@ -219,7 +265,7 @@ const STAGE_GUIDE = [
     ],
   },
   {
-    key: "nursery", emoji: "🌿", label: "Nursery",
+    key: "nursery", emoji: "🌿", label: "Rooting",
     borderColor: STAGE_COLORS.nursery.border, textColor: STAGE_COLORS.nursery.text,
     desc: "Before spending more time building, leadership reviews your prototype and deck. The goal isn't to gatekeep — it's to make sure you get the right guidance, connections, and resources before you invest more time.",
     gardenBadge: true,
@@ -300,16 +346,18 @@ const DEPT_ZONES = {
   PeopleOps:          {x:51, y:81, w:23, h:17},
   Finance:            {x:76, y:81, w:23, h:17},
   ExCom:              {x:1,  y:101,w:23, h:17},
+  Technology:         {x:26, y:101,w:23, h:17},
 };
 
 const CAPABILITIES = ["All","LLM","Computer Vision","Automation","Prediction","NLP"];
-const TOOLS =["Claude Chat","Claude Code","Cowork","ChatGPT","Copilot","Cursor","Zapier / Make","Other"];
-const AGENTIC_FRAMEWORKS = ["AutoGPT","Aulendil","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
-const DATA_SOURCES = [
-  "HubSpot","NetSuite","Sprout HR","Sprout Payroll",
-  "Google Drive/Docs","Product Analytics/Pendo/Userpilot","Databricks","Zendesk",
-  "Website","Jira","Notion/Confluence","Meeting Transcripts",
-  "Survey Responses","Others",
+const TOOLS = ["Bolt","ChatGPT","Claude","Claude Code","Copilot","Cowork","Cursor","Gemini","Grok","LLaMA","Lovable","Mistral","n8n","Replit","V0","Windsurf","Zapier / Make","Other"];
+const AGENTIC_FRAMEWORKS = ["Aulendil","AutoGPT","BlackMagic","BMAD","Claude Flow","CrewAI","GSD","Kiro","LangChain","Spec Kit","Superpowers","TaskMaster"];
+const DB_AND_SOURCES = [
+  "Azure SQL","Databricks","Firebase","Google Drive/Docs","HubSpot","Jira",
+  "Meeting Transcripts","MongoDB","MySQL","NetSuite","Notion/Confluence",
+  "PostgreSQL","Product Analytics/Pendo/Userpilot","Sprout HR","Sprout Payroll",
+  "Supabase","Survey Responses","Website","Zendesk",
+  "Other",
 ];
 
 const INITIAL_PROJECTS = [
@@ -1092,13 +1140,14 @@ function getDashboardSubline(projects, wishes) {
 }
 
 // ── Overview Dashboard ────────────────────────────────────────────────────────
-const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject }) => {
-  // ── Animation state ─────────────────────────────────────────────────────────
-  const [counts, setCounts]       = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
-  const [barsReady, setBarsReady] = useState(false);
-  const [hoverTile, setHoverTile] = useState(null);
-  const [clickTile, setClickTile] = useState(null);
-  const [rankView, setRankView]   = useState("people"); // "people" | "dept"
+const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectProject, onNavigateGarden, onNavigateWishlist, onOpenProject, onContribute }) => {
+  const [counts, setCounts]         = useState({ seeds:0, seedling:0, nursery:0, sprout:0, bloom:0, thriving:0 });
+  const [barsReady, setBarsReady]   = useState(false);
+  const [hoverPipe, setHoverPipe]   = useState(null);
+  const [spIdx,     setSpIdx]       = useState(0);
+  const [spFading,  setSpFading]    = useState(false);
+  const spHovRef  = useRef(false);
+  const SPOTLIGHT_MS = 12000;
 
   // ── Computed data ────────────────────────────────────────────────────────────
   const pipeline = {
@@ -1110,88 +1159,81 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     thriving: projects.filter(p => p.stage === "thriving").length,
   };
 
-  // Activity log feed — already sorted newest-first from DB
-  const ACTIVITY_DOTS = {
-    project_added:          C.mushroom400,
-    stage_moved:            C.kangkong500,
-    submitted_for_approval: C.mango500,
-    approved:               C.blueberry400,
-    seed_planted:           C.ubas500,
-    seed_fulfilled:         C.wintermelon500,
-  };
-  const ACTIVITY_ACTION = {
-    project_added:          "added to Garden",
-    submitted_for_approval: "submitted for approval",
-    approved:               "approved → now in Sprout",
-    seed_planted:           "planted a new seed",
-    seed_fulfilled:         "seed fulfilled",
-  };
-  const getActivityActionText = (ev) => {
-    if (ev.event_type === "stage_moved") return `moved to ${STAGE_LABELS[ev.to_stage] || ev.to_stage}`;
-    return ACTIVITY_ACTION[ev.event_type] || ev.event_type;
-  };
+  const toolCounts = getToolCounts(projects);
 
-  // Rankings — people view
-  const topBuilders = (() => {
-    const map = {};
-    for (const p of projects) {
-      if (p.stage === "seedling") continue;
-      const key = p.builderEmail || p.builder;
-      if (!map[key]) map[key] = { name: p.builder || p.builderEmail, email: p.builderEmail, count: 0 };
-      map[key].count++;
-    }
-    return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 4);
-  })();
-
-  // Rankings — dept view
-  const topDepts = (() => {
-    const map = {};
-    for (const p of projects) {
-      if (!p.builtBy) continue;
-      map[p.builtBy] = (map[p.builtBy] || 0) + 1;
-    }
-    return Object.entries(map)
-      .map(([dept, count]) => ({ dept, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  })();
-
-  const topSeeds = wishes
-    .filter(w => w.upvoters.length > 0)
-    .sort((a, b) => b.upvoters.length - a.upvoters.length)
-    .slice(0, 3);
-
-  const toolCounts       = getToolCounts(projects);
-  const frameworkCounts  = getFrameworkCounts(projects);
-
-  // My Corner data
-  const _myEmail = authUser?.email?.toLowerCase()
-  const _myName  = authUser?.displayName?.toLowerCase()
+  const _myEmail = authUser?.email?.toLowerCase();
+  const _myName  = authUser?.displayName?.toLowerCase();
   const myProjects = projects
     .filter(p =>
       (_myEmail && p.builderEmail?.toLowerCase() === _myEmail) ||
       (_myName  && p.builder?.toLowerCase() === _myName)
     )
-    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999)); // newest first (0 = today)
-  const nurseryQueue = projects.filter(p => p.stage === "nursery")
-    .sort((a, b) => {
-      const aMs = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-      const bMs = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-      return aMs - bMs;
-    });
-  const stalePlants  = projects
-    .filter(p => p.lastUpdated > 30)
-    .sort((a, b) => b.lastUpdated - a.lastUpdated);
+    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999));
+
+
   const seedsToClaim = wishes
     .filter(w => !w.claimedBy && !w.fulfilledBy)
     .sort((a, b) => b.upvoters.length - a.upvoters.length)
     .slice(0, 3);
-  const healthPct    = Math.round(
-    (projects.filter(p => p.stage === "bloom" || p.stage === "thriving").length /
-      Math.max(projects.length, 1)) * 100
-  );
 
-  // ── CountUp animation (200ms delay, 600ms duration) ─────────────────────────
+  const tierCounts = {
+    1:    projects.filter(p => p.tier === 1).length,
+    2:    projects.filter(p => p.tier === 2).length,
+    3:    projects.filter(p => p.tier === 3).length,
+    none: projects.filter(p => p.tier === null || p.tier === undefined).length,
+  };
+
+  // Recently active — sorted by lastUpdated asc (smallest = most recently updated)
+  const recentProjects = [...projects]
+    .filter(p => p.lastUpdated !== null && p.lastUpdated !== undefined)
+    .sort((a, b) => (a.lastUpdated ?? 999) - (b.lastUpdated ?? 999))
+    .slice(0, 6);
+
+  // Builder spotlight — count activity events in the last 7 days
+  const builderMap = {};
+  (activityLog || []).forEach(ev => {
+    if (!ev.actor_name) return;
+    if (ev.actor_email === "cbasis@sprout.ph") return;
+    const days = Math.floor((Date.now() - new Date(ev.created_at).getTime()) / 86400000);
+    if (days > 7) return;
+    builderMap[ev.actor_name] = (builderMap[ev.actor_name] || 0) + 1;
+  });
+  const topBuilders = Object.entries(builderMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => ({ name, count }));
+
+  // Spotlight projects — shuffled once on mount
+  const spotlightProjects = useMemo(() => {
+    if (!projects.length) return [];
+    const arr = [...projects];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, Math.min(arr.length, 10));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Spotlight timer (tick-based, pauses on hover) ────────────────────────────
+  useEffect(() => {
+    if (!spotlightProjects.length) return;
+    let elapsed = 0;
+    const tick = setInterval(() => {
+      if (spHovRef.current) return;
+      elapsed += 100;
+      if (elapsed >= SPOTLIGHT_MS) {
+        clearInterval(tick);
+        setSpFading(true);
+        setTimeout(() => {
+          setSpIdx(prev => (prev + 1) % spotlightProjects.length);
+          setSpFading(false);
+        }, 220);
+      }
+    }, 100);
+    return () => clearInterval(tick);
+  }, [spIdx, spotlightProjects.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── CountUp animation ────────────────────────────────────────────────────────
   useEffect(() => {
     const targets = { ...pipeline };
     const steps = 600 / 16;
@@ -1223,10 +1265,11 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     return () => clearTimeout(t);
   }, []);
 
-  // ── Greeting ────────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────────
   const hour      = new Date().getHours();
   const greeting  = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = authUser?.firstName?.trim() || authUser?.email?.split("@")[0] || "";
+  const today     = new Date().toLocaleDateString("en-PH", { month:"long", day:"numeric", year:"numeric" });
 
   const timeAgo = (ts) => {
     if (!ts) return "—";
@@ -1239,538 +1282,411 @@ const OverviewDashboard = ({ projects, wishes, activityLog, authUser, onSelectPr
     return days === 1 ? "yesterday" : `${days}d ago`;
   };
 
-  // ── Pipeline tile config ─────────────────────────────────────────────────────
-  const TILE_CFG = [
-    { key:"seeds",    label:"Seeds",    sub:"Got an idea? Anyone at Sprout can plant one.", accent:C.ubas500,         bg:C.ubas100,         border:C.ubas400,         countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
-    { key:"seedling", label:"Seedling", sub:"A builder claimed this and is making it real.", accent:C.mushroom400,     bg:C.mushroom100,     border:C.mushroom300,     countColor:C.mushroom700,    nav:()=>onNavigateGarden?.("board","seedling") },
-    { key:"nursery",  label:"Nursery",  sub:"A gut check before you go all in, with leadership in your corner.", accent:C.mango500,        bg:C.mango100,        border:C.mango500,        countColor:C.mango600,       nav:()=>onNavigateGarden?.("board","nursery") },
-    { key:"sprout",   label:"Sprout",   sub:"Approved and accelerating with full support.", accent:C.wintermelon400,  bg:C.wintermelon100,  border:C.wintermelon400,  countColor:C.wintermelon500, nav:()=>onNavigateGarden?.("board","sprout") },
-    { key:"bloom",    label:"Bloom",    sub:"In users' hands. Listening and refining.", accent:C.kangkong400,     bg:C.kangkong50,      border:C.kangkong200,     countColor:C.kangkong600,    nav:()=>onNavigateGarden?.("board","bloom") },
-    { key:"thriving", label:"Thriving", sub:"Started as a spark. Now relied on daily.", accent:C.blueberry500,    bg:C.blueberry100,    border:C.blueberry400,    countColor:C.blueberry500,   nav:()=>onNavigateGarden?.("board","thriving") },
+  const PIPE_CFG = [
+    { key:"seeds",    label:"Seeds",    accent:C.ubas500,        bg:C.ubas100,        border:"#b794f4",        countColor:C.ubas500,        nav:()=>onNavigateWishlist?.() },
+    { key:"seedling", label:"Seedling", accent:C.mushroom400,    bg:C.mushroom100,    border:C.mushroom300,    countColor:C.mushroom700,    nav:()=>onNavigateGarden?.("board","seedling") },
+    { key:"nursery",  label:"Nursery",  accent:C.mango500,       bg:C.mango100,       border:C.mango500,       countColor:C.mango600,       nav:()=>onNavigateGarden?.("board","nursery") },
+    { key:"sprout",   label:"Sprout",   accent:C.wintermelon400, bg:C.wintermelon100, border:C.wintermelon400, countColor:C.wintermelon500, nav:()=>onNavigateGarden?.("board","sprout") },
+    { key:"bloom",    label:"Bloom",    accent:C.kangkong400,    bg:C.kangkong50,     border:C.kangkong200,    countColor:C.kangkong600,    nav:()=>onNavigateGarden?.("board","bloom") },
+    { key:"thriving", label:"Thriving", accent:C.blueberry500,   bg:C.blueberry100,   border:C.blueberry400,   countColor:C.blueberry500,   nav:()=>onNavigateGarden?.("board","thriving") },
   ];
 
-  // ── Shared row-item hover helper ─────────────────────────────────────────────
-  const rowHoverOn  = e => { e.currentTarget.style.background=C.mushroom50; e.currentTarget.style.paddingLeft="18px"; };
-  const rowHoverOff = e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.paddingLeft="0"; };
+  const sLabel = { fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:8 };
+
+  const tierBadgeStyle = (tier) => {
+    const map = { 1:{bg:C.mushroom100,color:C.mushroom700}, 2:{bg:C.blueberry100,color:C.blueberry500}, 3:{bg:C.carrot100,color:C.carrot500} };
+    return map[tier] || null;
+  };
+
+  const getActivityText = (ev) => {
+    const stagePillStyle = { display:"inline-flex", alignItems:"center", padding:"1px 7px", borderRadius:DS.radius.full, fontSize:10, fontWeight:600, background:STAGE_COLORS[ev.to_stage]?.bg||C.mushroom100, color:STAGE_COLORS[ev.to_stage]?.text||C.mushroom700, border:`0.5px solid ${STAGE_COLORS[ev.to_stage]?.border||C.mushroom300}`, margin:"0 2px" };
+    if (ev.event_type === "stage_moved")          return <><strong>{ev.entity_name}</strong> moved to <span style={stagePillStyle}>{STAGE_LABELS[ev.to_stage]||ev.to_stage}</span></>;
+    if (ev.event_type === "project_added")        return <>added <strong>{ev.entity_name}</strong> to the garden</>;
+    if (ev.event_type === "seed_planted")         return <>planted a seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "seed_fulfilled")       return <>fulfilled seed — <strong>{ev.entity_name}</strong></>;
+    if (ev.event_type === "submitted_for_approval") return <>submitted <strong>{ev.entity_name}</strong> for approval</>;
+    if (ev.event_type === "approved")             return <>approved <strong>{ev.entity_name}</strong></>;
+    return <>{(ev.event_type||"").replace(/_/g," ")} — <strong>{ev.entity_name}</strong></>;
+  };
+
+  const feedItems = (activityLog || [])
+    .filter(ev => !["deletion_requested","deletion_approved"].includes(ev.event_type))
+    .filter(ev => ev.actor_email !== "cbasis@sprout.ph")
+    .slice(0, 5);
+
+  const sp = spotlightProjects[spIdx] || null;
 
   return (
-    <div style={{ padding:"28px 32px", background:"transparent", minHeight:"100%", overflowY:"auto", fontFamily:FF, position:"relative", zIndex:1 }}>
+    <div style={{ padding:"24px 28px", background:"transparent", minHeight:"100%", overflowY:"auto", fontFamily:FF, position:"relative", zIndex:1 }}>
       <style>{OVERVIEW_KF}</style>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom:20, animation:"fadeUp 0.4s ease both" }}>
-        <div style={{ fontSize:20, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em", marginBottom:3 }}>
-          {greeting}, {firstName}!
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18, animation:"fadeUp 0.35s ease both" }}>
+        <div>
+          <div style={{ fontSize:19, fontWeight:700, color:C.mushroom900, letterSpacing:"-0.01em" }}>{greeting}, {firstName}</div>
+          <div style={{ fontSize:12, color:C.mushroom500, marginTop:3 }}>{today} · Here's where the garden stands.</div>
         </div>
-        <div style={{ fontSize:14, color:C.mushroom500 }}>
-          {getDashboardSubline(projects, wishes)}
-        </div>
+        {onContribute && (
+          <button
+            onClick={onContribute}
+            onMouseOver={e=>e.currentTarget.style.background=C.kangkong600}
+            onMouseOut={e=>e.currentTarget.style.background=C.kangkong500}
+            style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 16px", background:C.kangkong500, border:"none", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:700, color:C.white, cursor:"pointer", transition:"background 0.15s", flexShrink:0 }}
+          >
+            <IcoAdd size={13} color={C.white}/> Add a Plant
+          </button>
+        )}
       </div>
 
-      {/* ── Pipeline ──────────────────────────────────────────────────────── */}
-      <div style={{
-        display:"flex", alignItems:"stretch", gap:0, marginBottom:24,
-        animation:"fadeUp 0.4s ease 0.05s both",
-      }}>
-        {TILE_CFG.map((t, i) => {
-          const isHov = hoverTile === i;
-          const isClk = clickTile === i;
-          const isLast = i === TILE_CFG.length - 1;
-          const isLive = t.key === "thriving";
-          const wmOpacity = isHov ? 0.14 : (t.key === "seedling" ? 0.07 : 0.09);
-          return (
-            <React.Fragment key={t.key}>
-              <div
-                onMouseEnter={() => setHoverTile(i)}
-                onMouseLeave={() => setHoverTile(null)}
-                onClick={() => { setClickTile(i); setTimeout(() => { setClickTile(null); t.nav(); }, 120); }}
-                style={{
-                  flex: 1,
-                  background: t.bg,
-                  border: `0.5px solid ${isHov ? t.accent : t.border}`,
-                  borderRadius: DS.radius.md,
-                  padding: "16px 12px 14px",
-                  cursor: "pointer",
-                  position: "relative",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: 148,
-                  transform: isClk ? "scale(0.97)" : isHov ? "translateY(-3px)" : "none",
-                  boxShadow: isHov ? DS.shadow.md : "none",
-                  transition: "all 0.2s ease",
-                  userSelect: "none",
-                }}
-              >
-                {/* Left accent bar */}
-                <div style={{ position:"absolute", left:0, top:0, bottom:0, width:4, background:t.accent, borderRadius:`${DS.radius.md} 0 0 ${DS.radius.md}` }}/>
-
-                {/* Oversized watermark icon */}
-                <div style={{
-                  position:"absolute", bottom:-14, right:-12,
-                  opacity: wmOpacity,
-                  transform: isHov ? "scale(1.07) rotate(5deg)" : "none",
-                  transition: "opacity 0.25s, transform 0.25s",
-                  pointerEvents: "none",
-                }}>
-                  {t.key === "seeds"
-                    ? <IcoWishlist size={140} color={t.accent} />
-                    : <StageIcon stage={t.key} size={140} color={t.accent} />}
-                </div>
-
-                {/* Content sits above watermark */}
-                <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", height:"100%" }}>
-                  {/* Small icon top-left */}
-                  <div style={{ marginBottom:10 }}>
-                    {t.key === "seeds"
-                      ? <IcoWishlist size={20} color={t.accent} />
-                      : <StageIcon stage={t.key} size={20} color={t.accent} />}
-                  </div>
-
-                  {/* Count */}
-                  <div style={{ fontSize:40, fontWeight:800, color:t.countColor, lineHeight:1, marginBottom:3 }}>
-                    {counts[t.key]}
-                  </div>
-
-                  {/* Stage name + live dot */}
-                  <div style={{ fontSize:13, fontWeight:700, color:t.countColor, letterSpacing:"0.02em", marginBottom:5, display:"flex", alignItems:"center", gap:4 }}>
-                    {t.label}
-                    {isLive && <span style={{ width:6, height:6, borderRadius:"50%", background:t.accent, display:"inline-block", animation:"ovPulse 1.8s infinite" }}/>}
-                  </div>
-
-                  {/* Description */}
-                  <div style={{ fontSize:12, color:C.mushroom500, lineHeight:1.55, flex:1 }}>
-                    {t.sub}
-                  </div>
-
-                  {/* CTA */}
-                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase", color:t.accent, marginTop:10, opacity:isHov?1:0, transition:"opacity 0.15s" }}>
-                    View all →
-                  </div>
-                </div>
-              </div>
-
-              {/* Chevron between tiles */}
-              {!isLast && (
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:20, flexShrink:0 }}>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 4L10 8L6 12" stroke={C.mushroom300} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
+      {/* ── 4 Stats ────────────────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:14, animation:"fadeUp 0.35s ease 0.05s both" }}>
+        {[
+          { label:"Total projects",  value:projects.length,   sub:"across PH & TH", accent:C.mushroom300,  textColor:C.mushroom800 },
+          { label:"Live & thriving", value:pipeline.thriving, sub:"in production",   accent:C.blueberry500, textColor:C.blueberry500 },
+          { label:"Seeds waiting",   value:pipeline.seeds,    sub:"unclaimed ideas", accent:C.ubas500,      textColor:C.ubas500 },
+          { label:"Need attention",  value:tierCounts.none,   sub:"unclassified",    accent:C.mango600,     textColor:C.mango600 },
+        ].map(s => (
+          <div key={s.label} style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 15px", borderLeft:`3px solid ${s.accent}` }}>
+            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:6 }}>{s.label}</div>
+            <div style={{ fontSize:26, fontWeight:800, color:s.textColor, lineHeight:1 }}>{s.value}</div>
+            <div style={{ fontSize:11, color:C.mushroom400, marginTop:3 }}>{s.sub}</div>
+          </div>
+        ))}
       </div>
 
       {/* ── Two-column body ─────────────────────────────────────────────── */}
-      <div style={{ display:"flex", gap:16, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,2.6fr)", gap:14, alignItems:"start" }}>
 
-        {/* ════════════════════════════════════════════════════
-            LEFT COLUMN — exec view (Momentum, Spotlight,
-            Tools in Use, Rankings)
-        ════════════════════════════════════════════════════ */}
-        <div style={{ flex:"1.55 1 0", minWidth:0, display:"flex", flexDirection:"column", gap:14 }}>
+        {/* ─── LEFT ────────────────────────────────────────────────────── */}
+        <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.1s both" }}>
 
-          {/* ── Momentum ──────────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.1s both" }}>
+          {/* Your Garden */}
+          <div>
+            <div style={sLabel}>Your garden</div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {myProjects.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No plants yet — hit "Add a Plant" to log your first AI project.</div>
+              ) : myProjects.slice(0,5).map((p, i) => {
+                const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+                const isStale = (p.lastUpdated ?? 0) > 30;
+                return (
+                  <div key={p.id}
+                    onClick={() => onSelectProject(p)}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                    style={{ padding:"10px 14px", borderBottom:i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"center", gap:10, cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                  >
+                    <span style={{ width:7, height:7, borderRadius:"50%", background:sc.dot, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:isStale?C.mango600:C.mushroom400, marginTop:1 }}>
+                        {isStale ? `No update in ${p.lastUpdated}d` : p.lastUpdated === 0 ? "Updated today" : `Updated ${p.lastUpdated}d ago`}
+                      </div>
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px", flexShrink:0 }}>{STAGE_LABELS[p.stage]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seeds to claim */}
+          <div>
+            <div style={sLabel}>Seeds you could claim</div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {seedsToClaim.length === 0 ? (
+                <div style={{ padding:"12px 14px", fontSize:11, color:C.mushroom400 }}>No unclaimed seeds right now.</div>
+              ) : seedsToClaim.map((w, i) => (
+                <div key={w.id}
+                  onClick={() => onNavigateWishlist?.()}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                  onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                  style={{ padding:"10px 14px", borderBottom:i<seedsToClaim.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                >
+                  <div style={{ fontSize:12, fontWeight:600, color:C.mushroom900, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{w.title}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:10, fontWeight:600, background:C.ubas100, color:C.ubas500, borderRadius:DS.radius.full, padding:"1px 8px" }}>▲ {w.upvoters.length}</span>
+                    {(Array.isArray(w.builtFor) ? w.builtFor : [w.builtFor]).filter(Boolean).slice(0,2).map(f => (
+                      <span key={f} style={{ fontSize:10, color:C.mushroom400 }}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Momentum feed */}
+          <div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500 }}>
-                Momentum
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <div style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, animation:"ovPulse 2s infinite", flexShrink:0 }}/>
+              <div style={sLabel}>Momentum</div>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:C.kangkong500, display:"inline-block", animation:"ovPulse 2s infinite" }}/>
                 <span style={{ fontSize:9, fontWeight:600, color:C.kangkong600, letterSpacing:"0.04em" }}>live</span>
               </div>
             </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, maxHeight:340, overflowY:"auto" }}>
-              {(() => {
-                const publicLog = activityLog.filter(ev => ev.event_type !== "deletion_requested" && ev.event_type !== "deletion_approved");
-                return publicLog.length === 0 ? (
-                  <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No activity yet — this feed fills up as projects move forward.</div>
-                ) : publicLog.map((ev, i) => {
-                const evProject   = ev.project_id ? projects.find(p => String(p.id) === String(ev.project_id)) : null;
-                const actor       = ev.actor_name || ev.actor_email?.split("@")[0] || "?";
-                const initials    = actor.split(" ").filter(Boolean).map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
-                const cc          = COVER_COLORS[evProject?.builtBy] || COVER_COLORS.default;
-                const accentColor = ACTIVITY_DOTS[ev.event_type] || C.mushroom300;
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {feedItems.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>Activity will appear here as the team makes moves.</div>
+              ) : feedItems.map((ev, i) => {
+                const initials = (ev.actor_name || ev.actor_email || "?").split(" ").filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase() || "?";
                 return (
-                  <div key={ev.id ?? i}
-                    onMouseEnter={e => e.currentTarget.style.background=C.mushroom50}
-                    onMouseLeave={e => e.currentTarget.style.background=C.white}
-                    onClick={evProject ? () => onSelectProject(evProject) : undefined}
-                    style={{
-                      display:"flex", alignItems:"flex-start", gap:10, padding:"11px 14px",
-                      borderLeft: "3px solid " + accentColor,
-                      borderBottom: i < publicLog.length - 1 ? `0.5px solid ${C.mushroom100}` : "none",
-                      transition:"background 0.15s",
-                      animation:`slideIn 0.25s ease ${Math.min(i,10) * 0.04}s both`,
-                      cursor: evProject ? "pointer" : "default",
-                      background: C.white,
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div style={{ width:28, height:28, borderRadius:"50%", background:cc.bg, color:cc.text, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0, marginTop:1 }}>
-                      {initials}
-                    </div>
-                    {/* Content */}
+                  <div key={i} style={{ padding:"9px 13px", borderBottom:i<feedItems.length-1?`0.5px solid ${C.mushroom100}`:"none", display:"flex", alignItems:"flex-start", gap:9 }}>
+                    <div style={{ width:26, height:26, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:700, flexShrink:0, marginTop:1 }}>{initials}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ marginBottom:3 }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:C.mushroom900, lineHeight:1.3 }}>{ev.entity_name}</span>
+                      <div style={{ fontSize:11, color:C.mushroom800, lineHeight:1.45, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        <strong>{ev.actor_name || (ev.actor_email||"").split("@")[0]}</strong>{" "}{getActivityText(ev)}
                       </div>
-                      <div style={{ fontSize:11, color:C.mushroom500, lineHeight:1.3 }}>
-                        <span style={{ fontWeight:600, color:C.mushroom700 }}>{actor}</span>
-                        {" · "}{getActivityActionText(ev)}
+                      <div style={{ fontSize:10, color:C.mushroom400, marginTop:2 }}>{timeAgo(ev.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>{/* end left */}
+
+        {/* ─── RIGHT ───────────────────────────────────────────────────── */}
+        <div style={{ display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.35s ease 0.12s both" }}>
+
+          {/* Quick-jump search */}
+          <div
+            onClick={() => onNavigateGarden?.("list", null)}
+            style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"9px 14px", display:"flex", alignItems:"center", gap:10, cursor:"text" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke={C.mushroom400} strokeWidth="1.6"/><path d="M13.5 13.5l3 3" stroke={C.mushroom400} strokeWidth="1.6" strokeLinecap="round"/></svg>
+            <span style={{ fontSize:13, color:C.mushroom300, flex:1, fontFamily:FF }}>Jump to any project…</span>
+            <kbd style={{ fontFamily:FF, fontSize:10, color:C.mushroom400, background:C.mushroom50, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.sm, padding:"2px 6px" }}>⌘K</kbd>
+          </div>
+
+          {/* Project Spotlight rotator */}
+          {sp && (() => {
+            const sc = STAGE_COLORS[sp.stage] || STAGE_COLORS.seedling;
+            const tb = tierBadgeStyle(sp.tier);
+            const depts = builtForArr(sp.builtFor);
+            const dc = builtForColor(sp.builtFor);
+            return (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <div style={sLabel}>Project spotlight</div>
+                  <span style={{ fontSize:10, color:C.mushroom400 }}>{spIdx + 1} / {spotlightProjects.length}</span>
+                </div>
+                <div
+                  onMouseEnter={() => { spHovRef.current = true; }}
+                  onMouseLeave={() => { spHovRef.current = false; }}
+                  onClick={() => onSelectProject(sp)}
+                  onMouseOver={e => { if (e.currentTarget === e.target || e.currentTarget.contains(e.target)) e.currentTarget.style.boxShadow = DS.shadow.md; }}
+                  onMouseOut={e => { e.currentTarget.style.boxShadow = DS.shadow.sm; }}
+                  style={{ background:`linear-gradient(135deg, ${sc.bg} 0%, ${C.white} 68%)`, border:`1px solid ${sc.border}`, borderRadius:DS.radius.md, overflow:"hidden", cursor:"pointer", transition:"box-shadow 0.2s", position:"relative", boxShadow:DS.shadow.sm }}
+                >
+                  <div style={{ position:"absolute", top:-30, right:-30, width:130, height:130, borderRadius:"50%", background:sc.dot, opacity:0.07, pointerEvents:"none" }}/>
+                  <div style={{ position:"absolute", bottom:-20, right:60, width:70, height:70, borderRadius:"50%", background:sc.dot, opacity:0.04, pointerEvents:"none" }}/>
+                  <div style={{ borderLeft:`3px solid ${sc.dot}`, padding:"14px 16px 15px", opacity:spFading?0:1, transition:"opacity 0.22s" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:sc.dot, textTransform:"uppercase", letterSpacing:"0.08em" }}>✦ Spotlight</span>
+                      <span style={{ fontSize:10, fontWeight:600, background:"rgba(255,255,255,0.75)", color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{STAGE_LABELS[sp.stage]}</span>
+                    </div>
+                    <div style={{ fontSize:15, fontWeight:700, color:C.mushroom900, lineHeight:1.3, marginBottom:6, letterSpacing:"-0.01em" }}>{sp.name}</div>
+                    <div style={{ fontSize:12, color:C.mushroom600, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:10 }}>
+                      {sp.description || sp.problemSpace || "An AI initiative by the Sprout team."}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap" }}>
+                      {depts.slice(0,2).map(d => (
+                        <span key={d} style={{ fontSize:10, fontWeight:600, background:"rgba(255,255,255,0.7)", color:dc.text||C.mushroom600, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px" }}>{d}</span>
+                      ))}
+                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"2px 8px" }}>T{sp.tier}</span>}
+                      {!tb && <span style={{ fontSize:10, fontWeight:600, background:C.mango100, color:C.mango600, borderRadius:DS.radius.full, padding:"2px 8px" }}>Unclassified</span>}
+                      <span style={{ fontSize:10, color:C.mushroom500, marginLeft:"auto" }}>by {sp.builder || "Sprout team"}</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
+                      <div style={{ display:"flex", gap:5 }}>
+                        {spotlightProjects.map((_, di) => (
+                          <div
+                            key={di}
+                            onClick={e => { e.stopPropagation(); setSpFading(true); setTimeout(() => { setSpIdx(di); setSpFading(false); }, 220); }}
+                            style={{ width:di===spIdx?18:6, height:6, borderRadius:DS.radius.full, background:di===spIdx?sc.dot:sc.border, transition:"all 0.3s", cursor:"pointer" }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display:"flex", gap:4 }}>
+                        {[{ dir:-1, d:"M6 2L3 5l3 3" }, { dir:1, d:"M4 2l3 3-3 3" }].map(({ dir, d }) => (
+                          <button
+                            key={dir}
+                            onClick={e => { e.stopPropagation(); const ni = (spIdx + dir + spotlightProjects.length) % spotlightProjects.length; setSpFading(true); setTimeout(() => { setSpIdx(ni); setSpFading(false); }, 220); }}
+                            style={{ width:24, height:24, borderRadius:DS.radius.sm, border:`0.5px solid ${sc.border}`, background:"rgba(255,255,255,0.6)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d={d} stroke={sc.dot} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    {/* Time */}
-                    <div style={{ fontSize:11, color:C.mushroom400, flexShrink:0, marginTop:3, whiteSpace:"nowrap" }}>{timeAgo(ev.created_at)}</div>
                   </div>
-                );
-              });
-              })()}
-            </div>
-          </div>
+                </div>
+              </div>
+            );
+          })()}
 
-          {/* ── Tools in Use ──────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.2s both" }}>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500, marginBottom:8 }}>
-              Tools in Use
-            </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"14px 16px" }}>
-              {toolCounts.length === 0 ? (
-                <div style={{ fontSize:11, color:C.mushroom400 }}>No tool data yet.</div>
-              ) : (() => {
-                const maxT = toolCounts[0]?.count || 1;
+          {/* Pipeline strip */}
+          <div>
+            <div style={sLabel}>Pipeline</div>
+            <div style={{ display:"flex", gap:0, alignItems:"stretch" }}>
+              {PIPE_CFG.map((t, i) => {
+                const isHov   = hoverPipe === i;
+                const isFirst = i === 0;
+                const isLast  = i === PIPE_CFG.length - 1;
                 return (
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {toolCounts.map(({ tool, count }) => (
-                      <div key={tool} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <span style={{ fontSize:13, fontWeight:500, color:C.mushroom800, width:130, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
-                        <div style={{ flex:1, height:8, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(count/maxT)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:11, color:C.mushroom500, width:24, textAlign:"right", flexShrink:0 }}>{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* ── Agentic Frameworks ────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.25s both" }}>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500, marginBottom:8 }}>
-              Agentic Frameworks
-            </div>
-            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"14px 16px" }}>
-              {frameworkCounts.length === 0 ? (
-                <div style={{ fontSize:11, color:C.mushroom400 }}>No framework data yet.</div>
-              ) : (() => {
-                const maxF = frameworkCounts[0]?.count || 1;
-                return (
-                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {frameworkCounts.map(({ framework, count }) => (
-                      <div key={framework} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <span style={{ fontSize:13, fontWeight:500, color:C.mushroom800, width:130, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{framework}</span>
-                        <div style={{ flex:1, height:8, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(count/maxF)*100}%` : 0, background:C.ubas500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:11, color:C.mushroom500, width:24, textAlign:"right", flexShrink:0 }}>{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* ── Rankings ──────────────────────────────────────────────────── */}
-          <div style={{ animation:"fadeUp 0.4s ease 0.25s both" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.08em", color:C.mushroom500 }}>
-                Rankings
-              </div>
-              {/* By People / By Dept toggle */}
-              <div style={{ display:"inline-flex", background:C.mushroom100, borderRadius:DS.radius.full, padding:2 }}>
-                {["people","dept"].map(v => (
-                  <button key={v} onClick={() => setRankView(v)} style={{
-                    fontFamily:FF, fontSize:10, fontWeight:600,
-                    padding:"3px 10px", borderRadius:DS.radius.full, border:"none", cursor:"pointer",
-                    transition:"all 0.15s",
-                    background: rankView === v ? C.white : "transparent",
-                    color:       rankView === v ? C.kangkong600 : C.mushroom500,
-                    boxShadow:   rankView === v ? DS.shadow.sm : "none",
-                  }}>
-                    {v === "people" ? "By People" : "By Dept"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ display:"flex", gap:12 }}>
-
-              {/* Builders / Depts panel */}
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:600, color:C.mushroom500, marginBottom:8 }}>
-                  {rankView === "people" ? "Top Builders" : "Top Departments"}
-                </div>
-                <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-                  {rankView === "people" ? (
-                    topBuilders.length === 0 ? (
-                      <div style={{ fontSize:11, color:C.mushroom400 }}>No data yet.</div>
-                    ) : (() => {
-                      const maxB = topBuilders[0]?.count || 1;
-                      return topBuilders.map((b, i) => (
-                        <div key={b.email || b.name} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topBuilders.length-1?9:0 }}>
-                          <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                          <div style={{ width:22, height:22, borderRadius:5, background:C.mushroom100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, fontWeight:700, color:C.mushroom600 }}>
-                            {(b.name||"?").slice(0,2).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
-                          <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                            <div style={{ height:"100%", width: barsReady ? `${(b.count/maxB)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                          </div>
-                          <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{b.count}</span>
-                        </div>
-                      ));
-                    })()
-                  ) : (
-                    topDepts.length === 0 ? (
-                      <div style={{ fontSize:11, color:C.mushroom400 }}>No data yet.</div>
-                    ) : (() => {
-                      const maxD = topDepts[0]?.count || 1;
-                      return topDepts.map(({ dept, count }, i) => (
-                        <div key={dept} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topDepts.length-1?9:0 }}>
-                          <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                          <div style={{ width:22, height:22, borderRadius:5, background:C.mushroom100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, fontWeight:700, color:C.mushroom600 }}>
-                            {dept.slice(0,2).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{dept}</span>
-                          <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                            <div style={{ height:"100%", width: barsReady ? `${(count/maxD)*100}%` : 0, background:C.kangkong500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                          </div>
-                          <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{count}</span>
-                        </div>
-                      ));
-                    })()
-                  )}
-                </div>
-              </div>
-
-              {/* Top Seeds */}
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:600, color:C.mushroom500, marginBottom:8 }}>Top Seeds by Demand</div>
-                <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-                  {topSeeds.length === 0 ? (
-                    <div style={{ fontSize:11, color:C.mushroom400 }}>No seeds with upvotes yet.</div>
-                  ) : (() => {
-                    const maxS = topSeeds[0]?.upvoters.length || 1;
-                    return topSeeds.map((w, i) => (
-                      <div key={w.id} style={{ display:"flex", alignItems:"center", gap:8, marginBottom: i<topSeeds.length-1?9:0 }}>
-                        <span style={{ fontSize:10, color:C.mushroom300, width:12, flexShrink:0 }}>{i+1}</span>
-                        <div style={{ width:22, height:22, borderRadius:5, background:C.ubas100, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:11, color:C.ubas500 }}>▲</div>
-                        <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{w.title}</span>
-                        <div style={{ width:50, height:6, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden", flexShrink:0 }}>
-                          <div style={{ height:"100%", width: barsReady ? `${(w.upvoters.length/maxS)*100}%` : 0, background:C.ubas500, transition:"width 0.8s ease 0.3s", borderRadius:DS.radius.full }}/>
-                        </div>
-                        <span style={{ fontSize:10, color:C.mushroom500, width:16, textAlign:"right", flexShrink:0 }}>{w.upvoters.length}</span>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>{/* end left column */}
-
-        {/* ════════════════════════════════════════════════════
-            RIGHT COLUMN — personal view (My Corner)
-        ════════════════════════════════════════════════════ */}
-        <div style={{ flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column", gap:12, animation:"fadeUp 0.4s ease 0.1s both" }}>
-
-          {/* Section header */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ fontSize:13, fontWeight:700, color:C.mushroom800 }}>My Corner</div>
-            {authUser?.isApprover && (
-              <span style={{ fontSize:9, fontWeight:600, background:C.mango100, color:C.mango600, border:`0.5px solid ${C.mango500}`, borderRadius:DS.radius.full, padding:"1px 7px" }}>Approver</span>
-            )}
-            {authUser?.isAdmin && !authUser?.isApprover && (
-              <span style={{ fontSize:9, fontWeight:600, background:C.kangkong100, color:C.kangkong700, border:`0.5px solid ${C.kangkong200}`, borderRadius:DS.radius.full, padding:"1px 7px" }}>Admin</span>
-            )}
-          </div>
-
-          {/* ── Panel A: role-aware primary action ──────────────────────── */}
-          <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-            {authUser?.isApprover ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Nursery Queue
-                </div>
-                {nurseryQueue.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>No plants awaiting review.</div>
-                ) : nurseryQueue.slice(0,4).map((p, i) => {
-                  const submitted = p.submittedAt ? Math.floor((Date.now() - new Date(p.submittedAt).getTime()) / 86400000) : p.lastUpdated;
-                  const overdue = submitted > 7;
-                  return (
-                    <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                      style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(nurseryQueue.length,4)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
+                  <React.Fragment key={t.key}>
+                    <div
+                      onClick={t.nav}
+                      onMouseEnter={() => setHoverPipe(i)}
+                      onMouseLeave={() => setHoverPipe(null)}
+                      style={{ flex:1, background:isHov?t.accent:t.bg, border:`0.5px solid ${t.border}`, borderRadius:isFirst?`${DS.radius.md} 0 0 ${DS.radius.md}`:isLast?`0 ${DS.radius.md} ${DS.radius.md} 0`:0, padding:"10px 8px", textAlign:"center", cursor:"pointer", transition:"all 0.15s" }}
                     >
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                        <span style={{ fontSize:9, fontWeight:600, background:C.mango100, color:C.mango600, border:`0.5px solid ${C.mango500}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>Nursery</span>
-                        <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
+                      <div style={{ fontSize:18, fontWeight:800, color:isHov?C.white:t.countColor }}>{counts[t.key]}</div>
+                      <div style={{ fontSize:9, fontWeight:600, color:isHov?"rgba(255,255,255,0.85)":t.countColor, marginTop:2, display:"flex", alignItems:"center", justifyContent:"center", gap:3 }}>
+                        {t.label}
+                        {t.key==="thriving" && <span style={{ width:4, height:4, borderRadius:"50%", background:isHov?C.white:t.accent, display:"inline-block", animation:"ovPulse 1.8s infinite" }}/>}
                       </div>
-                      {overdue && (
-                        <span style={{ fontSize:9, fontWeight:600, background:C.tomato100, color:C.tomato500, border:`0.5px solid ${C.tomato500}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0, marginLeft:6 }}>
-                          {submitted}d overdue
-                        </span>
-                      )}
                     </div>
-                  );
-                })}
-              </>
-            ) : authUser?.isAdmin ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Garden Health
-                </div>
-                {[
-                  { label:"Total plants", value:projects.length },
-                  { label:"Pipeline health", value:healthPct + "%" },
-                  { label:"Nursery queue", value:nurseryQueue.length },
-                  { label:"Pending release reviews", value:projects.filter(p=>p.releaseReviewStatus==="pending").length, highlight: projects.filter(p=>p.releaseReviewStatus==="pending").length > 0 },
-                  { label:"Unclassified projects", value:projects.filter(p=>p.tier===null||p.tier===undefined).length },
-                ].map(({ label, value, highlight }) => (
-                  <div key={label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:`0.5px solid ${C.mushroom100}` }}>
-                    <span style={{ fontSize:11, color:C.mushroom600 }}>{label}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color: highlight ? "#7c3aed" : C.mushroom900 }}>{value}</span>
-                  </div>
-                ))}
-                {/* ── Pending Release Reviews queue ── */}
-                {(() => {
-                  const pending = projects.filter(p=>p.releaseReviewStatus==="pending");
-                  if (pending.length === 0) return null;
-                  return (
-                    <div style={{ marginTop:10 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:"#6d28d9", marginBottom:6, display:"flex", alignItems:"center", gap:5 }}>
-                        🛡️ Pending Release Reviews
-                        <span style={{ background:"#7c3aed", color:"#fff", borderRadius:DS.radius.full, padding:"0px 6px", fontSize:9, fontWeight:800 }}>{pending.length}</span>
+                    {!isLast && (
+                      <div style={{ display:"flex", alignItems:"center", padding:"0 2px", background:C.mushroom50, zIndex:1 }}>
+                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M3 2l4 3-4 3" stroke={C.mushroom300} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      {pending.slice(0,4).map((p, i) => (
-                        <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff}
-                          onClick={() => onOpenProject?.(p)}
-                          style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(pending.length,4)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                        >
-                          <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                            <span style={{ fontSize:9, fontWeight:600, background:"#ede9fe", color:"#6d28d9", border:"0.5px solid #c4b5fd", borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>
-                              {STAGE_LABELS[p.stage]} →
-                            </span>
-                            <span style={{ fontSize:11, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recently Active — list */}
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={sLabel}>Recently active</div>
+              <span onClick={() => onNavigateGarden?.("list", null)} style={{ fontSize:11, color:C.mushroom500, cursor:"pointer" }}>View all →</span>
+            </div>
+            <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, overflow:"hidden" }}>
+              {recentProjects.length === 0 ? (
+                <div style={{ padding:"14px", fontSize:12, color:C.mushroom400 }}>No project activity yet.</div>
+              ) : recentProjects.map((p, i) => {
+                const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+                const tb = tierBadgeStyle(p.tier);
+                return (
+                  <div key={p.id}
+                    onClick={() => onSelectProject(p)}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.white}
+                    style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderBottom:i<recentProjects.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"background 0.12s", background:C.white }}
+                  >
+                    <div style={{ width:4, minHeight:36, borderRadius:DS.radius.full, background:sc.dot, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:C.mushroom500, marginTop:2, display:"flex", alignItems:"center", gap:6 }}>
+                        {builtForArr(p.builtFor)[0] && <><span>{builtForArr(p.builtFor)[0]}</span><span style={{ color:C.mushroom200 }}>·</span></>}
+                        <span>{p.lastUpdated === 0 ? "Updated today" : `Updated ${p.lastUpdated}d ago`}</span>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+                      <span style={{ fontSize:10, fontWeight:600, background:sc.bg, color:sc.text, border:`0.5px solid ${sc.border}`, borderRadius:DS.radius.full, padding:"2px 8px" }}>{STAGE_LABELS[p.stage]}</span>
+                      {tb && <span style={{ fontSize:10, fontWeight:700, background:tb.bg, color:tb.color, borderRadius:DS.radius.full, padding:"1px 7px" }}>T{p.tier}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom 3-col: Builder Spotlight | Top Tools | Tier Breakdown */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+
+            {/* Builder spotlight */}
+            <div>
+              <div style={sLabel}>Builder spotlight</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px" }}>
+                {topBuilders.length === 0 ? (
+                  <div style={{ fontSize:11, color:C.mushroom400 }}>No activity this week yet.</div>
+                ) : (
+                  <>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:11 }}>
+                      <span style={{ fontSize:13 }}>🏆</span>
+                      <span style={{ fontSize:10, fontWeight:700, color:C.mushroom500, textTransform:"uppercase", letterSpacing:"0.06em" }}>This week</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:11 }}>
+                      <div style={{ width:34, height:34, borderRadius:"50%", background:C.mango100, border:`2px solid ${C.gold}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:"#744210", flexShrink:0 }}>{getInitials(topBuilders[0].name)}</div>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:700, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{topBuilders[0].name}</div>
+                        <div style={{ fontSize:11, color:C.mushroom500 }}>{topBuilders[0].count} event{topBuilders[0].count !== 1 ? "s" : ""} this week</div>
+                      </div>
+                    </div>
+                    {topBuilders.length > 1 && (
+                      <div style={{ display:"flex", flexDirection:"column", gap:6, paddingTop:9, borderTop:`0.5px solid ${C.mushroom100}` }}>
+                        {topBuilders.slice(1).map(b => (
+                          <div key={b.name} style={{ display:"flex", alignItems:"center", gap:7 }}>
+                            <div style={{ width:22, height:22, borderRadius:"50%", background:C.mushroom100, color:C.mushroom600, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:700, flexShrink:0 }}>{getInitials(b.name)}</div>
+                            <span style={{ fontSize:11, color:C.mushroom800, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
+                            <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0 }}>{b.count}</span>
                           </div>
-                          <span style={{ fontSize:9, fontWeight:600, background:p.tier===3?C.carrot100:C.blueberry100, color:p.tier===3?C.carrot500:C.blueberry500, border:`0.5px solid ${p.tier===3?C.carrot500:C.blueberry400}`, borderRadius:DS.radius.full, padding:"1px 6px", flexShrink:0, marginLeft:6 }}>T{p.tier}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Top tools */}
+            <div>
+              <div style={sLabel}>Top tools</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px" }}>
+                {toolCounts.length === 0 ? (
+                  <div style={{ fontSize:11, color:C.mushroom400 }}>No tool data yet.</div>
+                ) : (() => {
+                  const maxT = toolCounts[0]?.count || 1;
+                  return (
+                    <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                      {toolCounts.slice(0,5).map(({ tool, count }) => (
+                        <div key={tool} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <span style={{ fontSize:11, fontWeight:500, color:C.mushroom800, width:72, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tool}</span>
+                          <div style={{ flex:1, height:5, background:C.mushroom100, borderRadius:DS.radius.full, overflow:"hidden" }}>
+                            <div style={{ height:"100%", width:barsReady?`${(count/maxT)*100}%`:0, background:C.kangkong500, transition:"width 0.8s ease 0.4s", borderRadius:DS.radius.full }}/>
+                          </div>
+                          <span style={{ fontSize:10, color:C.mushroom500, width:20, textAlign:"right", flexShrink:0 }}>{count}</span>
                         </div>
                       ))}
                     </div>
                   );
                 })()}
-                {stalePlants.length > 0 && (
-                  <div style={{ marginTop:10 }}>
-                    <div style={{ fontSize:10, fontWeight:600, color:C.mushroom400, marginBottom:6 }}>Stale plants (&gt;30d)</div>
-                    {stalePlants.slice(0,3).map((p, i) => (
-                      <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                        style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", borderBottom: i<Math.min(stalePlants.length,3)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                      >
-                        <span style={{ fontSize:11, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</span>
-                        <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0, marginLeft:8 }}>{p.lastUpdated}d ago</span>
-                      </div>
-                    ))}
+              </div>
+            </div>
+
+            {/* Tier breakdown */}
+            <div>
+              <div style={sLabel}>Tier breakdown</div>
+              <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"13px 14px", display:"flex", flexDirection:"column", gap:9 }}>
+                {[
+                  { label:"Tier 1 — Static",  count:tierCounts[1], bg:C.mushroom100,  color:C.mushroom700,  border:C.mushroom300 },
+                  { label:"Tier 2 — App",      count:tierCounts[2], bg:C.blueberry100, color:C.blueberry500, border:C.blueberry400 },
+                  { label:"Tier 3 — External", count:tierCounts[3], bg:C.carrot100,    color:C.carrot500,    border:C.carrot500 },
+                ].map(t => (
+                  <div key={t.label} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:11, fontWeight:600, background:t.bg, color:t.color, border:`0.5px solid ${t.border}`, borderRadius:DS.radius.full, padding:"2px 9px" }}>{t.label}</span>
+                    <span style={{ fontSize:15, fontWeight:800, color:t.color }}>{t.count}</span>
+                  </div>
+                ))}
+                {tierCounts.none > 0 && (
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:6, borderTop:`0.5px solid ${C.mushroom100}` }}>
+                    <span style={{ fontSize:11, color:C.mushroom400 }}>Unclassified</span>
+                    <span style={{ fontSize:14, fontWeight:700, color:C.mango600 }}>{tierCounts.none}</span>
                   </div>
                 )}
-                <button onClick={() => onNavigateGarden?.("board","All")} style={{ marginTop:10, fontSize:11, fontWeight:600, color:C.kangkong500, background:"none", border:`0.5px solid ${C.kangkong200}`, borderRadius:DS.radius.md, padding:"5px 10px", cursor:"pointer", width:"100%", fontFamily:FF }}>
-                  View Board →
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  My Plants
-                </div>
-                {myProjects.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>Nothing planted yet. Hit &ldquo;Contribute&rdquo; to log your first AI project.</div>
-                ) : myProjects.slice(0,5).map((p, i) => {
-                  let ctaText = null;
-                  if (p.stage === "seedling" && !p.prototypeLink) ctaText = "Add prototype →";
-                  else if (p.stage === "seedling" && p.prototypeLink) ctaText = "Submit for review →";
-                  else if (p.stage === "nursery" && p.reviewStatus === "needs_rework") ctaText = "View feedback →";
-                  else ctaText = "View →";
-                  return (
-                    <div key={p.id}
-                      onMouseEnter={e => { e.currentTarget.style.background=C.mushroom50; e.currentTarget.style.paddingLeft="8px"; const cta=e.currentTarget.querySelector(".mc-cta"); if(cta) cta.style.opacity=1; }}
-                      onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.paddingLeft="0"; const cta=e.currentTarget.querySelector(".mc-cta"); if(cta) cta.style.opacity=0; }}
-                      onClick={() => onSelectProject(p)}
-                      style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s", borderRadius:4 }}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }}>
-                        <span style={{ fontSize:9, fontWeight:600, background:STAGE_COLORS[p.stage]?.bg, color:STAGE_COLORS[p.stage]?.text, border:`0.5px solid ${STAGE_COLORS[p.stage]?.border}`, borderRadius:DS.radius.full, padding:"1px 7px", flexShrink:0 }}>
-                          {STAGE_LABELS[p.stage]}
-                        </span>
-                        <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</span>
-                      </div>
-                      <span className="mc-cta" style={{ fontSize:11, fontWeight:600, color:C.kangkong500, flexShrink:0, marginLeft:8, opacity:0, transition:"opacity 0.15s" }}>{ctaText}</span>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
 
-          {/* ── Panel B: role-aware secondary ───────────────────────────── */}
-          <div style={{ background:C.white, border:`0.5px solid ${C.mushroom200}`, borderRadius:DS.radius.md, padding:"12px 14px" }}>
-            {authUser?.isApprover ? (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  My Plants
-                </div>
-                {myProjects.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>You haven&rsquo;t added any plants yet.</div>
-                ) : myProjects.slice(0,5).map((p, i) => (
-                  <div key={p.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onSelectProject(p)}
-                    style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<Math.min(myProjects.length,5)-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                  >
-                    <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</span>
-                    <span style={{ fontSize:10, color:C.mushroom400, flexShrink:0, marginLeft:8 }}>{p.lastUpdated}d ago</span>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:C.mushroom500, marginBottom:10 }}>
-                  Seeds to Claim
-                </div>
-                {seedsToClaim.length === 0 ? (
-                  <div style={{ fontSize:11, color:C.mushroom400 }}>No unclaimed seeds right now. Check the Wishlist to see what the team needs built.</div>
-                ) : seedsToClaim.map((w, i) => (
-                  <div key={w.id} onMouseEnter={rowHoverOn} onMouseLeave={rowHoverOff} onClick={() => onNavigateWishlist?.()}
-                    style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0", borderBottom: i<seedsToClaim.length-1?`0.5px solid ${C.mushroom100}`:"none", cursor:"pointer", transition:"all 0.15s" }}
-                  >
-                    <span style={{ fontSize:12, fontWeight:500, color:C.mushroom900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{w.title}</span>
-                    <span style={{ fontSize:10, color:C.ubas500, fontWeight:600, flexShrink:0, marginLeft:8 }}>▲ {w.upvoters.length}</span>
-                  </div>
-                ))}
-                <div style={{ marginTop:8, textAlign:"center" }}>
-                  <button onClick={() => onNavigateWishlist?.()} style={{ fontFamily:FF, fontSize:11, fontWeight:600, color:C.kangkong500, background:"none", border:"none", cursor:"pointer", padding:0 }}>
-                    Browse all Seeds →
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          </div>{/* end bottom 3-col */}
 
-        </div>{/* end right column */}
+        </div>{/* end right */}
 
-      </div>{/* end two-column body */}
+      </div>{/* end two-column */}
 
     </div>
   );
@@ -1911,6 +1827,16 @@ function IcoTrash({size=16, color=C.tomato500}) {
   );
 }
 
+function IcoViewGrouped({size=16, color=C.mushroom500}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2.5" width="12" height="3" rx="1" stroke={color} strokeWidth="1.2" fill={color} fillOpacity="0.12"/>
+      <line x1="4" y1="8"  x2="12" y2="8"  stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      <line x1="4" y1="10.5" x2="10" y2="10.5" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      <line x1="4" y1="13" x2="8" y2="13" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
 function IcoViewList({size=16, color=C.mushroom500}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -2102,7 +2028,11 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
   };
 
 
+  const [collapsedStages, setCollapsedStages] = useState({sprout:false,growing:false,blooming:false,thriving:false});
+  const toggleStage = (s) => setCollapsedStages(prev => ({...prev, [s]:!prev[s]}));
+
   const VIEW_MODES = [
+    {id:"grouped",   label:"Stages",    Icon:IcoViewGrouped},
     {id:"directory", label:"Directory", Icon:IcoViewGrid},
     {id:"list",      label:"List",      Icon:IcoViewList},
     {id:"board",     label:"Board",     Icon:IcoViewBoard},
@@ -2117,7 +2047,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
       <div style={{padding:"10px 20px",background:C.white,borderBottom:"1px solid "+C.mushroom200,display:"flex",gap:10,alignItems:"center",zIndex:20,flexShrink:0}}>
 
         {/* Search */}
-        {(viewMode === "directory" || viewMode === "list") && (
+        {(viewMode === "directory" || viewMode === "list" || viewMode === "grouped") && (
           <div style={{position:"relative",flex:"1",minWidth:160,maxWidth:280}}>
             <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}>
               <IcoSearch size={14} color={C.mushroom400}/>
@@ -2341,7 +2271,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   {/* Divider */}
                   <div style={{borderTop:"1px solid "+C.mushroom100,margin:"2px 0 8px"}}/>
 
-                  {/* Footer — builder + arrow */}
+                  {/* Footer — builder + actions */}
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:builtForArr(p.builtFor).length>0?8:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:7}}>
                       <div style={{width:24,height:24,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:9,fontWeight:700,flexShrink:0}}>
@@ -2349,16 +2279,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                       </div>
                       <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600,fontWeight:500}}>{p.builder||"Unknown"}</span>
                     </div>
-                    <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="View details" style={{background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",padding:"4px 6px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",color:C.mushroom400,transition:"all 0.15s",flexShrink:0}}
-                      onMouseOver={e=>{e.currentTarget.style.color=C.kangkong600;e.currentTarget.style.borderColor=C.kangkong300;}}
-                      onMouseOut={e=>{e.currentTarget.style.color=C.mushroom400;e.currentTarget.style.borderColor=C.mushroom200;}}
-                    >
-                      <svg width={12} height={12} viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 2H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/>
-                        <path d="M8 1h4v4"/>
-                        <line x1="12" y1="1" x2="5.5" y2="7.5"/>
-                      </svg>
-                    </button>
+                    {(authUser?.email===p.builderEmail||authUser?.isAdmin)&&(
+                      <button onClick={e=>{e.stopPropagation();onViewDetail&&onViewDetail(p);}} title="Edit your project"
+                        style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,cursor:"pointer",padding:"4px 7px",borderRadius:DS.radius.sm,display:"flex",alignItems:"center",color:C.kangkong600,transition:"all 0.15s",flexShrink:0}}
+                        onMouseOver={e=>{e.currentTarget.style.background=C.kangkong100;e.currentTarget.style.borderColor=C.kangkong400;}}
+                        onMouseOut={e=>{e.currentTarget.style.background=C.kangkong50;e.currentTarget.style.borderColor=C.kangkong200;}}
+                      >
+                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
 
                   {/* Teams chips — single line, below builder */}
@@ -2626,6 +2558,145 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
           </div>
         </div>
       )}
+
+      {/* ── Grouped (Stages) View ── */}
+      {viewMode === "grouped" && (() => {
+        const recentlyAdded   = [...filtered].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)).slice(0,3);
+        const recentlyUpdated = [...filtered].sort((a,b) => (a.lastUpdated??999)-(b.lastUpdated??999)).slice(0,3);
+        const fmtAdded = p => { const d=Math.floor((Date.now()-new Date(p.createdAt).getTime())/86400000); return d===0?"Today":d===1?"Yesterday":`${d}d ago`; };
+        const fmtUpdated = p => { const d=p.lastUpdated??0; return d===0?"Today":d===1?"Yesterday":`${d}d ago`; };
+        const STAGE_CFG = {
+          sprout:   {label:"Sprout",   sub:"Early idea",     dot:C.mushroom500, cntBg:C.mushroom200, cntText:C.mushroom700},
+          growing:  {label:"Growing",  sub:"In development", dot:"#b7791f",     cntBg:"#f6e05e",     cntText:"#744210"},
+          blooming: {label:"Blooming", sub:"Live & used",    dot:"#c05621",     cntBg:"#fbd38d",     cntText:"#7b341e"},
+          thriving: {label:"Thriving", sub:"Fully deployed", dot:C.blueberry500,cntBg:C.blueberry100,cntText:C.blueberry500},
+        };
+
+        const RecentCard = ({p, fmtFn}) => {
+          const sc = STAGE_CFG[p.stage]||STAGE_CFG.sprout;
+          const initials = (p.builder||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+          const deptColor = DEPT_COLORS[builtForArr(p.builtFor)[0]] || {bg:C.mushroom100, text:C.mushroom600};
+          return (
+            <div onClick={()=>onViewDetail(p)} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"12px 14px",cursor:"pointer",transition:"box-shadow 0.15s",boxShadow:"none"}}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow=DS.shadow.sm}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                <span style={{fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom500}}>{sc.label}</span>
+              </div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.description||"—"}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:deptColor.bg,color:deptColor.text,whiteSpace:"nowrap"}}>{builtForArr(p.builtFor)[0]||"—"}</span>
+                {p.tier&&<span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:p.tier===1?C.mushroom100:p.tier===2?"#fefcbf":"#feebc8",color:p.tier===1?C.mushroom700:p.tier===2?"#744210":"#7b341e"}}>T{p.tier}</span>}
+                <span style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginLeft:"auto"}}>{fmtFn(p)}</span>
+                <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,color:C.kangkong700,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,fontFamily:FF,flexShrink:0}}>{initials}</div>
+              </div>
+            </div>
+          );
+        };
+
+        const StageSection = ({stageKey}) => {
+          const sc = STAGE_CFG[stageKey];
+          const stageProjects = filtered.filter(p=>p.stage===stageKey).sort((a,b)=>(a.lastUpdated??999)-(b.lastUpdated??999));
+          const isOpen = !collapsedStages[stageKey];
+          const ChevSvg = () => (
+            <svg width={16} height={16} viewBox="0 0 16 16" fill="none" style={{transition:"transform 0.2s",transform:isOpen?"rotate(180deg)":"rotate(0deg)"}}>
+              <path d="M4 6l4 4 4-4" stroke={C.mushroom400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          );
+          return (
+            <div style={{marginBottom:8,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,overflow:"hidden"}}>
+              <div onClick={()=>toggleStage(stageKey)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",background:C.mushroom50,transition:"background 0.12s",userSelect:"none"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.mushroom100}
+                onMouseLeave={e=>e.currentTarget.style.background=C.mushroom50}>
+                <div style={{width:9,height:9,borderRadius:"50%",background:sc.dot,flexShrink:0}}/>
+                <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{sc.label}</span>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>{sc.sub}</span>
+                <div style={{flex:1}}/>
+                <span style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:DS.radius.full,background:sc.cntBg,color:sc.cntText}}>{stageProjects.length}</span>
+                <ChevSvg/>
+              </div>
+              {isOpen&&(
+                <div style={{padding:"12px 16px 16px",borderTop:"1px solid "+C.mushroom200,background:C.white}}>
+                  {stageProjects.length===0?(
+                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,textAlign:"center",padding:"20px 0"}}>No projects at this stage.</div>
+                  ):(
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                      {stageProjects.map(p => {
+                        const initials=(p.builder||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                        const deptColor=DEPT_COLORS[builtForArr(p.builtFor)[0]]||{bg:C.mushroom100,text:C.mushroom600};
+                        return (
+                          <div key={p.id} onClick={()=>onViewDetail(p)} style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"12px",cursor:"pointer",transition:"all 0.15s"}}
+                            onMouseEnter={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.boxShadow=DS.shadow.sm;}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.boxShadow="none";}}>
+                            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.description||"—"}</div>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:deptColor.bg,color:deptColor.text,whiteSpace:"nowrap",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis"}}>{builtForArr(p.builtFor)[0]||"—"}</span>
+                              {p.tier&&<span style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:p.tier===1?C.mushroom100:p.tier===2?"#fefcbf":"#feebc8",color:p.tier===1?C.mushroom700:p.tier===2?"#744210":"#7b341e",flexShrink:0}}>T{p.tier}</span>}
+                              <div style={{flex:1}}/>
+                              <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong100,color:C.kangkong700,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,fontFamily:FF,flexShrink:0}}>{initials}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const SectionLabel = ({children}) => (
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",color:C.mushroom400,whiteSpace:"nowrap"}}>{children}</span>
+            <div style={{flex:1,height:1,background:C.mushroom200}}/>
+          </div>
+        );
+
+        return (
+          <div style={{flex:1,overflowY:"auto",padding:"20px 28px"}}>
+            <div style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <IcoGarden size={18} color={C.kangkong600}/>
+                <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1}}>Garden</div>
+              </div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,fontWeight:600}}>
+                {filtered.length} plant{filtered.length!==1?"s":""} across PH &amp; TH
+              </div>
+            </div>
+
+            {recentlyAdded.length>0&&(
+              <div style={{marginBottom:20}}>
+                <SectionLabel>Recently added</SectionLabel>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                  {recentlyAdded.map(p=><RecentCard key={p.id} p={p} fmtFn={fmtAdded}/>)}
+                </div>
+              </div>
+            )}
+
+            {recentlyUpdated.length>0&&(
+              <div style={{marginBottom:24}}>
+                <SectionLabel>Recently updated</SectionLabel>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+                  {recentlyUpdated.map(p=><RecentCard key={p.id} p={p} fmtFn={fmtUpdated}/>)}
+                </div>
+              </div>
+            )}
+
+            <SectionLabel>All projects by stage</SectionLabel>
+            {["sprout","growing","blooming","thriving"].map(s=><StageSection key={s} stageKey={s}/>)}
+
+            {filtered.length===0&&(
+              <div style={{padding:"48px 24px",textAlign:"center",fontFamily:FF,fontSize:14,color:C.mushroom400}}>
+                Nothing growing here — try different filters, or be the first to plant one.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Board (Kanban) View ── */}
       {viewMode === "board" && (
@@ -3430,7 +3501,7 @@ function ReleaseGateBanner({ project, authUser, onSubmitReleaseReview, onRelease
 }
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
-const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction,onRequestDeletion}) => {
+const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,onEdit,onSubmitToNursery,onWithdrawFromNursery,onApproveProject,onNeedsRework,onMarkNotificationsRead,onToggleInterested,onViewDetail,onMoveStage,onSubmitReleaseReview,onReleaseReviewAction,onRequestDeletion,pendingDeleteIds}) => {
   const [noteText,setNoteText] = useState("");
   const interestedUsers = project.interestedUsers || [];
   const isInterested    = authUser ? interestedUsers.includes(authUser.email) : false;
@@ -3471,6 +3542,18 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
             <TierBadge tier={project.tier}/>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
+              <button onClick={()=>onViewDetail&&onViewDetail(project)} title="Edit project"
+                style={{display:"flex",alignItems:"center",background:C.kangkong50,border:"1px solid "+C.kangkong300,color:C.kangkong700,cursor:"pointer",padding:"5px 8px",borderRadius:DS.radius.sm,transition:"all 0.15s"}}
+                onMouseOver={e=>{e.currentTarget.style.background=C.kangkong100;e.currentTarget.style.borderColor=C.kangkong500;}}
+                onMouseOut={e=>{e.currentTarget.style.background=C.kangkong50;e.currentTarget.style.borderColor=C.kangkong300;}}
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            )}
             <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,borderRadius:DS.radius.sm}}>
               <IcoClose size={18} color={C.mushroom500}/>
             </button>
@@ -3494,59 +3577,116 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
       </div>
 
       <div style={{padding:"16px 20px",flex:1}}>
-        <p style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,margin:"0 0 16px"}}>{project.description}</p>
+        <p style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,margin:"0 0 12px"}}>{project.description}</p>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-          {[
-            {l:"Tools",   v:project.toolUsed?.length?project.toolUsed.join(", "):"—",   icon:<IcoImpact size={12} color={C.kangkong600}/>},
-            {l:"Builder",   v:project.builder||"—",                                        icon:<IcoNote size={12} color={C.mushroom500}/>},
-            {l:"Updated", v:project.lastUpdated===0?"Today":project.lastUpdated+"d ago", icon:project.lastUpdated>30?<IcoStale size={12} color={C.mango500}/>:<IcoCheck size={12} color={C.kangkong500}/>},
-            {l:"Data",    v:(project.dataSources?.length?project.dataSources.join(", "):project.dataSource)||"—", icon:<IcoNote size={12} color={C.mushroom500}/>},
-          ].map(item=>(
-            <div key={item.l} style={{background:C.mushroom50,borderRadius:DS.radius.md,padding:"8px 10px",border:"1px solid "+C.mushroom200}}>
-              <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>{item.l}</div>
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500,display:"flex",alignItems:"center",gap:4}}>{item.icon}{item.v}</div>
+        {/* Creator / created / modified metadata */}
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:14,paddingBottom:12,borderBottom:"1px solid "+C.mushroom100}}>
+          {project.builder&&(
+            <div>
+              <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created by</div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{project.builder}</div>
             </div>
-          ))}
+          )}
+          {project.createdAt&&(
+            <div>
+              <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created</div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{new Date(project.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+            </div>
+          )}
+          {project.lastUpdatedAt&&(
+            <div>
+              <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Modified</div>
+              <div style={{fontFamily:FF,fontSize:12,color:project.lastUpdated>30?C.mango600:C.mushroom800,fontWeight:500}}>{new Date(project.lastUpdatedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+            </div>
+          )}
         </div>
 
+        {/* Tier Classification — above Tech Stack */}
         {(project.tier===null||project.tier===undefined)&&(
-          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+          <div style={{marginBottom:14,padding:"10px 12px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
             <div>
-              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:4}}>Tier Classification</div>
-              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:1}}>Tier Unclassified</div>
-              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:3}}>Tier Classification</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>Not classified yet</div>
             </div>
             <button onClick={()=>onViewDetail&&onViewDetail(project)}
-              style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
+              style={{flexShrink:0,padding:"4px 10px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
               onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
               onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
-            >Classify now →</button>
+            >Classify →</button>
           </div>
         )}
-
-        {project.tier!==null&&(()=>{
+        {project.tier!==null&&project.tier!==undefined&&(()=>{
           const [tierColor,tierBg,tierBorder,tierLabel] =
             project.tier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
             project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
                              [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing"];
           return (
-            <div style={{marginBottom:16,padding:"12px 14px",background:tierBg,border:`1px solid ${tierBorder}`,borderRadius:DS.radius.lg}}>
-              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:8}}>Tier Classification</div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
-                <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tierLabel}</span>
-              </div>
-              {[
-                {q:"UI-only / static content?",      v:project.isUiOnly},
-                {q:"External APIs / third-party?",   v:project.usesExternalApis},
-                {q:"Requires deployment?",           v:project.requiresDeployment},
-              ].filter(r=>r.v!==null).map((r,i,arr)=>(
-                <div key={r.q} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<arr.length-1?`1px solid ${tierBorder}`:"none"}}>
-                  <span style={{fontFamily:FF,fontSize:11,color:C.mushroom600}}>{r.q}</span>
-                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:r.v===true?C.kangkong600:C.mushroom500}}>{r.v===true?"Yes":"No"}</span>
+            <div style={{marginBottom:14,padding:"10px 12px",background:tierBg,border:`1px solid ${tierBorder}`,borderRadius:DS.radius.lg,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginRight:2}}>Tier</div>
+              <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tierColor,padding:"2px 9px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
+              <span style={{fontFamily:FF,fontSize:11,color:C.mushroom600}}>{tierLabel}</span>
+            </div>
+          );
+        })()}
+
+        {/* Tech Stack */}
+        {(()=>{
+          const pChip = {fontFamily:FF,fontSize:11,padding:"2px 8px",borderRadius:DS.radius.full,fontWeight:500};
+          const hasAny = project.toolUsed?.length||project.agenticFramework?.length||project.hosting?.length||project.authType?.length||project.database?.length||project.githubRepo;
+          return (
+            <div style={{marginBottom:14,padding:"10px 12px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg}}>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,color:C.mushroom400,marginBottom:hasAny?10:0}}>Tech Stack</div>
+              {!hasAny&&<div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,fontStyle:"italic"}}>No tech details added yet</div>}
+              {project.toolUsed?.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Tools</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {project.toolUsed.map(t=><span key={t} style={{...pChip,background:C.kangkong50,color:C.kangkong700,border:"1px solid "+C.kangkong200}}>{t}</span>)}
+                  </div>
                 </div>
-              ))}
+              )}
+              {project.agenticFramework?.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Framework</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {project.agenticFramework.map(f=><span key={f} style={{...pChip,background:C.ubas100,color:C.ubas500,border:"1px solid "+C.ubas400}}>{f}</span>)}
+                  </div>
+                </div>
+              )}
+              {project.hosting?.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Hosting</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {project.hosting.map(h=><span key={h} style={{...pChip,background:C.mushroom100,color:C.mushroom700,border:"1px solid "+C.mushroom300}}>{h}</span>)}
+                  </div>
+                </div>
+              )}
+              {project.authType?.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Auth</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {project.authType.map(a=><span key={a} style={{...pChip,background:C.wintermelon100,color:C.wintermelon500,border:"1px solid "+C.wintermelon400}}>{a}</span>)}
+                  </div>
+                </div>
+              )}
+              {project.database?.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Database</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {project.database.map(d=><span key={d} style={{...pChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)}
+                  </div>
+                </div>
+              )}
+              {project.githubRepo&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,marginBottom:4}}>Repository</div>
+                  <a href={project.githubRepo.includes("://")?project.githubRepo:"https://"+project.githubRepo} target="_blank" rel="noreferrer"
+                    style={{fontFamily:FF,fontSize:11,color:C.kangkong600,wordBreak:"break-all",textDecoration:"none"}}
+                    onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
+                    onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
+                  >{project.githubRepo}</a>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -3588,129 +3728,38 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
           </a>
         )}
 
-        {/* ── Seedling: Submission Requirements ──────────────────────────────── */}
-        {project.stage==="seedling" && (authUser?.email===project.builderEmail||authUser?.isAdmin) && (
-          <div style={{marginBottom:16,padding:"12px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg}}>
-            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10}}>
-              Nursery Submission Requirements
-            </div>
-            <div style={{marginBottom:8}}>
-              <label style={{fontFamily:FF,fontSize:11,color:C.mushroom500,display:"block",marginBottom:3}}>Prototype Link *</label>
-              <input value={prototypeLink} onChange={e=>setPrototypeLink(e.target.value)}
-                placeholder="https://your-deployed-prototype.com"
-                style={{width:"100%",padding:"7px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-              />
-            </div>
-            <div style={{marginBottom:12}}>
-              <label style={{fontFamily:FF,fontSize:11,color:C.mushroom500,display:"block",marginBottom:3}}>Deck Link *</label>
-              <input value={deckLink} onChange={e=>setDeckLink(e.target.value)}
-                placeholder="https://docs.google.com/presentation/..."
-                style={{width:"100%",padding:"7px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                onBlur={e=>e.target.style.borderColor=C.mushroom300}
-              />
-            </div>
-            {!showSubmitConfirm ? (
-              <button onClick={()=>setShowSubmitConfirm(true)}
-                disabled={!isValidUrl(prototypeLink)||!isValidUrl(deckLink)}
-                style={{
-                  width:"100%",padding:"9px",
-                  background:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.kangkong500:C.mushroom200,
-                  color:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.white:C.mushroom400,
-                  border:"none",borderRadius:DS.radius.lg,
-                  cursor:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?"pointer":"not-allowed",
-                  fontFamily:FF,fontSize:12,fontWeight:600,transition:"all 0.15s",
-                }}
-              >Submit for Nursery Review &#x2192;</button>
-            ) : (
-              <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg,padding:"12px"}}>
-                <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango700,marginBottom:8}}>Confirm Submission</div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginBottom:8,wordBreak:"break-all"}}>
-                  <div><strong>Prototype:</strong> <a href={prototypeLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{prototypeLink}</a></div>
-                  <div><strong>Deck:</strong> <a href={deckLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{deckLink}</a></div>
-                </div>
-                <div style={{fontFamily:FF,fontSize:11,color:C.mango600,marginBottom:10,padding:"6px 8px",background:C.mango100,borderRadius:DS.radius.sm}}>
-                  Once submitted, you won't be able to edit this plant until an Approver makes a decision.
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setShowSubmitConfirm(false)} style={{flex:1,padding:"7px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                  <button onClick={()=>{onSubmitToNursery(project.id,prototypeLink,deckLink);setShowSubmitConfirm(false);}}
-                    style={{flex:1,padding:"7px",background:C.mango500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}
-                  >Confirm Submission</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Seedling: Needs Rework feedback banner (builder only) ───────────── */}
         {project.stage==="seedling" && project.reviewStatus==="needs_rework" && authUser?.email===project.builderEmail && (
           <FeedbackBanner reviewComment={project.reviewComment} reviewedBy={project.reviewedBy} reviewedAt={project.reviewedAt}/>
         )}
 
-        {/* ── Nursery: Locked state + ExCom decision zone ────────────────────── */}
+        {/* ── Nursery: Rooting Review pending state ──────────────────────────── */}
         {project.stage==="nursery" && (
           <div style={{marginBottom:16,padding:"12px 14px",background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg}}>
-            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:10}}>Under Review</div>
-            {project.prototypeLink&&(
-              <a href={project.prototypeLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.kangkong600,textDecoration:"none",marginBottom:6}}>
-                View Prototype
-              </a>
-            )}
-            {project.deckLink&&(
-              <a href={project.deckLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,color:C.kangkong600,textDecoration:"none",marginBottom:8}}>
-                View Deck
-              </a>
-            )}
-            <div style={{fontFamily:FF,fontSize:12,color:C.mango700,marginBottom:2}}>
-              Submitted for review{project.submittedAt ? ` — ${new Date(project.submittedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}
-            </div>
-            {!authUser?.isApprover && (
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,fontStyle:"italic",marginTop:4}}>Under review by Approver.</div>
-            )}
-
-            {/* ExCom decision zone */}
-            {authUser?.isApprover && (
-              <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid "+C.mango200}}>
-                <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,marginBottom:8,textTransform:"uppercase",letterSpacing:0.8}}>Approver Decision</div>
-                {!showReworkInput ? (
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>onApproveProject?.(project.id)} style={{flex:1,padding:"8px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                      &#x2713; Approve
-                    </button>
-                    <button onClick={()=>setShowReworkInput(true)} style={{flex:1,padding:"8px",background:C.white,color:C.mango600,border:"1.5px solid "+C.mango400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                      &#x21A9; Needs Rework
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <textarea value={reworkComment} onChange={e=>setReworkComment(e.target.value)}
-                      placeholder="What needs to be reworked? (required)"
-                      rows={3}
-                      style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mango300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",marginBottom:8,boxSizing:"border-box"}}
-                    />
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"7px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                      <button disabled={!reworkComment.trim()}
-                        onClick={()=>{onNeedsRework?.(project.id,reworkComment);setShowReworkInput(false);setReworkComment("");}}
-                        style={{flex:1,padding:"7px",background:reworkComment.trim()?C.mango500:C.mushroom200,color:reworkComment.trim()?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:600,cursor:reworkComment.trim()?"pointer":"not-allowed"}}
-                      >Send Feedback</button>
-                    </div>
-                  </div>
-                )}
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:6}}>Rooting Review Pending</div>
+            {project.approvalStatus==="pending"?(
+              <>
+                <div style={{fontFamily:FF,fontSize:12,color:C.mango700,marginBottom:2}}>
+                  Awaiting IS / ExCom sign-off from <strong>{project.approverName||project.approverEmail}</strong>{project.approvalRequestedAt ? ` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}` : ""}.
+                </div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mango600,marginTop:4,lineHeight:1.5}}>
+                  After IS / ExCom approves, the Release Manager will conduct the final Rooting Review. You'll be notified when a decision is made.
+                </div>
+              </>
+            ):(
+              <div style={{fontFamily:FF,fontSize:12,color:C.mango700}}>
+                Under review by the Release Manager (Belle Asis / Diane Litan). You'll be notified once a decision is made.
               </div>
             )}
-
             {/* Withdraw button — builder or Admin */}
             {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
               <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{
-                width:"100%",padding:"7px",marginTop:12,
+                width:"100%",padding:"7px",marginTop:10,
                 background:"transparent",border:"1px solid "+C.mushroom300,
                 borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,
                 color:C.mushroom500,cursor:"pointer",transition:"all 0.15s",
-              }}>Withdraw Submission</button>
+              }}>Withdraw from Review</button>
             )}
           </div>
         )}
@@ -3782,44 +3831,67 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
           </div>
         )}
 
-        <button onClick={()=>onToggleInterested&&onToggleInterested(project)} style={{
-          width:"100%",padding:"9px",marginBottom:interestedUsers.length>0?8:16,
-          background:isInterested?C.kangkong600:C.white,
-          color:isInterested?C.white:C.kangkong600,
-          border:"1.5px solid "+C.kangkong500,
-          borderRadius:DS.radius.lg,cursor:"pointer",
-          fontFamily:FF,fontSize:12,fontWeight:600,
-          transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-        }}>
-          {isInterested
-            ?<><IcoCheck size={14} color={C.white}/> You're working on something similar</>
-            :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
-          }
-        </button>
+        {(()=>{
+          const isCreator = authUser?.email === project.builderEmail;
+          const isCollab  = (project.collaboratorEmails||[]).includes(authUser?.email);
+          const blocked   = isCreator || isCollab;
+          return (<>
+            <button
+              onClick={()=>!blocked&&!isInterested&&onToggleInterested&&onToggleInterested(project)}
+              disabled={blocked}
+              title={blocked?(isCreator?"You're the project creator":"You're a collaborator on this project"):""}
+              style={{
+                width:"100%",padding:"9px",marginBottom:interestedUsers.length>0?8:16,
+                background:blocked?C.mushroom100:isInterested?C.kangkong600:C.white,
+                color:blocked?C.mushroom400:isInterested?C.white:C.kangkong600,
+                border:"1.5px solid "+(blocked?C.mushroom200:C.kangkong500),
+                borderRadius:DS.radius.lg,
+                cursor:blocked||isInterested?"default":"pointer",
+                fontFamily:FF,fontSize:12,fontWeight:600,
+                transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+              }}>
+              {isInterested
+                ?<><IcoCheck size={14} color={C.white}/> Working on something similar</>
+                :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
+              }
+            </button>
 
-        {/* Who's interested */}
-        {interestedUsers.length > 0 && (
-          <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:16}}>
-            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:8}}>
-              Also working on this ({interestedUsers.length})
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {interestedUsers.map(email => {
-                const initials = email.split("@")[0].slice(0,2).toUpperCase();
-                const cc = COVER_COLORS[email] || COVER_COLORS.default;
-                return (
-                  <div key={email} style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:24,height:24,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:9,fontWeight:700,flexShrink:0}}>{initials}</div>
-                    <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:12,color:C.kangkong700,fontWeight:500,textDecoration:"none"}}
-                      onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
-                      onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
-                    >{email}</a>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+            {/* Who's interested */}
+            {interestedUsers.length > 0 && (
+              <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:16}}>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:8}}>
+                  Also working on this ({interestedUsers.length})
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {interestedUsers.map(email => {
+                    const initials = email.split("@")[0].slice(0,2).toUpperCase();
+                    const cc = COVER_COLORS[email] || COVER_COLORS.default;
+                    const isMe = authUser?.email === email;
+                    return (
+                      <div key={email} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                          <div style={{width:24,height:24,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:9,fontWeight:700,flexShrink:0}}>{initials}</div>
+                          <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:12,color:C.kangkong700,fontWeight:500,textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                            onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
+                            onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
+                          >{email}</a>
+                          {isMe&&<span style={{fontFamily:FF,fontSize:9,fontWeight:700,padding:"1px 5px",background:C.kangkong100,color:C.kangkong700,borderRadius:DS.radius.full,flexShrink:0}}>You</span>}
+                        </div>
+                        {isMe&&(
+                          <button onClick={()=>onToggleInterested&&onToggleInterested(project)}
+                            style={{flexShrink:0,padding:"2px 8px",background:"none",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:10,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}
+                            onMouseOver={e=>{e.currentTarget.style.borderColor=C.tomato500;e.currentTarget.style.color=C.tomato500;}}
+                            onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom500;}}
+                          >× Remove</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>);
+        })()}
 
         <div>
           <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
@@ -3843,16 +3915,25 @@ const DetailPanel = ({project,allProjects,onClose,onNote,setSelected,authUser,on
 
         {/* Danger zone — Request Deletion */}
         {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200,display:"flex",alignItems:"center",gap:8}}>
-            <button
-              onClick={()=>onRequestDeletion(project,"project")}
-              title="Request deletion of this project"
-              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
-              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
-              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
-              <IcoTrash size={13} color={C.tomato500}/>
-            </button>
-            <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
+          <div style={{marginTop:20,paddingTop:14,borderTop:"1px dashed "+C.mushroom200}}>
+            {pendingDeleteIds?.has(String(project.id)) ? (
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+                <IcoTrash size={13} color={C.mango600}/>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mango600,lineHeight:1.4}}>Deletion requested — your request has been forwarded to the admin.</span>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button
+                  onClick={()=>onRequestDeletion(project,"project")}
+                  title="Request deletion of this project"
+                  onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+                  onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+                  style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+                  <IcoTrash size={13} color={C.tomato500}/>
+                </button>
+                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Request deletion</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -3868,6 +3949,8 @@ const ProjectDetailPage = ({
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
   onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
+  devopsRequests, pendingDeleteIds,
+  justCreated = false, onDismissCreated,
 }) => {
   const [noteText, setNoteText]                   = useState("");
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
@@ -3878,19 +3961,20 @@ const ProjectDetailPage = ({
 
 
   // Classification edit state
+  const projArr = v => Array.isArray(v) ? v : (v && v !== '' ? [v] : []);
+  const SPROUT_SYSTEMS = ['Sprout HR', 'Sprout Payroll'];
   const [cHasBackend,       setCHasBackend]       = useState(project.hasBackend       ?? null);
   const [cTargetUsers,      setCTargetUsers]      = useState(project.targetUsers      ?? null);
-  const [cLiveUrl,          setCLiveUrl]          = useState(project.demoLink         || '');
-  const [cHasVersionCtrl,   setCHasVersionCtrl]   = useState(project.githubRepo ? true : null);
   const [cRepoUrl,          setCRepoUrl]          = useState(project.githubRepo       || '');
-  const [cHostingPlatform,  setCHostingPlatform]  = useState(project.hosting          || '');
-  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth     ?? null);
-  const [cAuthType,         setCAuthType]         = useState(project.authType         || '');
-  const [cHasDatabase,      setCHasDatabase]      = useState(project.hasDatabase      ?? null);
-  const [cDbPlatform,       setCDbPlatform]       = useState(project.database         || '');
-  const [cConnectsSproutDb, setCConnectsSproutDb] = useState(project.connectsSproutDb ?? null);
+  const [cHostingPlatform,  setCHostingPlatform]  = useState(projArr(project.hosting));
+  const [cAuthType,         setCAuthType]         = useState(projArr(project.authType));
+  const [cDbPlatform,       setCDbPlatform]       = useState(projArr(project.database));
+  const [cSproutDbDetails,  setCSpfroutDbDetails] = useState(project.sproutDbDetails  || '');
   const [cDataSensitivity,  setCDataSensitivity]  = useState(project.dataSensitivity  || '');
   const [cSendsToExtAI,     setCendsToExtAI]      = useState(project.sendsToExternalAI ?? null);
+  const [cRequiresAuth,     setCRequiresAuth]     = useState(project.requiresAuth      ?? null);
+  const [cHasSensitiveData, setCHasSensitiveData] = useState(project.hasSensitiveData  ?? null);
+  const [cStoresInputs,     setCStoresInputs]     = useState(project.storesUserInputs  ?? null);
   const [classSaving,         setClassSaving]         = useState(false);
 
   // Inline edit form state (overview tab)
@@ -3908,12 +3992,109 @@ const ProjectDetailPage = ({
     githubRepo:         project.githubRepo         || '',
     hosting:            project.hosting            || '',
     database:           project.database           || '',
+    approverName:       project.approverName       || '',
+    approverEmail:      project.approverEmail      || '',
+    problem:            project.problem            || '',
+    built:              project.built              || '',
+    betterNow:          project.betterNow          || '',
+    prototypeLink:              project.prototypeLink              || '',
+    deckLink:                   project.deckLink                   || '',
+    docsLink:                   project.docsLink                   || '',
+    aiAssistant:                project.aiAssistant                || [],
+    builderTools:               project.builderTools               || [],
+    hostingAccount:             project.hostingAccount             || null,
+    versionControl:             project.versionControl             || [],
+    versionControlAccount:      project.versionControlAccount      || null,
+    databaseAccount:            project.databaseAccount            || null,
+    screenshotUrls:             project.screenshotUrls             || [],
+    productionHosting:          project.productionHosting          || null,
+    productionHostingUrl:       project.productionHostingUrl       || '',
+    productionHostingAccount:   project.productionHostingAccount   || null,
+    productionVersionControl:   project.productionVersionControl   || null,
+    productionVersionControlUrl:project.productionVersionControlUrl|| '',
+    productionVersionControlAccount:project.productionVersionControlAccount||null,
+    productionDatabase:         project.productionDatabase         || null,
+    productionDatabaseUrl:      project.productionDatabaseUrl      || '',
+    productionDatabaseAccount:  project.productionDatabaseAccount  || null,
+    releaseDate:                project.releaseDate                || '',
+    announcementDate:           project.announcementDate           || '',
   });
   const [formDirty, setFormDirty]   = useState(false);
   const [formSaving, setFormSaving] = useState(false);
+  const [saveToast, setSaveToast]   = useState(null); // null | {type:'error',errors:[]} | {type:'success'} | {type:'failure'}
   const setEF = (k, v) => { setEditForm(p=>({...p, [k]:v})); setFormDirty(true); };
-  const [detailTab, setDetailTab] = useState("overview");
+
+  useEffect(() => {
+    if (!saveToast) return;
+    const t = setTimeout(() => setSaveToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [saveToast]);
   const [showDevopsModal, setShowDevopsModal] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("seedling");
+
+  // Approval request state
+  const [approvalSending,      setApprovalSending]      = useState(false);
+  const [approvalCancelling,   setApprovalCancelling]   = useState(false);
+  const [approvalError,        setApprovalError]        = useState(null);
+  const [advancingToSprout,    setAdvancingToSprout]    = useState(false);
+
+  const handleSendApprovalRequest = async () => {
+    const name  = editForm.approverName?.trim();
+    const email = editForm.approverEmail?.trim();
+    if (!name || !email) { setApprovalError("Please enter the approver's name and email first."); return; }
+    setApprovalError(null);
+    setApprovalSending(true);
+    try {
+      const protoLink = editForm.prototypeLink?.trim() || null;
+      const dkLink    = editForm.deckLink?.trim()      || null;
+      const dcLink    = editForm.docsLink?.trim()      || null;
+      const emailRes = await fetch("/api/send-approval-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId:          project.id,
+          projectName:        project.name,
+          approverName:       name,
+          approverEmail:      email,
+          builderName:        authUser.displayName,
+          builderEmail:       authUser.email,
+          projectDescription: project.description,
+          prototypeLink:      protoLink,
+          deckLink:           dkLink,
+          docsLink:           dcLink,
+        }),
+      });
+      if (!emailRes.ok) throw new Error(`HTTP ${emailRes.status}`);
+      await onUpdateProject?.({ ...project, stage: "nursery", approverName: name, approverEmail: email, approvalStatus: "pending", approvalRequestedAt: new Date().toISOString(), approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null, prototypeLink: protoLink, deckLink: dkLink, docsLink: dcLink });
+      // Insert rooting_reviews ticket for Tool Shed tracking
+      await supabase
+        .from("rooting_reviews")
+        .insert({
+          project_id:     String(project.id),
+          project_name:   project.name,
+          builder_name:   project.builder || authUser?.displayName || authUser?.email,
+          builder_email:  project.builderEmail || authUser?.email,
+          reviewer_name:  name,
+          reviewer_email: email,
+          country:        project.country || null,
+          prototype_link: protoLink,
+          deck_link:      dkLink,
+          docs_link:      dcLink,
+        });
+    } catch (e) {
+      setApprovalError("Failed to send email. Please try again.");
+      console.error("send-approval-email:", e);
+    } finally {
+      setApprovalSending(false);
+    }
+  };
+
+  const handleCancelApproval = async () => {
+    setApprovalCancelling(true);
+    await onUpdateProject?.({ ...project, approvalStatus: null, approvalRequestedAt: null, approvalRejectedAt: null, approvalRejectionReason: null, approvedAt: null });
+    setApprovalCancelling(false);
+  };
 
   // Sync edit form when project prop changes (e.g. after related project nav)
   useEffect(() => {
@@ -3930,17 +4111,85 @@ const ProjectDetailPage = ({
       githubRepo:         project.githubRepo         || '',
       hosting:            project.hosting            || '',
       database:           project.database           || '',
+      approverName:       project.approverName       || '',
+      approverEmail:      project.approverEmail      || '',
+      prototypeLink:      project.prototypeLink      || '',
+      deckLink:           project.deckLink           || '',
+      docsLink:           project.docsLink           || '',
+      problem:            project.problem            || '',
+      built:              project.built              || '',
+      betterNow:          project.betterNow          || '',
+      aiAssistant:                project.aiAssistant                || [],
+      builderTools:               project.builderTools               || [],
+      hostingAccount:             project.hostingAccount             || null,
+      versionControl:             project.versionControl             || [],
+      versionControlAccount:      project.versionControlAccount      || null,
+      databaseAccount:            project.databaseAccount            || null,
+      screenshotUrls:             project.screenshotUrls             || [],
+      productionHosting:          project.productionHosting          || null,
+      productionHostingUrl:       project.productionHostingUrl       || '',
+      productionHostingAccount:   project.productionHostingAccount   || null,
+      productionVersionControl:   project.productionVersionControl   || null,
+      productionVersionControlUrl:project.productionVersionControlUrl|| '',
+      productionVersionControlAccount:project.productionVersionControlAccount||null,
+      productionDatabase:         project.productionDatabase         || null,
+      productionDatabaseUrl:      project.productionDatabaseUrl      || '',
+      productionDatabaseAccount:  project.productionDatabaseAccount  || null,
+      releaseDate:                project.releaseDate                || '',
+      announcementDate:           project.announcementDate           || '',
     });
     setFormDirty(false);
-    setDetailTab("overview");
+    setActiveTab("seedling");
   }, [project.id]);
 
   const handleOverviewSave = async () => {
     if (!canEdit || formSaving) return;
     setFormSaving(true);
+    if (computedTier === null) {
+      setApprovalError("Please complete the Tier Classification before saving.");
+      setActiveTab("seedling");
+      setFormSaving(false);
+      return;
+    }
     await onUpdateProject?.({ ...project, ...editForm });
     setFormDirty(false);
     setFormSaving(false);
+  };
+
+  const handleSaveAll = async () => {
+    if (formSaving || classSaving) return;
+    if (saveErrors.length > 0) {
+      setSaveToast({ type: 'error', errors: saveErrors });
+      setActiveTab(saveErrors[0].tab);
+      return;
+    }
+    setFormSaving(true);
+    let allOk = true;
+    if (formDirty) {
+      const result = await onUpdateProject?.({ ...project, ...editForm });
+      if (result?.ok === false) allOk = false;
+      else setFormDirty(false);
+    }
+    if (allOk && classIsDirty) {
+      setClassSaving(true);
+      const connectsSprout = SPROUT_SYSTEMS.some(s => cDbPlatform.includes(s));
+      const result = await onSaveClassification?.(project.id, {
+        hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
+        githubRepo: cRepoUrl,
+        hosting: cHostingPlatform,
+        requiresAuth: cRequiresAuth ?? (cAuthType.length > 0), authType: cAuthType,
+        hasDatabase: cDbPlatform.length > 0, database: cDbPlatform,
+        connectsSproutDb: connectsSprout,
+        sproutDbDetails: connectsSprout ? cSproutDbDetails : '',
+        dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
+        hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
+        storesUserInputs: cStoresInputs,
+      });
+      if (result?.ok === false) allOk = false;
+      setClassSaving(false);
+    }
+    setFormSaving(false);
+    setSaveToast(allOk ? { type: 'success' } : { type: 'failure' });
   };
 
   const interestedUsers = project.interestedUsers || [];
@@ -3951,65 +4200,68 @@ const ProjectDetailPage = ({
   useEffect(() => {
     setCHasBackend(project.hasBackend           ?? null);
     setCTargetUsers(project.targetUsers          ?? null);
-    setCLiveUrl(project.demoLink                || '');
-    setCHasVersionCtrl(project.githubRepo ? true : null);
     setCRepoUrl(project.githubRepo              || '');
-    setCHostingPlatform(project.hosting         || '');
-    setCRequiresAuth(project.requiresAuth       ?? null);
-    setCAuthType(project.authType               || '');
-    setCHasDatabase(project.hasDatabase         ?? null);
-    setCDbPlatform(project.database             || '');
-    setCConnectsSproutDb(project.connectsSproutDb ?? null);
+    setCHostingPlatform(projArr(project.hosting));
+    setCAuthType(projArr(project.authType));
+    setCDbPlatform(projArr(project.database));
+    setCSpfroutDbDetails(project.sproutDbDetails || '');
     setCDataSensitivity(project.dataSensitivity || '');
     setCendsToExtAI(project.sendsToExternalAI   ?? null);
-  }, [project.id, project.hasBackend, project.targetUsers, project.demoLink,
-      project.githubRepo, project.hosting, project.requiresAuth, project.authType,
-      project.hasDatabase, project.database, project.connectsSproutDb,
+  }, [project.id, project.hasBackend, project.targetUsers,
+      project.githubRepo, project.hosting, project.authType,
+      project.database, project.sproutDbDetails,
       project.dataSensitivity, project.sendsToExternalAI]);
 
   const computedTier =
     cHasBackend === null || cTargetUsers === null ? null :
-    cHasBackend === false && cTargetUsers === 'internal' ? 1 :
-    cHasBackend === true  && cTargetUsers !== 'internal' ? 3 :
+    cHasBackend === false ? 1 :
+    cTargetUsers !== 'internal' ? 3 :
     2;
 
   const SENSITIVE_LEVELS = ['Sensitive (PII, HR, payroll)', 'Highly sensitive (health, financial)'];
   const securityFlags = {
     aiDataRisk: cSendsToExtAI === true && SENSITIVE_LEVELS.includes(cDataSensitivity),
-    noAuthRisk: cTargetUsers !== 'internal' && cRequiresAuth === false && cRequiresAuth !== null,
+    noAuthRisk: cTargetUsers !== 'internal' && cAuthType.length === 0,
   };
 
   const classIsDirty =
     cHasBackend      !== (project.hasBackend       ?? null)
     || cTargetUsers  !== (project.targetUsers      ?? null)
-    || cLiveUrl      !== (project.demoLink         || '')
-    || cHasVersionCtrl !== (project.githubRepo ? true : null)
     || cRepoUrl      !== (project.githubRepo       || '')
-    || cHostingPlatform !== (project.hosting       || '')
-    || cRequiresAuth !== (project.requiresAuth     ?? null)
-    || cAuthType     !== (project.authType         || '')
-    || cHasDatabase  !== (project.hasDatabase      ?? null)
-    || cDbPlatform   !== (project.database         || '')
-    || cConnectsSproutDb !== (project.connectsSproutDb ?? null)
+    || cHostingPlatform.join('|') !== projArr(project.hosting).join('|')
+    || cAuthType.join('|')        !== projArr(project.authType).join('|')
+    || cDbPlatform.join('|')      !== projArr(project.database).join('|')
+    || cSproutDbDetails !== (project.sproutDbDetails || '')
     || cDataSensitivity !== (project.dataSensitivity || '')
-    || cSendsToExtAI !== (project.sendsToExternalAI ?? null);
+    || cSendsToExtAI !== (project.sendsToExternalAI ?? null)
+    || cRequiresAuth !== (project.requiresAuth ?? null)
+    || cHasSensitiveData !== (project.hasSensitiveData ?? null)
+    || cStoresInputs !== (project.storesUserInputs ?? null);
 
   const canEdit = !!(authUser && (authUser.email === project.builderEmail || authUser.isAdmin)
     && !(project.reviewStatus === "pending" && !authUser.isAdmin));
 
+  const saveErrors = [
+    !editForm.name?.trim()             && { tab:"seedling", msg:'Project name is required.' },
+    !(editForm.builtFor||[]).length    && { tab:"seedling", msg:'"For" department is required — who is this project for?' },
+    computedTier === null              && { tab:"seedling", msg:'Tier Classification is incomplete — answer the two questions in the Seedling tab.' },
+  ].filter(Boolean);
+
   const handleClassSave = async () => {
     if (!canEdit) return;
     setClassSaving(true);
+    const connectsSprout = SPROUT_SYSTEMS.some(s => cDbPlatform.includes(s));
     await onSaveClassification?.(project.id, {
       hasBackend: cHasBackend, targetUsers: cTargetUsers, tier: computedTier,
-      demoLink: cLiveUrl,
-      githubRepo: cHasVersionCtrl ? cRepoUrl : '',
+      githubRepo: cRepoUrl,
       hosting: cHostingPlatform,
-      requiresAuth: cRequiresAuth, authType: cAuthType,
-      hasDatabase: cHasDatabase, database: cHasDatabase ? cDbPlatform : '',
-      connectsSproutDb: cConnectsSproutDb,
+      requiresAuth: cRequiresAuth ?? (cAuthType.length > 0), authType: cAuthType,
+      hasDatabase: cDbPlatform.length > 0, database: cDbPlatform,
+      connectsSproutDb: connectsSprout,
+      sproutDbDetails: connectsSprout ? cSproutDbDetails : '',
       dataSensitivity: cDataSensitivity, sendsToExternalAI: cSendsToExtAI,
       hasSensitiveData: SENSITIVE_LEVELS.includes(cDataSensitivity),
+      storesUserInputs: cStoresInputs,
     });
     setClassSaving(false);
   };
@@ -4027,6 +4279,90 @@ const ProjectDetailPage = ({
 
   return (
     <>
+    {/* ── Save toast — fixed, always visible regardless of scroll ── */}
+    {saveToast&&(saveToast.type==='success'?(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(360px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.kangkong500,
+        borderRadius:DS.radius.lg, padding:"12px 16px",
+        boxShadow:"0 8px 32px rgba(45,140,45,0.15), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:20,height:20,borderRadius:"50%",background:C.kangkong500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width={11} height={11} viewBox="0 0 11 11" fill="none">
+              <path d="M2 5.5l2.5 2.5L9 3" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong700}}>Changes saved successfully</span>
+        </div>
+        <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+      </div>
+    ):saveToast.type==='failure'?(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(400px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.tomato500,
+        borderRadius:DS.radius.lg, padding:"12px 16px",
+        boxShadow:"0 8px 32px rgba(229,62,62,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:8,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:20,height:20,borderRadius:"50%",background:C.tomato500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{color:C.white,fontSize:12,fontWeight:700,lineHeight:1}}>!</span>
+          </div>
+          <div>
+            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Save failed</div>
+            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginTop:2}}>Something went wrong. Check your connection and try again.</div>
+          </div>
+        </div>
+        <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+      </div>
+    ):(
+      <div style={{
+        position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+        zIndex:9999, width:"min(460px, 92vw)",
+        background:C.white, border:"1.5px solid "+C.tomato500,
+        borderRadius:DS.radius.lg, padding:"14px 16px",
+        boxShadow:"0 8px 32px rgba(229,62,62,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+        animation:"slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)",
+        display:"flex", flexDirection:"column", gap:8,
+      }}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{width:20,height:20,borderRadius:"50%",background:C.tomato500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <span style={{color:C.white,fontSize:12,fontWeight:700,lineHeight:1}}>!</span>
+            </div>
+            <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>
+              {saveToast.errors.length === 1 ? "1 required field is missing" : `${saveToast.errors.length} required fields are missing`}
+            </span>
+          </div>
+          <button onClick={()=>setSaveToast(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:C.mushroom400,fontFamily:FF,fontSize:14,lineHeight:1,flexShrink:0}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {saveToast.errors.map((e,i)=>(
+            <button key={i} onClick={()=>{setActiveTab(e.tab);setSaveToast(null);}}
+              style={{display:"flex",alignItems:"center",gap:8,width:"100%",
+                padding:"8px 10px",borderRadius:DS.radius.md,
+                background:C.tomato100, border:"1px solid "+C.tomato500+"66",
+                cursor:"pointer",textAlign:"left",transition:"background 0.15s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#fecaca"}
+              onMouseLeave={e=>e.currentTarget.style.background=C.tomato100}
+            >
+              <svg width={12} height={12} viewBox="0 0 12 12" fill="none" style={{flexShrink:0}}>
+                <path d="M2 6h8M6 2l4 4-4 4" stroke={C.tomato600} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{fontFamily:FF,fontSize:12,color:C.tomato700,lineHeight:1.4}}>{e.msg}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,textAlign:"center"}}>Tap any item above to jump to the field · closes in 6s</div>
+      </div>
+    ))}
+
     <div style={{flex:1,overflowY:"auto",background:C.mushroom50,display:"flex",flexDirection:"column",fontFamily:FF}}>
 
       {/* Top nav */}
@@ -4044,9 +4380,107 @@ const ProjectDetailPage = ({
         <div style={{flex:1}}/>
       </div>
 
-      {/* Centred content column */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"36px 24px 56px"}}>
-        <div style={{width:"100%",maxWidth:760}}>
+      {/* Just-created banner */}
+      {justCreated && (
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 24px", background:C.kangkong500, flexShrink:0 }}>
+          <svg width={18} height={18} viewBox="0 0 18 18" fill="none" style={{flexShrink:0}}>
+            <circle cx="9" cy="9" r="8.5" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)"/>
+            <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div style={{ flex:1 }}>
+            <span style={{ fontFamily:FF, fontSize:13, fontWeight:700, color:C.white }}>Project created! </span>
+            <span style={{ fontFamily:FF, fontSize:13, color:"rgba(255,255,255,0.85)" }}>Add a description, tools used, and demo link below so your team can discover it.</span>
+          </div>
+          <button
+            onClick={onDismissCreated}
+            style={{ background:"none", border:"none", cursor:"pointer", padding:"2px 4px", color:"rgba(255,255,255,0.7)", fontFamily:FF, fontSize:18, lineHeight:1, flexShrink:0 }}
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+      )}
+
+      {/* Sidebar + main content */}
+      <div style={{flex:1,display:"flex",flexDirection:"row",alignItems:"flex-start",padding:"0"}}>
+
+        {/* Sticky left sidebar */}
+        {canEdit ? (
+          <div style={{
+            width:196, flexShrink:0, position:"sticky", top:0,
+            height:"100vh", overflowY:"auto",
+            padding:"16px 10px",
+            borderRight:"1px solid "+C.mushroom200,
+            background:C.mushroom50,
+          }}>
+            <div style={{fontFamily:FF,fontSize:9,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:C.mushroom400,marginBottom:10,padding:"0 6px"}}>By stage</div>
+            {[
+              {key:"seedling", n:1, label:"Seedling",  sub:"Basics, story & tier",       dotColor:C.kangkong500},
+              {key:"nursery",  n:2, label:"Rooting",   sub:"Review submission",          dotColor:"#d69e2e"},
+              {key:"sprout",   n:3, label:"Sprout",    sub:"Tech stack & security",      dotColor:C.mushroom400},
+              {key:"bloom",    n:4, label:"Bloom",     sub:"Production environment",     dotColor:"#dd6b20"},
+              {key:"thriving", n:5, label:"Thriving",  sub:"Impact notes",               dotColor:"#63b3ed"},
+            ].map(({key, n, label, sub, dotColor}, idx, arr) => {
+              const active = activeTab === key;
+              const isCurrent = project.stage === key;
+              const hasValidationError = saveErrors.some(e => e.tab === key);
+              return (
+                <button key={key} onClick={()=>setActiveTab(key)} style={{
+                  display:"flex", alignItems:"flex-start", gap:9, padding:8, width:"100%",
+                  borderRadius:8, border:"1px solid "+(active?"#e4e2da":"transparent"),
+                  cursor:"pointer", transition:"all 0.15s", marginBottom:1,
+                  background:active?C.white:"transparent", textAlign:"left",
+                  boxShadow:active?"0 1px 4px rgba(32,30,24,.06)":"none",
+                  fontFamily:FF,
+                }}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,paddingTop:3}}>
+                    <div style={{position:"relative"}}>
+                      <div style={{
+                        width:20, height:20, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:9, fontWeight:600, flexShrink:0,
+                        border:"1.5px solid "+(active?dotColor:"#ccc9bc"),
+                        color:active?C.white:"#928e7c",
+                        background:active?dotColor:C.white,
+                      }}>{n}</div>
+                      {hasValidationError&&(
+                        <div style={{
+                          position:"absolute", top:-3, right:-3,
+                          width:8, height:8, borderRadius:"50%",
+                          background:C.tomato500, border:"1.5px solid "+C.white,
+                          flexShrink:0,
+                        }}/>
+                      )}
+                    </div>
+                    {idx < arr.length - 1 && <div style={{width:1,height:18,background:"#e4e2da",margin:"2px auto 0"}}/>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:active?600:500,color:hasValidationError?C.tomato600:active?C.mushroom900:C.mushroom600}}>{label}</div>
+                    <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:1}}>{sub}</div>
+                    {isCurrent && <div style={{display:"inline-flex",alignItems:"center",gap:3,marginTop:4,padding:"1px 7px",borderRadius:9999,fontSize:9,fontWeight:600,letterSpacing:"0.04em",background:"#f0faf0",border:"1px solid #aadcaa",color:"#1f6e1f"}}>current</div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{
+            width:176, flexShrink:0, position:"sticky", top:0,
+            height:"100vh", overflowY:"auto",
+            padding:"28px 0 28px 20px",
+            borderRight:"1px solid "+C.mushroom200,
+            background:C.white,
+          }}>
+            {["Stage","The project","About","Tier & Tools"].map(label => (
+              <div key={label} style={{
+                display:"block", width:"100%", textAlign:"left",
+                padding:"7px 12px", marginBottom:2,
+                fontFamily:FF, fontSize:12, fontWeight:400,
+                color:C.mushroom500,
+              }}>{label}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Main content */}
+        <div style={{flex:1, minWidth:0, padding:"36px 32px 56px", maxWidth:760}}>
 
           {/* Hero */}
           <div style={{marginBottom:24}}>
@@ -4073,6 +4507,7 @@ const ProjectDetailPage = ({
               project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom200,"Static / Internal"]
              :project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]
              :project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]
+             :canEdit         ?["#744210","#fefcbf","#d69e2e",null]
                                :[C.mushroom400,C.mushroom50,C.mushroom200,null];
             return (
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderRadius:DS.radius.lg,marginBottom:16,background:tbg,border:"1px solid "+tbr}}>
@@ -4081,178 +4516,100 @@ const ProjectDetailPage = ({
                     <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:tc,padding:"2px 8px",background:C.white,border:"1.5px solid "+tbr,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
                     <span style={{fontFamily:FF,fontSize:12,color:tc}}>{tl}</span>
                   </>
-                ) : (
+                ) : canEdit ? (
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",gap:10}}>
-                    <div>
-                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <svg width={16} height={16} viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#b7791f" strokeWidth="1.5" fill="#fefcbf"/><path d="M8 6v3.5M8 11v.5" stroke="#b7791f" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      <div>
+                        <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:2}}>Classification required</div>
+                        <div style={{fontFamily:FF,fontSize:11,color:"#92400e"}}>Answer 2 questions in the Seedling tab to set this project's tier and unlock Setup Support.</div>
+                      </div>
                     </div>
-                    <button onClick={()=>setDetailTab("technical")}
-                      style={{flexShrink:0,padding:"5px 12px",background:C.white,border:"1.5px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
-                      onMouseOver={e=>{e.currentTarget.style.borderColor=C.kangkong400;e.currentTarget.style.color=C.kangkong600;}}
-                      onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom600;}}
-                    >Classify now →</button>
+                    <button onClick={()=>setActiveTab("seedling")}
+                      style={{flexShrink:0,padding:"5px 14px",background:"#b7791f",border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:700,color:C.white,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.15s"}}
+                      onMouseOver={e=>e.currentTarget.style.background="#744210"}
+                      onMouseOut={e=>e.currentTarget.style.background="#b7791f"}
+                    >Go to Classification →</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom500,marginBottom:2}}>Tier Unclassified</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>This project hasn't been classified yet.</div>
                   </div>
                 )}
               </div>
             );
           })()}
 
-          <div style={{display:"flex",gap:2,marginBottom:20,background:C.mushroom100,borderRadius:DS.radius.md,padding:2}}>
-            {[{k:"overview",l:"Overview"},{k:"technical",l:"Technical"}].map(({k,l})=>(
-              <button key={k} onClick={()=>setDetailTab(k)} style={{
-                flex:1,padding:"7px 0",borderRadius:DS.radius.sm,border:"none",cursor:"pointer",
-                fontFamily:FF,fontSize:13,fontWeight:detailTab===k?600:400,
-                background:detailTab===k?C.white:"transparent",
-                color:detailTab===k?C.kangkong700:C.mushroom500,
-                boxShadow:detailTab===k?DS.shadow.sm:"none",transition:"all 0.15s",
-              }}>{l}</button>
-            ))}
-          </div>
+          {/* Creator / created / modified */}
+          {(project.builder||project.createdAt||project.lastUpdatedAt)&&(
+            <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:16,padding:"10px 14px",background:C.mushroom50,border:"1px solid "+C.mushroom100,borderRadius:DS.radius.lg}}>
+              {project.builder&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created by</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom800,fontWeight:500}}>{project.builder}</div>
+                </div>
+              )}
+              {project.createdAt&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Created</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom800,fontWeight:500}}>{new Date(project.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+                </div>
+              )}
+              {project.lastUpdatedAt&&(
+                <div>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>Last modified</div>
+                  <div style={{fontFamily:FF,fontSize:13,color:project.lastUpdated>30?C.mango600:C.mushroom800,fontWeight:500}}>{new Date(project.lastUpdatedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+                </div>
+              )}
+            </div>
+          )}
 
           <>
 
           {/* ── Owner editable form (overview) ── */}
           {canEdit ? (
-            <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
-              {detailTab==="overview"&&<>
+            <div style={{position:"relative"}}>
 
-              {/* ── Section: The project ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>The project</div>
-                <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS_LIST} form={editForm} onChange={setEF}/>
-                  <MultiSelect
-                    label="For" required
-                    opts={DEPTS_LIST}
-                    value={editForm.builtFor||[]}
-                    onChange={v=>setEF("builtFor",v)}
-                    placeholder="Search departments…"
-                  />
-                </div>
-                <CollaboratorInput
-                  selected={editForm.collaboratorEmails}
-                  onChange={v=>setEF("collaboratorEmails",v)}
-                  selfEmail={authUser?.email||""}
-                />
-              </div>
-
-              {/* ── Section: About ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>About</div>
-                <div style={{marginBottom:12}}>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
-                  <textarea rows={4} value={editForm.description} onChange={e=>setEF("description",e.target.value)}
-                    placeholder="Describe your project…"
-                    style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                    onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                  />
-                </div>
-                <div>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
-                    Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
-                  </label>
-                  <div style={{position:"relative"}}>
-                    <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><IcoLink size={13} color={C.mushroom400}/></span>
-                    <input type="text" value={editForm.demoLink} onChange={e=>setEF("demoLink",e.target.value)}
-                      placeholder="Prototype, internal tool, or live product"
-                      style={{width:"100%",padding:"9px 12px 9px 30px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                      onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                      onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                    />
+              {/* ── Sticky save bar ── */}
+              {(formDirty||classIsDirty)&&(
+                <div style={{position:"sticky",top:0,zIndex:20,background:C.white,borderBottom:"1.5px solid "+C.mushroom200,padding:"10px 0",marginBottom:16}}>
+                  {saveErrors.length>0&&(
+                    <div style={{marginBottom:8,padding:"8px 12px",background:"#fefcbf",border:"1px solid "+C.mango500,borderRadius:DS.radius.md,display:"flex",flexDirection:"column",gap:4}}>
+                      {saveErrors.map((e,i)=>(
+                        <button key={i} onClick={()=>setActiveTab(e.tab)}
+                          style={{display:"flex",alignItems:"flex-start",gap:6,background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left"}}>
+                          <span style={{fontFamily:FF,fontSize:12,color:C.mango600,lineHeight:1.5}}>⚠ {e.msg}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8}}>
+                    <button
+                      onClick={()=>{
+                        setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],githubRepo:project.githubRepo||'',hosting:project.hosting||[],database:project.database||[],approverName:project.approverName||'',approverEmail:project.approverEmail||'',problem:project.problem||'',built:project.built||'',betterNow:project.betterNow||'',prototypeLink:project.prototypeLink||null,deckLink:project.deckLink||null,docsLink:project.docsLink||null,aiAssistant:project.aiAssistant||[],builderTools:project.builderTools||[],hostingAccount:project.hostingAccount||null,versionControl:project.versionControl||[],versionControlAccount:project.versionControlAccount||null,databaseAccount:project.databaseAccount||null,screenshotUrls:project.screenshotUrls||[],productionHosting:project.productionHosting||null,productionHostingUrl:project.productionHostingUrl||null,productionHostingAccount:project.productionHostingAccount||null,productionVersionControl:project.productionVersionControl||null,productionVersionControlUrl:project.productionVersionControlUrl||null,productionVersionControlAccount:project.productionVersionControlAccount||null,productionDatabase:project.productionDatabase||null,productionDatabaseUrl:project.productionDatabaseUrl||null,productionDatabaseAccount:project.productionDatabaseAccount||null,releaseDate:project.releaseDate||null,announcementDate:project.announcementDate||null});
+                        setFormDirty(false);
+                        setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
+                        setCRepoUrl(project.githubRepo||'');setCHostingPlatform(projArr(project.hosting));
+                        setCAuthType(projArr(project.authType));setCDbPlatform(projArr(project.database));
+                        setCSpfroutDbDetails(project.sproutDbDetails||'');setCDataSensitivity(project.dataSensitivity||'');
+                        setCendsToExtAI(project.sendsToExternalAI??null);setCRequiresAuth(project.requiresAuth??null);
+                        setCHasSensitiveData(project.hasSensitiveData??null);setCStoresInputs(project.storesUserInputs??null);
+                      }}
+                      style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}
+                    >Discard</button>
+                    <button onClick={handleSaveAll} disabled={formSaving||classSaving||saveErrors.length>0}
+                      style={{flex:2,padding:"9px",
+                        background:saveErrors.length>0?C.mushroom200:formSaving||classSaving?C.mushroom300:C.kangkong500,
+                        color:saveErrors.length>0?C.mushroom400:formSaving||classSaving?C.mushroom500:C.white,
+                        border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,
+                        cursor:saveErrors.length>0||formSaving||classSaving?"not-allowed":"pointer"}}
+                    >{formSaving||classSaving?"Saving…":"Save changes"}</button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* ── Section: Stage (read-only — changes go through onMoveStage) ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400}}>Stage</div>
-                  {canEdit && (() => {
-                    const gate = getStageGate(project);
-                    const stagesArr = STAGES.filter(s=>s!=='nursery');
-                    const curIdx = stagesArr.indexOf(project.stage);
-                    const nextStage = stagesArr[curIdx + 1];
-                    const prevStage = stagesArr[curIdx - 1];
-                    if (!nextStage && !authUser?.isAdmin) return null;
-                    return (
-                      <div style={{display:"flex",gap:6}}>
-                        {authUser?.isAdmin && prevStage && (
-                          <button onClick={()=>onMoveStage?.(project,-1)} style={{padding:"4px 10px",background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
-                            ← {STAGE_LABELS[prevStage]}
-                          </button>
-                        )}
-                        {nextStage && (authUser?.isAdmin || !gate.blocked) && (
-                          <button onClick={()=>onMoveStage?.(project,1)} style={{padding:"4px 10px",background:C.kangkong500,border:"none",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,color:C.white,cursor:"pointer",transition:"all 0.15s"}}>
-                            Advance to {STAGE_LABELS[nextStage]} →
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                  {STAGES.filter(s=>s!=='nursery').map(s=>{
-                    const sc=STAGE_COLORS[s];
-                    const active=project.stage===s;
-                    const stagesArr=STAGES.filter(x=>x!=='nursery');
-                    const isPast=stagesArr.indexOf(s)<stagesArr.indexOf(project.stage);
-                    const isFuture=stagesArr.indexOf(s)>stagesArr.indexOf(project.stage);
-                    return(
-                      <div key={s} style={{
-                        padding:"12px 10px",borderRadius:DS.radius.lg,textAlign:"left",
-                        border:"2px solid "+(active?sc.dot:C.mushroom200),
-                        background:active?sc.bg:isPast?C.mushroom50:C.white,
-                        opacity:isFuture?0.4:1,
-                      }}>
-                        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
-                          <StageIcon stage={s} size={14}/>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                          {active&&<IcoCheck size={11} color={sc.dot}/>}
-                        </div>
-                        <div style={{fontFamily:FF,fontSize:10,color:active?sc.text:C.mushroom400,lineHeight:1.4}}>{STAGE_DESC[s]}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              </>}
-              {detailTab==="technical"&&<>
-
-              {/* ── Section: Tech stack ── */}
-              <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tech stack</div>
-                <MultiSelect
-                  label="Tools you're using" required
-                  opts={TOOLS}
-                  value={editForm.toolUsed}
-                  onChange={v=>setEF("toolUsed",v)}
-                  placeholder="Search tools…"
-                  palette="green"
-                />
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <MultiSelect
-                    label="Agentic framework" optional
-                    opts={AGENTIC_FRAMEWORKS}
-                    value={editForm.agenticFramework||[]}
-                    onChange={v=>setEF("agenticFramework",v)}
-                    placeholder="Search frameworks…"
-                    palette="purple"
-                  />
-                  <MultiSelect
-                    label="Data sources" optional
-                    opts={DATA_SOURCES}
-                    value={editForm.dataSources}
-                    onChange={v=>setEF("dataSources",v)}
-                    placeholder="Search data sources…"
-                    palette="blue"
-                  />
-                </div>
-              </div>
-
-              {/* ── Section: Tier classification ── */}
+              {/* ── Panel content (uses IIFE to define shared helpers in scope) ── */}
               {(()=>{
                 const YesNo = ({value, onYes, onNo}) => (
                   <div style={{display:"flex",gap:8}}>
@@ -4263,8 +4620,6 @@ const ProjectDetailPage = ({
                           background:value===opt.v?C.kangkong50:C.white,
                           fontFamily:FF,fontSize:13,fontWeight:value===opt.v?700:400,
                           color:value===opt.v?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
-                        onMouseOver={e=>{if(value!==opt.v){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
-                        onMouseOut={e=>{if(value!==opt.v){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
                       >{opt.l}</button>
                     ))}
                   </div>
@@ -4278,241 +4633,552 @@ const ProjectDetailPage = ({
                         background:active?C.kangkong50:C.white,
                         fontFamily:FF,fontSize:13,fontWeight:active?700:400,
                         color:active?C.kangkong700:C.mushroom400,cursor:"pointer",transition:"all 0.15s"}}
-                      onMouseOver={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom400;e.currentTarget.style.background=C.mushroom50;}}}
-                      onMouseOut={e=>{if(!active){e.currentTarget.style.borderColor=C.mushroom200;e.currentTarget.style.background=C.white;}}}
                     >{label}</button>
                   );
                 };
                 const inputStyle = {width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"};
-                const selectStyle = (hasVal) => ({...inputStyle, color:hasVal?C.mushroom800:C.mushroom400});
-                const subBlock = {marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200,display:"flex",flexDirection:"column",gap:10};
+                const AccountSelect = ({value, onChange}) => (
+                  <select value={value||""} onChange={e=>onChange(e.target.value||null)}
+                    style={{padding:"9px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:value?C.mushroom800:C.mushroom400,background:C.white,outline:"none",flexShrink:0,width:130}}>
+                    <option value="">Account</option>
+                    <option value="personal">Personal</option>
+                    <option value="company">Company</option>
+                  </select>
+                );
                 const [tc,tb,tbr,tl]=
                   computedTier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
                   computedTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
                   computedTier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
                                    [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
-                return (
-                  <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
-                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Tier classification</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                const fmtTs = ts => ts ? new Date(ts).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "";
+                const canAct = canEdit || authUser?.isAdmin;
+                const approvalStatus = project.approvalStatus;
 
-                      {/* Q1 — backend */}
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
-                        <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
-                        <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
+                return (
+                  <div style={{display:"flex",flexDirection:"column",gap:16,paddingBottom:56}}>
+
+                    {/* ══════════════ SEEDLING PANEL ══════════════ */}
+                    {activeTab==="seedling"&&(<>
+
+                      {/* Project card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>The project</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Core details that identify your project across Grove.</div>
+                        </div>
+                        <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={editForm} onChange={setEF}/>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                          <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS_LIST} form={editForm} onChange={setEF}/>
+                          <MultiSelect label="For" required opts={DEPTS_LIST} value={editForm.builtFor||[]} onChange={v=>setEF("builtFor",v)} placeholder="Search departments…"/>
+                        </div>
+                        <CollaboratorInput selected={editForm.collaboratorEmails} onChange={v=>setEF("collaboratorEmails",v)} selfEmail={authUser?.email||""}/>
                       </div>
 
-                      {/* Q2 — target users */}
-                      <div>
-                        <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
-                        <div style={{display:"flex",gap:8}}>
-                          <TU val="internal" label="Internal only"/>
-                          <TU val="external" label="External only"/>
-                          <TU val="both"     label="Both"/>
+                      {/* Story card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Your story</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Help leadership understand what you built and why it matters.</div>
+                        </div>
+                        <div style={{marginBottom:12}}>
+                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>About the project</label>
+                          <textarea rows={4} value={editForm.description} onChange={e=>setEF("description",e.target.value)}
+                            placeholder="Describe your project…"
+                            style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",lineHeight:1.6,boxSizing:"border-box"}}
+                            onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                            onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                          />
+                        </div>
+                        {[
+                          {k:"problem",  label:"What problem are you solving?",  ph:"e.g. Our team spends 3 hours a week manually…"},
+                          {k:"built",    label:"What are you building?",          ph:"e.g. An AI assistant that automatically…"},
+                          {k:"betterNow",label:"What will be better?",            ph:"e.g. The team gets those 3 hours back…"},
+                        ].map(({k,label,ph})=>(
+                          <div key={k} style={{marginBottom:8}}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                            <textarea value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph} rows={2}
+                              style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,resize:"vertical",outline:"none",boxSizing:"border-box",background:C.white}}
+                            />
+                          </div>
+                        ))}
+                        <div style={{marginTop:4}}>
+                          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
+                            Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
+                          </label>
+                          <div style={{position:"relative"}}>
+                            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><IcoLink size={13} color={C.mushroom400}/></span>
+                            <input type="text" value={editForm.demoLink} onChange={e=>setEF("demoLink",e.target.value)}
+                              placeholder="Prototype, internal tool, or live product"
+                              style={{width:"100%",padding:"9px 12px 9px 30px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                              onBlur={e=>e.target.style.borderColor=C.mushroom300}
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* Tier result pill */}
-                      {computedTier!==null&&(
-                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
-                          <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
+                      {/* Tier classification card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Classify your project <span style={{color:C.tomato500}}>*</span></div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Two questions determine the tier and deployment checklist.</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does this project have a backend?</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Server, database, or any logic that runs outside the browser or device</div>
+                            <YesNo value={cHasBackend} onYes={()=>setCHasBackend(true)} onNo={()=>setCHasBackend(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Who are the intended users?</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <TU val="internal" label="Internal only"/>
+                              <TU val="external" label="External only"/>
+                              <TU val="both"     label="Both"/>
+                            </div>
+                          </div>
+                          {computedTier!==null&&(
+                            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
+                              <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {computedTier}</span>
+                              <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+
+                    </>)}
+
+                    {/* ══════════════ NURSERY PANEL ══════════════ */}
+                    {activeTab==="nursery"&&(<>
+
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Send for Rooting Review</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Your approver signs off before the project advances to Sprout.</div>
+                        </div>
+
+                        {approvalStatus!=="approved"&&(
+                          <div style={{marginBottom:12}}>
+                            <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:6}}>Approver</label>
+                            <ApproverPicker
+                              name={editForm.approverName}
+                              email={editForm.approverEmail}
+                              onChange={(n,e)=>{ setEF("approverName",n); setEF("approverEmail",e); }}
+                              disabled={approvalStatus==="pending"||!canAct}
+                            />
+                          </div>
+                        )}
+
+                        {approvalStatus!=="approved"&&(
+                          <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
+                            {[
+                              {k:"prototypeLink",label:"Prototype / demo site",ph:"https://...",note:"The live or staging URL where the approver can try the project"},
+                              {k:"deckLink",     label:"Presentation deck",    ph:"https://docs.google.com/...",note:"Google Slides, Notion, or any link to your pitch or walkthrough deck"},
+                              {k:"docsLink",     label:"Documentation / guide",ph:"https://...",note:"User guide, README, Confluence page, or supporting documentation"},
+                            ].map(({k,label,ph,note})=>(
+                              <div key={k}>
+                                <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:3}}>
+                                  {label} <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,color:C.mushroom400}}>— optional</span>
+                                </label>
+                                <input type="text" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value)} placeholder={ph}
+                                  disabled={approvalStatus==="pending"||!canAct}
+                                  style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+(approvalStatus==="pending"?C.mushroom200:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:approvalStatus==="pending"?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:approvalStatus==="pending"?0.7:1}}
+                                  onFocus={e=>{if(approvalStatus!=="pending")e.target.style.borderColor=C.kangkong500;}}
+                                  onBlur={e=>e.target.style.borderColor=approvalStatus==="pending"?C.mushroom200:C.mushroom300}
+                                />
+                                <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:3,lineHeight:1.4}}>{note}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {approvalStatus==="approved"&&(
+                          <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
+                            <div style={{flex:1}}>
+                              <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900}}>{project.approverName}</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{project.approverEmail}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {approvalStatus==="pending"&&(
+                          <div style={{background:"#fefcbf",border:"1px solid #d69e2e",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#744210",marginBottom:4}}>Awaiting IS / ExCom sign-off</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5}}>
+                              An approval request was sent to <strong>{project.approverName||project.approverEmail}</strong>{project.approvalRequestedAt?` on ${fmtTs(project.approvalRequestedAt)}`:""}.
+                              The Release Manager has also been notified for alignment.
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:11,color:"#744210",lineHeight:1.5,marginTop:4}}>
+                              Once they approve, the project will automatically advance to Sprout stage.
+                            </div>
+                            {canAct&&<button onClick={handleSendApprovalRequest} disabled={approvalSending} style={{background:"none",border:"none",padding:0,fontFamily:FF,fontSize:11,color:"#b7791f",cursor:"pointer",textDecoration:"underline",marginTop:6}}>{approvalSending?"Sending…":"Resend email"}</button>}
+                          </div>
+                        )}
+                        {approvalStatus==="approved"&&(
+                          <div style={{background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,marginBottom:2}}>Approved</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.kangkong700}}>Approved by {project.approverName}{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+                            </div>
+                          </div>
+                        )}
+                        {approvalStatus==="rejected"&&(
+                          <div style={{background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.md,padding:"10px 12px",marginBottom:10}}>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:2}}>Approval rejected{project.approvalRejectedAt?` — ${fmtTs(project.approvalRejectedAt)}`:""}</div>
+                            {project.approvalRejectionReason&&<div style={{fontFamily:FF,fontSize:11,color:"#744210",marginBottom:4}}>{project.approvalRejectionReason}</div>}
+                            <div style={{fontFamily:FF,fontSize:11,color:"#928e7c"}}>Update the project details and send a new request.</div>
+                          </div>
+                        )}
+
+                        {approvalError&&<div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginBottom:8}}>{approvalError}</div>}
+
+                        {canAct&&(
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                            {(approvalStatus===null||approvalStatus==="rejected")&&(
+                              <button onClick={handleSendApprovalRequest} disabled={approvalSending||!editForm.approverName?.trim()||!editForm.approverEmail?.trim()}
+                                style={{flex:2,padding:"9px",background:approvalSending?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,fontWeight:700,cursor:approvalSending?"not-allowed":"pointer",transition:"all 0.15s"}}>
+                                {approvalSending?"Sending…":approvalStatus==="rejected"?"Send new request →":"Submit for Rooting Review →"}
+                              </button>
+                            )}
+                            {(approvalStatus==="pending"||approvalStatus==="rejected")&&(
+                              <button onClick={handleCancelApproval} disabled={approvalCancelling}
+                                style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600,cursor:"pointer",transition:"all 0.15s"}}>
+                                {approvalCancelling?"…":"Cancel request"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Approval approved — shown in stale state before page refresh */}
+                      {approvalStatus==="approved"&&(
+                        <div style={{background:"#f0fdf4",border:"1.5px solid "+C.kangkong300,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                            <div style={{width:22,height:22,borderRadius:"50%",background:C.kangkong500,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <svg width={12} height={12} viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5L10 3" stroke={C.white} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.kangkong700}}>Approval secured!</div>
+                          </div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.kangkong700,lineHeight:1.6,marginBottom:14}}>
+                            Approved by <strong>{project.approverName}</strong>{project.approvedAt?` on ${fmtTs(project.approvedAt)}`:""}.
+                            Your project should now be at <strong>Sprout stage</strong>. Refresh the page if it hasn't updated yet.
+                          </div>
+                          {canAct&&project.stage==="nursery"&&(
+                            <button
+                              onClick={async()=>{
+                                setAdvancingToSprout(true);
+                                await onUpdateProject?.({...project, stage:"sprout"});
+                                setAdvancingToSprout(false);
+                                setActiveTab("sprout");
+                              }}
+                              disabled={advancingToSprout}
+                              style={{width:"100%",padding:"10px",background:advancingToSprout?C.mushroom300:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:advancingToSprout?"not-allowed":"pointer",transition:"all 0.15s"}}
+                            >{advancingToSprout?"Moving to Sprout…":"Advance to Sprout stage →"}</button>
+                          )}
+                          {project.stage!=="nursery"&&(
+                            <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,textAlign:"center",fontWeight:600}}>
+                              Already at {project.stage.charAt(0).toUpperCase()+project.stage.slice(1)} stage
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* ── Per-tier checklist ── */}
-                      {computedTier!==null&&(
-                        <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
-                          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Project details</div>
-                          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                    </>)}
 
-                            {/* URL — all tiers */}
+                    {/* ══════════════ SPROUT PANEL ══════════════ */}
+                    {activeTab==="sprout"&&(<>
+
+                      {/* Tech stack card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Tech stack</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>What tools and frameworks power this project?</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                          <MultiSelect label="Tools used" required
+                            tooltip="All AI tools on this project — assistants (Claude, ChatGPT), code builders (Cursor, Claude Code), automation (Zapier)"
+                            opts={TOOLS} value={editForm.toolUsed} onChange={v=>setEF("toolUsed",v)} placeholder="Search tools…" palette="green"/>
+
+                          <MultiSelect label="Agentic framework" optional
+                            tooltip="Multi-agent orchestration framework (e.g. Aulendil, BMAD, LangChain) — leave blank if none"
+                            opts={AGENTIC_FRAMEWORKS} value={editForm.agenticFramework||[]} onChange={v=>setEF("agenticFramework",v)} placeholder="Search frameworks…" palette="purple"/>
+
+                          {computedTier>=2&&(<>
                             <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>
-                                Live URL{computedTier===1&&<span style={{fontWeight:400,color:C.mushroom400}}> (optional)</span>}
+                              <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Hosting</div>
+                                <TooltipLabel tooltip="Platform where the project is deployed (e.g. Vercel, Azure, internal server)"/>
                               </div>
-                              <input type="text" value={cLiveUrl} onChange={e=>setCLiveUrl(e.target.value)}
-                                placeholder="https://…" style={inputStyle}
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <div style={{flex:1}}>
+                                  <MultiSelect opts={["AWS","Azure","Google Cloud","Internal server","Vercel","Other"]} value={cHostingPlatform} onChange={v=>setCHostingPlatform(v)} placeholder="Search platforms…" palette="green"/>
+                                </div>
+                                <AccountSelect value={editForm.hostingAccount} onChange={v=>setEF("hostingAccount",v)}/>
+                              </div>
+                            </div>
+                          </>)}
+
+                          <div>
+                            <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Version control</div>
+                              <TooltipLabel tooltip="Paste your GitHub, GitLab, or Bitbucket repository URL"/>
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
+                                placeholder="github.com/org/repo"
+                                style={{...inputStyle,flex:1}}
                                 onFocus={e=>e.target.style.borderColor=C.kangkong500}
                                 onBlur={e=>e.target.style.borderColor=C.mushroom300}
                               />
+                              <AccountSelect value={editForm.versionControlAccount} onChange={v=>setEF("versionControlAccount",v)}/>
                             </div>
+                          </div>
 
-                            {/* Hosting — T2/T3 */}
-                            {computedTier>=2&&(
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting platform</div>
-                                <select value={cHostingPlatform} onChange={e=>setCHostingPlatform(e.target.value)} style={selectStyle(!!cHostingPlatform)}>
-                                  <option value="">Select platform…</option>
-                                  {["Vercel","Azure","AWS","Google Cloud","Internal server","Other"].map(o=><option key={o}>{o}</option>)}
-                                </select>
-                              </div>
-                            )}
-
-                            {/* Version control — all tiers */}
+                          {computedTier>=2&&(<>
                             <div>
-                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Version control</div>
-                              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>Does this project have a code repository?</div>
-                              <YesNo value={cHasVersionCtrl}
-                                onYes={()=>setCHasVersionCtrl(true)}
-                                onNo={()=>{setCHasVersionCtrl(false);setCRepoUrl('');}}
-                              />
-                              {cHasVersionCtrl===true&&(
-                                <div style={{marginTop:8,paddingLeft:12,borderLeft:"2px solid "+C.mushroom200}}>
-                                  <input type="text" value={cRepoUrl} onChange={e=>setCRepoUrl(e.target.value)}
-                                    placeholder="github.com/org/repo" style={inputStyle}
+                              <MultiSelect label="User authentication" optional
+                                tooltip="How users log in to this project (e.g. Keycloak, Google SSO, API key)"
+                                opts={["API key","Email + password","Keycloak","Sprout SSO / Google","Other"]} value={cAuthType} onChange={v=>setCAuthType(v)} placeholder="Search auth types…" palette="green"/>
+                              {computedTier===3&&!cAuthType.includes('Keycloak')&&cAuthType.length>0&&(
+                                <div style={{marginTop:6,padding:"6px 10px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,fontFamily:FF,fontSize:11,color:C.mango600}}>Keycloak must be included for Tier 3 projects.</div>
+                              )}
+                            </div>
+                            <div>
+                              <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:6}}>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600}}>Database &amp; data sources</div>
+                              <TooltipLabel tooltip="Databases or external data services this project reads from or writes to"/>
+                            </div>
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <div style={{flex:1}}>
+                                  <MultiSelect opts={DB_AND_SOURCES} value={cDbPlatform} onChange={v=>setCDbPlatform(v)} placeholder="Search databases &amp; data sources…" palette="blue"/>
+                                </div>
+                                <AccountSelect value={editForm.databaseAccount} onChange={v=>setEF("databaseAccount",v)}/>
+                              </div>
+                              {SPROUT_SYSTEMS.some(s=>cDbPlatform.includes(s))&&(
+                                <div style={{marginTop:10}}>
+                                  <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>What are you pulling from those Sprout systems?</div>
+                                  <textarea value={cSproutDbDetails} onChange={e=>setCSpfroutDbDetails(e.target.value)} placeholder="e.g. Employee list from Sprout HR…" rows={3}
+                                    style={{...inputStyle,resize:"vertical",minHeight:64}}
                                     onFocus={e=>e.target.style.borderColor=C.kangkong500}
                                     onBlur={e=>e.target.style.borderColor=C.mushroom300}
                                   />
                                 </div>
                               )}
                             </div>
+                          </>)}
+                        </div>
+                      </div>
 
-                            {/* Auth — T2/T3 */}
-                            {computedTier>=2&&(
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user authentication?</div>
-                                <YesNo value={cRequiresAuth}
-                                  onYes={()=>setCRequiresAuth(true)}
-                                  onNo={()=>{setCRequiresAuth(false);setCAuthType('');}}
-                                />
-                                {cRequiresAuth===true&&(
-                                  <div style={subBlock}>
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Auth type</div>
-                                      <select value={cAuthType} onChange={e=>setCAuthType(e.target.value)} style={selectStyle(!!cAuthType)}>
-                                        <option value="">Select…</option>
-                                        {["Sprout SSO / Google","Email + password","API key","Other"].map(o=><option key={o}>{o}</option>)}
-                                      </select>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Database — T2/T3 */}
-                            {computedTier>=2&&(
-                              <div>
-                                <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project use a database?</div>
-                                <YesNo value={cHasDatabase}
-                                  onYes={()=>setCHasDatabase(true)}
-                                  onNo={()=>{setCHasDatabase(false);setCDbPlatform('');setCConnectsSproutDb(null);}}
-                                />
-                                {cHasDatabase===true&&(
-                                  <div style={subBlock}>
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database platform</div>
-                                      <select value={cDbPlatform} onChange={e=>setCDbPlatform(e.target.value)} style={selectStyle(!!cDbPlatform)}>
-                                        <option value="">Select…</option>
-                                        {["Supabase","PostgreSQL","MySQL","MongoDB","Firebase","Azure SQL","Other"].map(o=><option key={o}>{o}</option>)}
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it connect to or pull from the Sprout DB?</div>
-                                      <YesNo value={cConnectsSproutDb}
-                                        onYes={()=>setCConnectsSproutDb(true)}
-                                        onNo={()=>setCConnectsSproutDb(false)}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Data & Security — T3 only */}
-                            {computedTier===3&&(
-                              <div style={{borderTop:"1px solid "+C.mushroom100,paddingTop:14,marginTop:2}}>
-                                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14}}>Data &amp; security</div>
-                                <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                                  <div>
-                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
-                                    <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)} style={selectStyle(!!cDataSensitivity)}>
-                                      <option value="">Select…</option>
-                                      {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4}}>Does it send data to external AI models?</div>
-                                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginBottom:8}}>e.g. OpenAI, Claude, Gemini, Azure AI</div>
-                                    <YesNo value={cSendsToExtAI}
-                                      onYes={()=>setCendsToExtAI(true)}
-                                      onNo={()=>setCendsToExtAI(false)}
-                                    />
-                                  </div>
-                                  {securityFlags.aiDataRisk&&(
-                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                                      <span style={{fontSize:14}}>🔒</span>
-                                      <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                                    </div>
-                                  )}
-                                  {securityFlags.noAuthRisk&&(
-                                    <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                                      <span style={{fontSize:14}}>⚠️</span>
-                                      <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
+                      {/* Security card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Security and data</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Required for Tier 2 and above.</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does this project require user login or authentication?</div>
+                            <YesNo value={cRequiresAuth} onYes={()=>setCRequiresAuth(true)} onNo={()=>setCRequiresAuth(false)}/>
                           </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it handle or process sensitive data? <span style={{fontSize:10,fontWeight:400,color:C.mushroom400}}>(PII, payroll, HR records)</span></div>
+                            <YesNo value={cHasSensitiveData} onYes={()=>setCHasSensitiveData(true)} onNo={()=>setCHasSensitiveData(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it send employee or company data to external AI models?</div>
+                            <YesNo value={cSendsToExtAI} onYes={()=>setCendsToExtAI(true)} onNo={()=>setCendsToExtAI(false)}/>
+                          </div>
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:8}}>Does it store or log user inputs / outputs persistently?</div>
+                            <YesNo value={cStoresInputs} onYes={()=>setCStoresInputs(true)} onNo={()=>setCStoresInputs(false)}/>
+                          </div>
+                          {cHasSensitiveData===true&&cSendsToExtAI===true&&(
+                            <div style={{padding:"10px 14px",background:"#fff5f5",border:"1px solid #fc8181",borderRadius:DS.radius.lg}}>
+                              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:"#c53030",marginBottom:3}}>Privacy review needed</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:"#c53030"}}>Sending sensitive data to external AI triggers a DPO/privacy review before going live.</div>
+                            </div>
+                          )}
+                          {cRequiresAuth===false&&(cHasSensitiveData===true||cSendsToExtAI===true)&&(
+                            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg}}>
+                              <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mango600,marginBottom:3}}>Access control warning</div>
+                              <div style={{fontFamily:FF,fontSize:11,color:C.mango600}}>This project handles sensitive data but has no authentication. Consider adding login.</div>
+                            </div>
+                          )}
+                          {computedTier===3&&(
+                            <div>
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Data sensitivity</div>
+                              <select value={cDataSensitivity} onChange={e=>setCDataSensitivity(e.target.value)}
+                                style={{...inputStyle,color:cDataSensitivity?C.mushroom800:C.mushroom400}}>
+                                <option value="">Select…</option>
+                                {["None / public data only","Internal / low sensitivity","Sensitive (PII, HR, payroll)","Highly sensitive (health, financial)"].map(o=><option key={o}>{o}</option>)}
+                              </select>
+                            </div>
+                          )}
                         </div>
+                      </div>
+
+                      {/* Going Live card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Going Live</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Complete your tech details above, then secure DevOps setup and release sign-off before advancing to Bloom.</div>
+                        </div>
+                        <div style={{display:"flex",gap:10}}>
+
+                          {/* DevOps setup card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.carrot100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M2 14l3.5-3.5M13 2l-3.5 3.5M5.5 10.5L8 8M8 8l2.5-2.5M8 8l-2.5 2.5" stroke={C.carrot500} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>DevOps setup</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Coleen, Blaise, Nikki, or Raffy set up hosting and infrastructure before launch.</div>
+                            <button onClick={()=>setShowDevopsModal(true)}
+                              style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.carrot500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.carrot500,cursor:"pointer",transition:"all 0.15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.background=C.carrot100;}}
+                              onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                            >Request DevOps setup</button>
+                          </div>
+
+                          {/* Release review card */}
+                          <div style={{flex:1,padding:14,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200,background:C.mushroom50}}>
+                            <div style={{width:30,height:30,borderRadius:DS.radius.md,background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+                              <svg width={15} height={15} viewBox="0 0 16 16" fill="none"><path d="M13 4.5L6.5 12L3 8.5" stroke={C.kangkong600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900,marginBottom:4}}>Release review</div>
+                            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,lineHeight:1.5,marginBottom:10}}>Belle Asis or Diane Litan signs off before the project goes live.</div>
+                            {project.releaseReviewStatus==="approved"&&(
+                              <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.kangkong600}}>✓ Approved</div>
+                            )}
+                            {project.releaseReviewStatus==="pending"&&(
+                              <div style={{fontFamily:FF,fontSize:11,color:"#744210",fontWeight:600}}>Pending review…</div>
+                            )}
+                            {(!project.releaseReviewStatus||project.releaseReviewStatus==="rejected")&&(
+                              <button
+                                onClick={async()=>{ await onSubmitReleaseReview?.(project); }}
+                                disabled={computedTier===null}
+                                style={{padding:"6px 12px",borderRadius:DS.radius.md,border:"1px solid "+C.kangkong500,background:"transparent",fontFamily:FF,fontSize:11,fontWeight:500,color:C.kangkong600,cursor:computedTier===null?"not-allowed":"pointer",opacity:computedTier===null?0.5:1,transition:"all 0.15s"}}
+                                onMouseOver={e=>{if(computedTier!==null)e.currentTarget.style.background=C.kangkong50;}}
+                                onMouseOut={e=>{e.currentTarget.style.background="transparent";}}
+                              >{project.releaseReviewStatus==="rejected"?"Resubmit →":"Submit for release review →"}</button>
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </>)}
+
+                    {/* ══════════════ BLOOM PANEL ══════════════ */}
+                    {activeTab==="bloom"&&(<>
+
+                      {/* Production environment card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Production environment</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>Document where the live version of this project is actually running.</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Hosting</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionHosting||""} onChange={e=>setEF("productionHosting",e.target.value||null)}
+                                placeholder="e.g. Vercel, Azure, AWS" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionHostingAccount} onChange={v=>setEF("productionHostingAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionHostingUrl||""} onChange={e=>setEF("productionHostingUrl",e.target.value||null)}
+                              placeholder="Production URL" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Version control</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionVersionControl||""} onChange={e=>setEF("productionVersionControl",e.target.value||null)}
+                                placeholder="e.g. GitHub, GitLab" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionVersionControlAccount} onChange={v=>setEF("productionVersionControlAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionVersionControlUrl||""} onChange={e=>setEF("productionVersionControlUrl",e.target.value||null)}
+                              placeholder="Repository URL" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                          <div>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:6}}>Database</div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input type="text" value={editForm.productionDatabase||""} onChange={e=>setEF("productionDatabase",e.target.value||null)}
+                                placeholder="e.g. Supabase, PostgreSQL" style={{...inputStyle,flex:1}}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                              <AccountSelect value={editForm.productionDatabaseAccount} onChange={v=>setEF("productionDatabaseAccount",v)}/>
+                            </div>
+                            <input type="text" value={editForm.productionDatabaseUrl||""} onChange={e=>setEF("productionDatabaseUrl",e.target.value||null)}
+                              placeholder="Database host (no passwords)" style={{...inputStyle,marginTop:8}}
+                              onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Go-live dates card */}
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Go-live dates</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>When did this project go live, and when was it announced?</div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                          {[{k:"releaseDate",label:"Release date"},{k:"announcementDate",label:"Announcement date"}].map(({k,label})=>(
+                            <div key={k}>
+                              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>{label}</label>
+                              <input type="date" value={editForm[k]||""} onChange={e=>setEF(k,e.target.value||null)}
+                                style={inputStyle}
+                                onFocus={e=>e.target.style.borderColor=C.kangkong500} onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {computedTier>=2&&(
+                        <button onClick={()=>setShowDevopsModal(true)} style={{width:"100%",padding:"11px",background:C.carrot500,color:C.white,border:"none",borderRadius:DS.radius.lg,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.15s"}}
+                          onMouseOver={e=>e.currentTarget.style.background=C.carrot600||"#c05621"}
+                          onMouseOut={e=>e.currentTarget.style.background=C.carrot500}
+                        >
+                          <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Request Setup Support
+                        </button>
                       )}
 
-                      {classIsDirty&&(
-                        <div style={{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid "+C.mushroom100}}>
-                          <button onClick={()=>{
-                            setCHasBackend(project.hasBackend??null);setCTargetUsers(project.targetUsers??null);
-                            setCLiveUrl(project.demoLink||'');setCHasVersionCtrl(project.githubRepo?true:null);
-                            setCRepoUrl(project.githubRepo||'');setCHostingPlatform(project.hosting||'');
-                            setCRequiresAuth(project.requiresAuth??null);setCAuthType(project.authType||'');
-                            setCHasDatabase(project.hasDatabase??null);setCDbPlatform(project.database||'');
-                            setCConnectsSproutDb(project.connectsSproutDb??null);
-                            setCDataSensitivity(project.dataSensitivity||'');setCendsToExtAI(project.sendsToExternalAI??null);
-                          }}
-                            style={{flex:1,padding:"9px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}>Cancel</button>
-                          <button onClick={handleClassSave} disabled={computedTier===null||classSaving}
-                            style={{flex:2,padding:"9px",background:computedTier!==null?C.kangkong500:C.mushroom200,color:computedTier!==null?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:600,cursor:computedTier!==null?"pointer":"default",transition:"all 0.15s"}}
-                          >{classSaving?"Saving…":"Save classification"}</button>
+                    </>)}
+
+                    {/* ══════════════ THRIVING PANEL ══════════════ */}
+                    {activeTab==="thriving"&&(<>
+
+                      <div style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl,padding:"20px 22px",boxShadow:DS.shadow.sm}}>
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:600,color:C.mushroom900,marginBottom:3}}>Impact &amp; notes</div>
+                          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6}}>How has this project made things better?</div>
                         </div>
-                      )}
-                    </div>
+                        <div style={{fontFamily:FF,fontSize:13,color:C.mushroom400,lineHeight:1.6}}>
+                          Use the Notes &amp; Milestones panel on the right to record impact metrics, milestones, and updates.
+                        </div>
+                        {project.notes?.length>0&&(
+                          <div style={{marginTop:16}}>
+                            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Recent notes</div>
+                            {project.notes.slice(-3).reverse().map((n,i)=>(
+                              <div key={i} style={{padding:"8px 12px",background:C.mushroom50,borderRadius:DS.radius.md,marginBottom:8,fontFamily:FF,fontSize:12,color:C.mushroom700,lineHeight:1.5}}>{typeof n==="string"?n:n.text||""}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                    </>)}
+
                   </div>
                 );
               })()}
 
-              {computedTier>=2&&(
-              <button onClick={()=>setShowDevopsModal(true)} style={{
-                width:"100%",padding:"11px",background:C.carrot500,color:C.white,
-                border:"none",borderRadius:DS.radius.lg,cursor:"pointer",
-                fontFamily:FF,fontSize:13,fontWeight:700,display:"flex",
-                alignItems:"center",justifyContent:"center",gap:8,transition:"all 0.15s",
-              }}
-                onMouseOver={e=>e.currentTarget.style.background=C.carrot600||"#c05621"}
-                onMouseOut={e=>e.currentTarget.style.background=C.carrot500}
-              >
-                <svg width={15} height={15} viewBox="0 0 20 20" fill="none"><path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Request DevOps Setup
-              </button>
-              )}
-              </>}
-
-              {/* Save / Cancel */}
-              {formDirty&&(
-                <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>{setEditForm({name:project.name||'',description:project.description||'',builtBy:project.builtBy||'Marketing',builtFor:project.builtFor||[],demoLink:project.demoLink||'',toolUsed:project.toolUsed||[],agenticFramework:project.agenticFramework||[],dataSources:project.dataSources||[],collaboratorEmails:project.collaboratorEmails||[],stage:project.stage||'sprout',githubRepo:project.githubRepo||'',hosting:project.hosting||'',database:project.database||''});setFormDirty(false);}}
-                    style={{flex:1,padding:"11px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600,transition:"all 0.15s"}}
-                    onMouseOver={e=>e.currentTarget.style.borderColor=C.mushroom400}
-                    onMouseOut={e=>e.currentTarget.style.borderColor=C.mushroom300}
-                  >Cancel</button>
-                  <button onClick={handleOverviewSave} disabled={formSaving}
-                    style={{flex:2,padding:"11px",background:formSaving?C.mushroom300:C.kangkong500,color:formSaving?C.mushroom500:C.white,border:"none",borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:formSaving?"not-allowed":"pointer",transition:"all 0.15s"}}
-                    onMouseOver={e=>{if(!formSaving)e.currentTarget.style.background=C.kangkong600;}}
-                    onMouseOut={e=>{if(!formSaving)e.currentTarget.style.background=C.kangkong500;}}
-                  >{formSaving?"Saving…":"Save changes"}</button>
-                </div>
-              )}
             </div>
           ) : (
             /* ── View-only: disabled-input style section cards ── */
@@ -4524,7 +5190,6 @@ const ProjectDetailPage = ({
               const sTitle = {fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom400,marginBottom:14};
               return (
                 <div style={{marginBottom:24,display:"flex",flexDirection:"column",gap:16}}>
-                  {detailTab==="overview"&&<>
 
                   {/* The project */}
                   <div style={sCard}>
@@ -4577,8 +5242,8 @@ const ProjectDetailPage = ({
                   {/* Stage */}
                   <div style={sCard}>
                     <div style={sTitle}>Stage</div>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                      {STAGES.filter(s=>s!=="nursery").map(s=>{
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+                      {STAGES.map(s=>{
                         const sc2=STAGE_COLORS[s];
                         const active=project.stage===s;
                         return(
@@ -4599,21 +5264,41 @@ const ProjectDetailPage = ({
                       })}
                     </div>
                   </div>
-                  </>}
-                  {detailTab==="technical"&&<>
 
-                  {/* Tech stack */}
-                  <div style={sCard}>
-                    <div style={sTitle}>Tech stack</div>
-                    <div style={{marginBottom:12}}>
-                      <label style={roLabel}>Tools</label>
-                      <div style={roBox}>
-                        {project.toolUsed?.length>0
-                          ? project.toolUsed.map(t=><span key={t} style={{...roChip,background:C.kangkong50,color:C.kangkong700,border:"1px solid "+C.kangkong200}}>{t}</span>)
-                          : <span>—</span>}
+                  {/* Tier classification */}
+                  {(()=>{
+                    const [tc,tb,tbr,tl]=
+                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
+                      project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
+                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
+                                       [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
+                    return(
+                      <div style={sCard}>
+                        <div style={sTitle}>Tier Classification</div>
+                        {project.tier?(
+                          <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
+                            <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
+                            <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
+                          </div>
+                        ):(
+                          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom400,fontStyle:"italic"}}>Not classified yet</div>
+                        )}
                       </div>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    );
+                  })()}
+
+                  {/* Tech Stack — unified */}
+                  <div style={sCard}>
+                    <div style={sTitle}>Tech Stack</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                      <div>
+                        <label style={roLabel}>Tools</label>
+                        <div style={roBox}>
+                          {project.toolUsed?.length>0
+                            ? project.toolUsed.map(t=><span key={t} style={{...roChip,background:C.kangkong50,color:C.kangkong700,border:"1px solid "+C.kangkong200}}>{t}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
                       <div>
                         <label style={roLabel}>Agentic framework</label>
                         <div style={roBox}>
@@ -4623,115 +5308,43 @@ const ProjectDetailPage = ({
                         </div>
                       </div>
                       <div>
-                        <label style={roLabel}>Data sources</label>
+                        <label style={roLabel}>Hosting</label>
                         <div style={roBox}>
-                          {project.dataSources?.length>0
-                            ? project.dataSources.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
+                          {project.hosting?.length>0
+                            ? project.hosting.map(h=><span key={h} style={roChip}>{h}</span>)
                             : <span>—</span>}
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Technical Details */}
-                  {project.tier===3&&(project.githubRepo||project.hosting||project.database)&&(
-                  <div style={sCard}>
-                    <div style={sTitle}>Technical Details</div>
-                    <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,marginBottom:12,display:"flex",alignItems:"center",gap:5}}>
-                      <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.carrot100,color:C.carrot500,border:"1px solid "+C.carrot500,borderRadius:DS.radius.full}}>T3</span>
-                      Only visible for Tier 3 — External-Facing projects
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div>
-                        <label style={roLabel}>GitHub repo</label>
+                        <label style={roLabel}>Authentication</label>
+                        <div style={roBox}>
+                          {project.authType?.length>0
+                            ? project.authType.map(a=><span key={a} style={{...roChip,background:C.wintermelon100,color:C.wintermelon500,border:"1px solid "+C.wintermelon400}}>{a}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={roLabel}>Database &amp; data sources</label>
+                        <div style={roBox}>
+                          {project.database?.length>0
+                            ? project.database.map(d=><span key={d} style={{...roChip,background:C.blueberry100,color:C.blueberry500,border:"1px solid "+C.blueberry400}}>{d}</span>)
+                            : <span>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={roLabel}>Repository</label>
                         <div style={{...roBox,wordBreak:"break-all"}}>
                           {project.githubRepo
-                            ? <a href={project.githubRepo.includes("://")?project.githubRepo:"https://"+project.githubRepo} target="_blank" rel="noreferrer" style={{color:C.kangkong600,wordBreak:"break-all"}}>{project.githubRepo}</a>
+                            ? <a href={project.githubRepo.includes("://")?project.githubRepo:"https://"+project.githubRepo} target="_blank" rel="noreferrer" style={{color:C.kangkong600,wordBreak:"break-all",cursor:"pointer"}}>{project.githubRepo}</a>
                             : <span>—</span>}
                         </div>
                       </div>
-                      <div>
-                        <label style={roLabel}>Hosting</label>
-                        <div style={roBox}>{project.hosting||<span>—</span>}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={roLabel}>Database</label>
-                      <div style={roBox}>{project.database||<span>—</span>}</div>
                     </div>
                   </div>
-                  )}
-
-                  {/* Tier classification */}
-                  {project.tier&&(()=>{
-                    const [tc,tb,tbr,tl]=
-                      project.tier===1?[C.mushroom700,C.mushroom100,C.mushroom300,"Static / Internal"]:
-                      project.tier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App"]:
-                      project.tier===3?[C.carrot500,C.carrot100,C.carrot500,"External-Facing"]:
-                                       [C.mushroom500,C.mushroom50,C.mushroom200,"Unclassified"];
-                    return(
-                      <div style={sCard}>
-                        <div style={sTitle}>Tier classification</div>
-                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:DS.radius.lg,background:tb,border:`1px solid ${tbr}`}}>
-                          <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tc,padding:"3px 10px",background:C.white,border:`1.5px solid ${tbr}`,borderRadius:DS.radius.full}}>Tier {project.tier}</span>
-                          <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tl}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  </>}
 
                 </div>
               );
             })()
-          )}
-
-          {detailTab==="overview"&&<>
-
-          {/* Seedling submission zone */}
-          {project.stage==="seedling"&&(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
-            <div style={{marginBottom:24,padding:"16px 18px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.xl}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:12}}>Nursery Submission Requirements</div>
-              <div style={{marginBottom:10}}>
-                <label style={{fontFamily:FF,fontSize:12,color:C.mushroom500,display:"block",marginBottom:4}}>Prototype Link *</label>
-                <input value={prototypeLink} onChange={e=>setPrototypeLink(e.target.value)}
-                  placeholder="https://your-deployed-prototype.com"
-                  style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                />
-              </div>
-              <div style={{marginBottom:14}}>
-                <label style={{fontFamily:FF,fontSize:12,color:C.mushroom500,display:"block",marginBottom:4}}>Deck Link *</label>
-                <input value={deckLink} onChange={e=>setDeckLink(e.target.value)}
-                  placeholder="https://docs.google.com/presentation/..."
-                  style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",boxSizing:"border-box"}}
-                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
-                  onBlur={e=>e.target.style.borderColor=C.mushroom300}
-                />
-              </div>
-              {!showSubmitConfirm?(
-                <button onClick={()=>setShowSubmitConfirm(true)}
-                  disabled={!isValidUrl(prototypeLink)||!isValidUrl(deckLink)}
-                  style={{width:"100%",padding:"10px",background:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.kangkong500:C.mushroom200,color:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.lg,cursor:isValidUrl(prototypeLink)&&isValidUrl(deckLink)?"pointer":"not-allowed",fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.15s"}}
-                >Submit for Nursery Review →</button>
-              ):(
-                <div style={{background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.lg,padding:"14px"}}>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mango700,marginBottom:10}}>Confirm Submission</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.mushroom600,marginBottom:10,wordBreak:"break-all"}}>
-                    <div><strong>Prototype:</strong> <a href={prototypeLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{prototypeLink}</a></div>
-                    <div><strong>Deck:</strong> <a href={deckLink} target="_blank" rel="noreferrer" style={{color:C.kangkong600}}>{deckLink}</a></div>
-                  </div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.mango600,marginBottom:12,padding:"7px 10px",background:C.mango100,borderRadius:DS.radius.sm}}>
-                    Once submitted, you won't be able to edit this plant until an Approver makes a decision.
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>setShowSubmitConfirm(false)} style={{flex:1,padding:"8px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                    <button onClick={()=>{onSubmitToNursery(project.id,prototypeLink,deckLink);setShowSubmitConfirm(false);}} style={{flex:1,padding:"8px",background:C.mango500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>Confirm Submission</button>
-                  </div>
-                </div>
-              )}
-            </div>
           )}
 
           {/* Needs Rework banner */}
@@ -4739,50 +5352,16 @@ const ProjectDetailPage = ({
             <FeedbackBanner reviewComment={project.reviewComment} reviewedBy={project.reviewedBy} reviewedAt={project.reviewedAt}/>
           )}
 
-          {/* Nursery zone */}
+          {/* Nursery zone — Rooting Review pending */}
           {project.stage==="nursery"&&(
             <div style={{marginBottom:24,padding:"16px 18px",background:C.mango50,border:"1px solid "+C.mango300,borderRadius:DS.radius.xl}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:12}}>Under Review</div>
-              <div style={{display:"flex",gap:8,marginBottom:10}}>
-                {project.prototypeLink&&(
-                  <a href={project.prototypeLink} target="_blank" rel="noreferrer" style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong600,textDecoration:"none"}}>
-                    <IcoLink size={14} color={C.kangkong600}/> View Prototype
-                  </a>
-                )}
-                {project.deckLink&&(
-                  <a href={project.deckLink} target="_blank" rel="noreferrer" style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,color:C.kangkong600,textDecoration:"none"}}>
-                    <IcoLink size={14} color={C.kangkong600}/> View Deck
-                  </a>
-                )}
-              </div>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mango600,marginBottom:8}}>Rooting Review Pending</div>
               <div style={{fontFamily:FF,fontSize:13,color:C.mango700,marginBottom:4}}>
-                Submitted for review{project.submittedAt?` — ${new Date(project.submittedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}`:""}
+                Awaiting approver sign-off{project.approvalRequestedAt?` — submitted ${new Date(project.approvalRequestedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}`:""}
               </div>
-              {!authUser?.isApprover&&<div style={{fontFamily:FF,fontSize:13,color:C.mushroom500,fontStyle:"italic",marginTop:4}}>Under review by Approver.</div>}
-              {authUser?.isApprover&&(
-                <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid "+C.mango200}}>
-                  <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,marginBottom:10,textTransform:"uppercase",letterSpacing:0.8}}>Approver Decision</div>
-                  {!showReworkInput?(
-                    <div style={{display:"flex",gap:10}}>
-                      <button onClick={()=>onApproveProject?.(project.id)} style={{flex:1,padding:"10px",background:C.kangkong500,color:C.white,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>&#x2713; Approve</button>
-                      <button onClick={()=>setShowReworkInput(true)} style={{flex:1,padding:"10px",background:C.white,color:C.mango600,border:"1.5px solid "+C.mango400,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:"pointer"}}>&#x21A9; Needs Rework</button>
-                    </div>
-                  ):(
-                    <div>
-                      <textarea value={reworkComment} onChange={e=>setReworkComment(e.target.value)}
-                        placeholder="What needs to be reworked? (required)" rows={3}
-                        style={{width:"100%",padding:"9px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mango300,fontFamily:FF,fontSize:13,color:C.mushroom800,background:C.white,outline:"none",resize:"vertical",marginBottom:10,boxSizing:"border-box"}}
-                      />
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>{setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"8px",background:C.white,border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,cursor:"pointer",color:C.mushroom600}}>Cancel</button>
-                        <button disabled={!reworkComment.trim()} onClick={()=>{onNeedsRework?.(project.id,reworkComment);setShowReworkInput(false);setReworkComment("");}} style={{flex:1,padding:"8px",background:reworkComment.trim()?C.mango500:C.mushroom200,color:reworkComment.trim()?C.white:C.mushroom400,border:"none",borderRadius:DS.radius.md,fontFamily:FF,fontSize:13,fontWeight:600,cursor:reworkComment.trim()?"pointer":"not-allowed"}}>Send Feedback</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {project.approverName&&<div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Reviewer: {project.approverName}</div>}
               {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&(
-                <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{width:"100%",padding:"8px",marginTop:14,background:"transparent",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}>Withdraw Submission</button>
+                <button onClick={()=>onWithdrawFromNursery?.(project.id)} style={{width:"100%",padding:"8px",marginTop:14,background:"transparent",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}>Withdraw from Review</button>
               )}
             </div>
           )}
@@ -4852,35 +5431,63 @@ const ProjectDetailPage = ({
             </div>
           )}
 
-          {/* Interest button */}
-          <button onClick={()=>onToggleInterested&&onToggleInterested(project)} style={{width:"100%",padding:"11px",marginBottom:interestedUsers.length>0?10:24,background:isInterested?C.kangkong600:C.white,color:isInterested?C.white:C.kangkong600,border:"1.5px solid "+C.kangkong500,borderRadius:DS.radius.xl,cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {isInterested
-              ?<><IcoCheck size={15} color={C.white}/> You're working on something similar</>
-              :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
-            }
-          </button>
+          {/* Interest button + who's interested */}
+          {(()=>{
+            const isCreator = authUser?.email === project.builderEmail;
+            const isCollab  = (project.collaboratorEmails||[]).includes(authUser?.email);
+            const blocked   = isCreator || isCollab;
+            return (<>
+              <button
+                onClick={()=>!blocked&&!isInterested&&onToggleInterested&&onToggleInterested(project)}
+                disabled={blocked}
+                title={blocked?(isCreator?"You're the project creator":"You're a collaborator on this project"):""}
+                style={{width:"100%",padding:"11px",marginBottom:interestedUsers.length>0?10:24,
+                  background:blocked?C.mushroom100:isInterested?C.kangkong600:C.white,
+                  color:blocked?C.mushroom400:isInterested?C.white:C.kangkong600,
+                  border:"1.5px solid "+(blocked?C.mushroom200:C.kangkong500),
+                  borderRadius:DS.radius.xl,
+                  cursor:blocked||isInterested?"default":"pointer",
+                  fontFamily:FF,fontSize:13,fontWeight:600,transition:"all 0.2s",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                {isInterested
+                  ?<><IcoCheck size={15} color={C.white}/> Working on something similar</>
+                  :<>I'm working on something similar{interestedUsers.length>0?` · ${interestedUsers.length}`:""}</>
+                }
+              </button>
 
-          {/* Who's interested */}
-          {interestedUsers.length>0&&(
-            <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"12px 16px",marginBottom:24}}>
-              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:10}}>Also working on this ({interestedUsers.length})</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {interestedUsers.map(email=>{
-                  const initials=email.split("@")[0].slice(0,2).toUpperCase();
-                  const cc=COVER_COLORS[email]||COVER_COLORS.default;
-                  return(
-                    <div key={email} style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:28,height:28,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{initials}</div>
-                      <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:13,color:C.kangkong700,fontWeight:500,textDecoration:"none"}}
-                        onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
-                        onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
-                      >{email}</a>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              {interestedUsers.length>0&&(
+                <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"12px 16px",marginBottom:24}}>
+                  <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.7,color:C.mushroom500,marginBottom:10}}>Also working on this ({interestedUsers.length})</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {interestedUsers.map(email=>{
+                      const initials=email.split("@")[0].slice(0,2).toUpperCase();
+                      const cc=COVER_COLORS[email]||COVER_COLORS.default;
+                      const isMe=authUser?.email===email;
+                      return(
+                        <div key={email} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                            <div style={{width:28,height:28,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{initials}</div>
+                            <a href={`mailto:${email}`} style={{fontFamily:FF,fontSize:13,color:C.kangkong700,fontWeight:500,textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                              onMouseOver={e=>e.currentTarget.style.textDecoration="underline"}
+                              onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
+                            >{email}</a>
+                            {isMe&&<span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"1px 6px",background:C.kangkong100,color:C.kangkong700,borderRadius:DS.radius.full,flexShrink:0}}>You</span>}
+                          </div>
+                          {isMe&&(
+                            <button onClick={()=>onToggleInterested&&onToggleInterested(project)}
+                              style={{flexShrink:0,padding:"3px 10px",background:"none",border:"1px solid "+C.mushroom300,borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,color:C.mushroom500,cursor:"pointer",transition:"all 0.15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.borderColor=C.tomato500;e.currentTarget.style.color=C.tomato500;}}
+                              onMouseOut={e=>{e.currentTarget.style.borderColor=C.mushroom300;e.currentTarget.style.color=C.mushroom500;}}
+                            >× Remove</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>);
+          })()}
 
           {/* Notes */}
           <div>
@@ -4903,7 +5510,67 @@ const ProjectDetailPage = ({
             </div>
           </div>
 
-          </>}
+          {/* ── Linked Tickets ── */}
+          {(devopsRequests||[]).length>0&&(
+            <div style={{marginTop:20,paddingTop:18,borderTop:"1px solid "+C.mushroom200}}>
+              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                <svg width={14} height={14} viewBox="0 0 16 16" fill="none">
+                  <rect x="1.5" y="3" width="13" height="10" rx="2" stroke={C.mushroom400} strokeWidth="1.4"/>
+                  <path d="M5 7h6M5 10h4" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+                Linked Tickets
+                <span style={{marginLeft:2,padding:"1px 7px",borderRadius:DS.radius.full,background:C.mushroom100,color:C.mushroom600,fontFamily:FF,fontSize:10,fontWeight:700}}>
+                  {(devopsRequests||[]).length}
+                </span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {(devopsRequests||[]).map(req=>{
+                  const statusColor =
+                    req.status==="done"       ? {bg:C.kangkong100,border:C.kangkong200,dot:C.kangkong500,text:C.kangkong700} :
+                    req.status==="in_progress"? {bg:"#fefcbf",    border:"#d69e2e",    dot:"#b7791f",    text:"#744210"}      :
+                    req.status==="blocked"    ? {bg:C.tomato100,  border:"#fc8181",    dot:C.tomato500,  text:C.tomato600}    :
+                                                {bg:C.mushroom50, border:C.mushroom200,dot:C.mushroom400,text:C.mushroom600};
+                  const statusLabel =
+                    req.status==="done"        ? "Done"        :
+                    req.status==="in_progress" ? "In progress" :
+                    req.status==="blocked"     ? "Blocked"     : "To do";
+                  return (
+                    <div key={req.id} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:12}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                          {req.jiraTicketKey&&(
+                            <span style={{fontFamily:"Roboto Mono, monospace",fontSize:11,fontWeight:700,color:C.kangkong600,background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.sm,padding:"1px 7px",flexShrink:0}}>
+                              {req.jiraTicketKey}
+                            </span>
+                          )}
+                          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            Grove SRC: {req.projectName}
+                          </span>
+                        </div>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                          {req.githubRepo&&<span style={{fontFamily:"Roboto Mono, monospace",fontSize:10,color:C.mushroom500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>📁 {req.githubRepo}</span>}
+                          {req.hosting&&<span style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>🌐 {req.hosting}</span>}
+                          {req.database&&<span style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>🗄 {req.database}</span>}
+                        </div>
+                        {req.devopsNotes&&(
+                          <div style={{marginTop:6,fontFamily:FF,fontSize:11,color:C.mushroom600,background:C.mushroom50,borderRadius:DS.radius.sm,padding:"4px 8px",borderLeft:"2px solid "+C.mushroom300}}>{req.devopsNotes}</div>
+                        )}
+                        <div style={{marginTop:5,fontFamily:FF,fontSize:10,color:C.mushroom400}}>
+                          Requested by {req.requestedBy?.split("@")[0]} · {req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}
+                        </div>
+                      </div>
+                      <div style={{flexShrink:0}}>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:DS.radius.full,background:statusColor.bg,border:"1px solid "+statusColor.border,fontFamily:FF,fontSize:10,fontWeight:700,color:statusColor.text}}>
+                          <span style={{width:6,height:6,borderRadius:"50%",background:statusColor.dot,flexShrink:0}}/>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           </>
 
@@ -4911,24 +5578,43 @@ const ProjectDetailPage = ({
       </div>
     </div>
     {showDevopsModal&&<DevopsRequestModal
-      project={project}
+      project={{
+        ...project,
+        githubRepo:            cRepoUrl            || project.githubRepo,
+        hosting:               cHostingPlatform?.length ? cHostingPlatform : (project.hosting || []),
+        database:              cDbPlatform?.length  ? cDbPlatform  : (project.database  || []),
+        versionControlAccount: editForm.versionControlAccount ?? project.versionControlAccount,
+        hostingAccount:        editForm.hostingAccount        ?? project.hostingAccount,
+        databaseAccount:       editForm.databaseAccount       ?? project.databaseAccount,
+      }}
       authUser={authUser}
+      tier={computedTier}
       onClose={()=>setShowDevopsModal(false)}
-      onSubmit={async (req)=>{await onCreateDevopsRequest?.(req);setShowDevopsModal(false);}}
+      onSubmit={async (req)=>{ const res = await onCreateDevopsRequest?.(req); return res; }}
+      onSaveProject={onUpdateProject}
     />}
 
     {/* Danger zone — Request Deletion (bottom of full detail page) */}
     {(authUser?.email===project.builderEmail||authUser?.isAdmin)&&onRequestDeletion&&(
-      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent",display:"flex",alignItems:"center",gap:8}}>
-        <button
-          onClick={()=>onRequestDeletion(project,"project")}
-          title="Request deletion of this project"
-          onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
-          onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
-          style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
-          <IcoTrash size={13} color={C.tomato500}/>
-        </button>
-        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
+      <div style={{padding:"12px 32px 24px",borderTop:"1px dashed "+C.mushroom200,background:"transparent"}}>
+        {pendingDeleteIds?.has(String(project.id)) ? (
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
+            <IcoTrash size={13} color={C.mango600}/>
+            <span style={{fontFamily:FF,fontSize:12,color:C.mango600,lineHeight:1.4}}>Deletion requested — your request has been forwarded to the admin.</span>
+          </div>
+        ) : (
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button
+              onClick={()=>onRequestDeletion(project,"project")}
+              title="Request deletion of this project"
+              onMouseOver={e=>{e.currentTarget.style.background=C.tomato100;e.currentTarget.style.borderColor="#fca5a5";}}
+              onMouseOut={e=>{e.currentTarget.style.background="none";e.currentTarget.style.borderColor=C.mushroom200;}}
+              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:DS.radius.sm,background:"none",border:"1px solid "+C.mushroom200,cursor:"pointer",transition:"all 0.15s",flexShrink:0}}>
+              <IcoTrash size={13} color={C.tomato500}/>
+            </button>
+            <span style={{fontFamily:FF,fontSize:12,color:C.mushroom400}}>Request deletion</span>
+          </div>
+        )}
       </div>
     )}
     </>
@@ -5500,13 +6186,20 @@ const TooltipLabel = ({tooltip}) => {
 };
 
 // ── ContributeModal ────────────────────────────────────────────────────────────
-const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initialFlow=null}) => {
+const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projects, authUser, initialFlow=null}) => {
+  const PLANT_DEPTS = Object.keys(DEPT_ZONES);
+
   const [flow, setFlow] = React.useState(initialFlow);
   const [step, setStep] = React.useState(1);
   const [gatewayChoice, setGatewayChoice] = React.useState(null);
+  const [plantName, setPlantName] = React.useState("");
+  const [plantStarting, setPlantStarting] = React.useState(false);
+  const [plantBuiltBy, setPlantBuiltBy] = React.useState(PLANT_DEPTS[0]);
+  const [plantBuiltFor, setPlantBuiltFor] = React.useState([]);
+  const [plantHasBackend, setPlantHasBackend] = React.useState(null);
+  const [plantTargetUsers, setPlantTargetUsers] = React.useState(null);
 
   // Plant form
-  const PLANT_DEPTS = Object.keys(DEPT_ZONES);
   const [plant, setPlantRaw] = React.useState({
     name:"", builtBy:PLANT_DEPTS[0], builtFor:[], stage:"seedling",
     aiAssistant:[], aiAssistantOther:"",
@@ -5516,6 +6209,7 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     description:"", demoLink:"", collaboratorEmails:[],
     problem:"", built:"", betterNow:"",
     hasBackend:null, targetUsers:null,
+    approverName:"", approverEmail:"",
   });
   const setP = (k,v) => setPlantRaw(p=>({...p,[k]:v}));
 
@@ -5545,6 +6239,9 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
   const [aiOverlaps, setAiOverlaps] = React.useState(null);
   const [aiOverlapChecked, setAiOverlapChecked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+
+  // Must be at top level — used inside the flow === "plant" branch
+  const [forExpanded, setForExpanded] = React.useState(false);
 
   // Tier computation (derived from yes/no answers)
   const plantTier =
@@ -5672,6 +6369,144 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
     );
   }
 
+  // ── PLANT FLOW — name capture → open ProjectDetailPage ───────────────────────
+  if (flow === "plant") {
+    const canStart = plantName.trim().length > 0 && plantHasBackend !== null && plantTargetUsers !== null;
+    const handleStart = async () => {
+      if (!canStart || plantStarting || !onStartProject) return;
+      setPlantStarting(true);
+      await onStartProject(plantName.trim(), { hasBackend: plantHasBackend, targetUsers: plantTargetUsers, builtBy: plantBuiltBy, builtFor: plantBuiltFor });
+      setPlantStarting(false);
+    };
+    const FOR_VISIBLE = ["Marketing","CSM","Engineering","Data","PeopleOps","RevOps","All Teams"];
+    const FOR_HIDDEN  = Object.keys(DEPT_ZONES).filter(d => !FOR_VISIBLE.includes(d));
+    const ToggleBtn = ({ active, onClick, children }) => (
+      <button type="button" onClick={onClick} style={{
+        padding:"7px 14px", borderRadius:DS.radius.md, fontFamily:FF, fontSize:12, fontWeight:600,
+        border:`1.5px solid ${active ? C.kangkong500 : C.mushroom200}`,
+        background: active ? C.kangkong50 : C.white,
+        color: active ? C.kangkong700 : C.mushroom500,
+        cursor:"pointer", transition:"all 0.15s",
+      }}>{children}</button>
+    );
+    return (
+      <div style={backdropStyle}>
+        <div onClick={e=>e.stopPropagation()} style={{...panelStyle,maxWidth:480}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
+            <div>
+              <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900,display:"flex",alignItems:"center",gap:8}}>
+                <IcoGarden size={20} color={C.kangkong600}/> Add a Plant
+              </div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Name your project and classify it to get started</div>
+            </div>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4,marginTop:-2}}><IcoClose size={18} color={C.mushroom400}/></button>
+          </div>
+
+          <div style={{marginBottom:18}}>
+            <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+              Project name <span style={{color:C.carrot500}}>*</span>
+            </label>
+            <input
+              autoFocus
+              value={plantName}
+              onChange={e=>setPlantName(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter"&&canStart) handleStart(); }}
+              placeholder="e.g. SmartSort AI"
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Your team</label>
+              <select value={plantBuiltBy} onChange={e=>setPlantBuiltBy(e.target.value)} style={{...inputStyle,cursor:"pointer",paddingTop:8,paddingBottom:8}}>
+                {PLANT_DEPTS.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>For</label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                {(forExpanded ? [...FOR_VISIBLE,...FOR_HIDDEN] : FOR_VISIBLE).map(d=>{
+                  const active = plantBuiltFor.includes(d);
+                  return (
+                    <button key={d} type="button" onClick={()=>setPlantBuiltFor(prev=>active?prev.filter(x=>x!==d):[...prev,d])} style={{
+                      padding:"4px 9px",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:active?700:400,
+                      border:`1.5px solid ${active?C.kangkong500:C.mushroom200}`,
+                      background:active?C.kangkong50:C.white,
+                      color:active?C.kangkong700:C.mushroom500,cursor:"pointer",transition:"all 0.12s",
+                    }}>{d}</button>
+                  );
+                })}
+                <button type="button" onClick={()=>setForExpanded(v=>!v)} style={{padding:"4px 9px",borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,border:`1.5px dashed ${C.mushroom200}`,background:"none",color:C.mushroom400,cursor:"pointer"}}>
+                  {forExpanded?"less ↑":"more ↓"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{background:C.mushroom50,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,padding:"14px 16px",marginBottom:18,display:"flex",flexDirection:"column",gap:14}}>
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom500,textTransform:"uppercase",letterSpacing:0.5}}>
+              Tier Classification <span style={{color:C.carrot500}}>*</span>
+            </div>
+
+            <div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom800,marginBottom:8}}>
+                Does this project have a backend, database, or server-side logic?
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <ToggleBtn active={plantHasBackend===true} onClick={()=>setPlantHasBackend(true)}>Yes</ToggleBtn>
+                <ToggleBtn active={plantHasBackend===false} onClick={()=>setPlantHasBackend(false)}>No</ToggleBtn>
+              </div>
+            </div>
+
+            <div>
+              <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom800,marginBottom:8}}>
+                Who are the target users?
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <ToggleBtn active={plantTargetUsers==="internal"} onClick={()=>setPlantTargetUsers("internal")}>Internal only</ToggleBtn>
+                <ToggleBtn active={plantTargetUsers==="external"} onClick={()=>setPlantTargetUsers("external")}>External</ToggleBtn>
+                <ToggleBtn active={plantTargetUsers==="both"} onClick={()=>setPlantTargetUsers("both")}>Both</ToggleBtn>
+              </div>
+            </div>
+
+            {plantHasBackend !== null && plantTargetUsers !== null && (() => {
+              const t = plantHasBackend === false ? 1
+                      : plantTargetUsers !== "internal" ? 3
+                      : 2;
+              const tLabel = t === 1 ? "Tier 1 — Static / Internal" : t === 2 ? "Tier 2 — Internal App" : "Tier 3 — External-Facing";
+              const tColor = t === 1 ? C.mushroom600 : t === 2 ? C.blueberry500 : C.carrot500;
+              const tBg    = t === 1 ? C.mushroom100 : t === 2 ? C.blueberry100 : C.carrot100;
+              const tBorder= t === 1 ? C.mushroom300 : t === 2 ? C.blueberry400 : C.carrot500;
+              return (
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:tBg,border:`1px solid ${tBorder}`,borderRadius:DS.radius.md}}>
+                  <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tColor}}>{tLabel}</span>
+                </div>
+              );
+            })()}
+          </div>
+
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setFlow(null)} style={{padding:"10px 16px",background:"none",border:`1.5px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,cursor:"pointer",fontFamily:FF,fontSize:13,color:C.mushroom600,fontWeight:600}}>
+              ← Back
+            </button>
+            <button onClick={handleStart} disabled={!canStart||plantStarting} style={{
+              flex:1,padding:"11px",background:canStart?C.kangkong600:C.mushroom200,border:"none",
+              borderRadius:DS.radius.lg,cursor:canStart?"pointer":"not-allowed",
+              fontFamily:FF,fontSize:13,fontWeight:700,color:C.white,transition:"all 0.15s",
+              display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            }}>
+              {plantStarting
+                ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</span> Creating…</>
+                : <>Submit and Continue →</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── STEP BAR + LABELS ────────────────────────────────────────────────────────
   const stepTitles = flow==="plant" ? ["The plant","How it grew","The story"] : ["The idea","The case","Review"];
 
@@ -5706,6 +6541,29 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
         {flow==="plant" && step===1 && (
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <div>
+              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                Where is this project right now?
+              </label>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+                {STAGES.map(s=>{
+                  const sc=STAGE_COLORS[s]; const active=plant.stage===s;
+                  return (
+                    <button key={s} type="button" onClick={()=>setP("stage",s)} style={{
+                      padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
+                      border:`2px solid ${active?sc.dot:C.mushroom200}`,background:active?sc.bg:C.white,transition:"all 0.15s",
+                    }}>
+                      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
+                        <StageIcon stage={s} size={12}/>
+                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
+                        {active&&<IcoCheck size={10} color={sc.dot}/>}
+                      </div>
+                      <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:5}}>
                 Project name <span style={{color:C.carrot500}}>*</span>
               </label>
@@ -5724,30 +6582,6 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
               allOpt="All teams"
               value={plant.builtFor} onChange={v=>setP("builtFor",v)}
             />
-            <div>
-              <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
-                Where is this project right now?
-              </label>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-                {STAGES.filter(s=>s!=="nursery").map(s=>{
-                  const sc=STAGE_COLORS[s]; const active=plant.stage===s;
-                  return (
-                    <button key={s} type="button" onClick={()=>setP("stage",s)} style={{
-                      padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
-                      border:`2px solid ${active?sc.dot:C.mushroom200}`,background:active?sc.bg:C.white,transition:"all 0.15s",
-                    }}>
-                      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
-                        <StageIcon stage={s} size={12}/>
-                        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                        {active&&<IcoCheck size={10} color={sc.dot}/>}
-                      </div>
-                      <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* ── TIER QUESTIONS ── */}
             <div>
               <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
@@ -5783,6 +6617,22 @@ const ContributeModal = ({onClose, onAdd, onAddWish, projects, authUser, initial
               <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:plantTier===1?C.mushroom50:plantTier===2?C.blueberry100:C.carrot100,border:`1px solid ${plantTier===1?C.mushroom300:plantTier===2?C.blueberry400:C.carrot500}`}}>
                 <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:plantTier===1?C.mushroom700:plantTier===2?C.blueberry500:C.carrot500}}>Tier {plantTier}</span>
                 <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginLeft:2}}>{plantTier===1?"Static / Internal":plantTier===2?"Internal App — coordinate with Raffy":"External-Facing — coordinate with Belle or Coleen"}</span>
+              </div>
+            )}
+            {(plantTier===2||plantTier===3)&&(
+              <div>
+                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>
+                  Approver
+                </label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{label:"Name",k:"approverName",ph:"e.g. Raphael Enriquez"},{label:"Email",k:"approverEmail",ph:"e.g. renriquez@sprout.ph"}].map(({label,k,ph})=>(
+                    <div key={k}>
+                      <label style={{display:"block",fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:C.mushroom500,marginBottom:4}}>{label}</label>
+                      <input type="text" value={plant[k]||""} onChange={e=>setP(k,e.target.value)} placeholder={ph}
+                        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,fontFamily:FF,fontSize:13,color:C.mushroom800,outline:"none",boxSizing:"border-box"}}/>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -6185,32 +7035,7 @@ function SectionHeader({title}) {
   );
 }
 
-// ── StoryQ — green card textarea for story questions ──────────────────────────
-// Must be defined outside AddProjectModal to prevent focus loss on re-render
-function StoryQ({k, label, hint, form, onChange, ph}) {
-  return (
-    <div style={{
-      background:C.kangkong50, border:"1.5px solid "+C.kangkong200,
-      borderRadius:DS.radius.md, padding:"10px 12px", marginBottom:10,
-    }}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <label style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.kangkong600,textTransform:"uppercase",letterSpacing:0.5}}>{label}</label>
-        <span style={{fontFamily:FF,fontSize:10,color:C.kangkong400}}>{hint}</span>
-      </div>
-      <textarea
-        rows={2}
-        value={form[k]}
-        onChange={e=>onChange(k,e.target.value)}
-        placeholder={ph}
-        style={{
-          width:"100%", background:"transparent", border:"none", outline:"none",
-          fontFamily:FF, fontSize:13, color:C.mushroom800,
-          resize:"vertical", lineHeight:1.6, boxSizing:"border-box", padding:0,
-        }}
-      />
-    </div>
-  );
-}
+
 
 // ── MultiSelect — searchable dropdown multi-select ────────────────────────────
 // palette defaults to kangkong (green). Pass palette={bg,border,text,hover} to override.
@@ -6219,7 +7044,7 @@ const MS_PALETTES = {
   purple: { bg:C.ubas100,     border:C.ubas400,     text:C.ubas500,      hover:"#ede9fa",      check:C.ubas500      },
   blue:   { bg:C.blueberry100,border:C.blueberry400,text:C.blueberry500, hover:"#dbeafe",      check:C.blueberry500 },
 };
-function MultiSelect({ value, onChange, opts, label, required, optional, placeholder, palette="green" }) {
+function MultiSelect({ value, onChange, opts, label, required, optional, tooltip, placeholder, palette="green" }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ref = useRef(null);
@@ -6234,11 +7059,14 @@ function MultiSelect({ value, onChange, opts, label, required, optional, placeho
   return (
     <div ref={ref} style={{position:"relative",marginBottom:14}}>
       {label && (
-        <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
-          {label}
-          {required && <span style={{color:C.tomato500,fontWeight:400}}> *</span>}
-          {optional && <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}> (optional)</span>}
-        </label>
+        <div style={{display:"inline-flex",alignItems:"center",gap:5,marginBottom:4}}>
+          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5}}>
+            {label}
+            {required && <span style={{color:C.tomato500,fontWeight:400}}> *</span>}
+            {optional && <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}> (optional)</span>}
+          </label>
+          {tooltip && <TooltipLabel tooltip={tooltip}/>}
+        </div>
       )}
       <div onClick={()=>setOpen(true)} style={{
         display:"flex",alignItems:"center",gap:6,
@@ -6289,6 +7117,86 @@ function MultiSelect({ value, onChange, opts, label, required, optional, placeho
         </div>
       )}
       {required && !value.length && <div style={{fontFamily:FF,fontSize:11,color:C.tomato500,marginTop:3}}>Select at least one</div>}
+    </div>
+  );
+}
+
+// ── ApproverPicker — single-select profiles search for approver fields ─────────
+function ApproverPicker({name, email, onChange, disabled=false}) {
+  const [query, setQuery]       = useState("");
+  const [results, setResults]   = useState([]);
+  const [open, setOpen]         = useState(false);
+  const [searching, setSearching] = useState(false);
+  const selected = !!(name && email);
+
+  useEffect(() => {
+    if (selected || !query.trim() || query.length < 2) { setResults([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase.from("profiles")
+        .select("email, display_name")
+        .or(`display_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(8);
+      const list = data || [];
+      setResults(list);
+      setOpen(list.length > 0);
+      setSearching(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, selected]);
+
+  const pick = (p) => {
+    onChange(p.display_name || p.email, p.email);
+    setQuery(""); setResults([]); setOpen(false);
+  };
+
+  const clear = () => { onChange("", ""); setQuery(""); };
+
+  if (selected) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom200,background:disabled?C.mushroom50:C.white}}>
+        <div style={{width:32,height:32,borderRadius:"50%",background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:12,fontWeight:700,color:C.kangkong700,flexShrink:0}}>
+          {(name||"?").slice(0,2).toUpperCase()}
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+          <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{email}</div>
+        </div>
+        {!disabled&&<button onClick={clear} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 6px",color:C.mushroom400,fontFamily:FF,fontSize:12,flexShrink:0}}>✕</button>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{position:"relative"}}>
+      <input type="text" value={query}
+        onChange={e=>setQuery(e.target.value)}
+        onFocus={()=>{ if(query.length>=2) setOpen(true); }}
+        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        disabled={disabled}
+        placeholder="Search by name or email…"
+        style={{width:"100%",padding:"8px 10px",borderRadius:DS.radius.md,border:"1.5px solid "+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:disabled?C.mushroom50:C.white,outline:"none",boxSizing:"border-box",opacity:disabled?0.7:1}}
+      />
+      {searching&&<span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontFamily:FF,fontSize:11,color:C.mushroom400}}>…</span>}
+      {open&&results.length>0&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,zIndex:100,background:C.white,border:"1.5px solid "+C.mushroom200,borderRadius:DS.radius.lg,boxShadow:DS.shadow.md,maxHeight:220,overflowY:"auto"}}>
+          {results.map(p=>(
+            <button key={p.email} onMouseDown={()=>pick(p)}
+              style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 12px",background:"none",border:"none",borderBottom:"1px solid "+C.mushroom100,cursor:"pointer",textAlign:"left"}}
+              onMouseEnter={e=>e.currentTarget.style.background=C.mushroom50}
+              onMouseLeave={e=>e.currentTarget.style.background="none"}
+            >
+              <div style={{width:28,height:28,borderRadius:"50%",background:C.kangkong100,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:10,fontWeight:700,color:C.kangkong700,flexShrink:0}}>
+                {(p.display_name||p.email).slice(0,2).toUpperCase()}
+              </div>
+              <div>
+                <div style={{fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom900}}>{p.display_name}</div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>{p.email}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -6465,482 +7373,6 @@ const RequestDeletionModal = ({ entity, entityType, onClose, onSubmit }) => {
   );
 };
 
-const AddProjectModal = ({onClose, onAdd, projects, prefill=null, authUser=null}) => {
-  const DEPTS = ["All Teams", ...Object.keys(DEPT_ZONES).sort()];
-  const [form, setForm] = useState({
-    name:               prefill?.title    || "",
-    description:        prefill?.why      || "",
-    builtBy:            "Marketing",
-    builtFor:           prefill?.builtFor || [],
-    problem:"", built:"", betterNow:"",
-    builder:            authUser?.displayName || "",
-    builderEmail:       authUser?.email || "",
-    stage:              STAGES[0],
-    dataSource:         "",
-    dataSources:        [],
-    demoLink:           "",
-    hasBackend:         null,
-    targetUsers:        null,
-    toolUsed:           [],
-    agenticFramework:   [],
-    collaboratorEmails: [],
-    githubRepo:         "",
-    hosting:            "",
-    database:           "",
-    requiresAuth:       null,
-    hasSensitiveData:   null,
-    sendsToExternalAI:  null,
-    storesUserInputs:   null,
-  });
-
-  // AI / story states
-  const [storyExpanded, setStoryExpanded] = useState(false);
-  const [aiSummarizing, setAiSummarizing] = useState(false);
-  const [aiSummaryDone, setAiSummaryDone] = useState(false);
-  const [aiSummaryError, setAiSummaryError] = useState(null);
-  const [aiChecking, setAiChecking] = useState(false);
-  const [aiOverlaps, setAiOverlaps] = useState(null);
-  const [aiOverlapChecked, setAiOverlapChecked] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const setField = (k,v) => {
-    setForm(p=>({...p,[k]:v}));
-    setAiSummaryDone(false);
-    if (["name","description","problem","built","betterNow","builtFor","dataSources"].includes(k)) {
-      setAiOverlaps(null);
-      setAiOverlapChecked(false);
-    }
-  };
-
-  const canSummarize = !!(form.name.trim() && (form.problem || form.built || form.betterNow));
-
-  const editingTier =
-    form.hasBackend === null || form.targetUsers === null ? null :
-    form.hasBackend === false && form.targetUsers === 'internal' ? 1 :
-    form.hasBackend === true  && form.targetUsers !== 'internal' ? 3 :
-    2;
-
-  const handleSummarize = async () => {
-    if (!canSummarize || aiSummarizing) return;
-    setAiSummarizing(true);
-    setAiSummaryError(null);
-    try {
-      const summary = await generateProjectSummary({
-        name: form.name, builtBy: form.builtBy, builtFor: builtForDisplay(form.builtFor),
-        problem: form.problem, built: form.built, betterNow: form.betterNow,
-      });
-      setForm(p=>({...p, description:summary}));
-      setAiSummaryDone(true);
-    } catch(e) {
-      console.error("summarize error:", e);
-      setAiSummaryError(e?.message || "Something went wrong. Check the browser console.");
-    }
-    setAiSummarizing(false);
-  };
-
-  const doAdd = () => {
-    onAdd({
-      ...form,
-      problemSpace: form.problem || "",
-      capability: "",
-      id:Date.now(), lastUpdated:0, notes:[],
-      zx:35+Math.random()*25, zy:35+Math.random()*25,
-      milestones:[STAGE_LABELS[form.stage]+" — "+new Date().toLocaleDateString("en-PH",{month:"short",year:"numeric"})],
-      impactNum:"TBD", interestedUsers:[],
-    });
-    onClose();
-  };
-
-  const submit = async () => {
-    if (!form.name.trim() || !form.toolUsed.length || submitting) return;
-    if (aiOverlapChecked && aiOverlaps?.length > 0) { doAdd(); return; }
-    setSubmitting(true);
-    setAiChecking(true);
-    const candidates = projects.filter(p => builtForArr(p.builtFor).some(f => builtForArr(form.builtFor).includes(f)));
-    const overlaps = await detectDuplicates(
-      {...form, problemSpace: "", capability: ""},
-      candidates
-    );
-    setAiOverlaps(overlaps);
-    setAiOverlapChecked(true);
-    setAiChecking(false);
-    setSubmitting(false);
-    if (overlaps.length === 0) { doAdd(); }
-  };
-
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(32,30,24,0.55)",backdropFilter:"blur(6px)"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,padding:28,maxWidth:540,width:"92%",maxHeight:"92vh",overflowY:"auto",boxShadow:DS.shadow.xl,border:"1px solid "+C.mushroom200,animation:"slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1)"}}>
-
-        {/* Header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div>
-            <div style={{fontFamily:FF,fontSize:18,fontWeight:700,color:C.mushroom900,display:"flex",alignItems:"center",gap:8}}>
-              <IcoGarden size={24} color={C.kangkong600}/> Add to the Garden
-            </div>
-            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>Log a project you're working on or have shipped</div>
-          </div>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:4}}><IcoClose size={18} color={C.mushroom400}/></button>
-        </div>
-
-        {prefill&&(
-          <div style={{background:C.kangkong50,border:"1.5px solid "+C.kangkong200,borderRadius:DS.radius.lg,padding:"10px 14px",marginBottom:16,fontFamily:FF,fontSize:12,color:C.kangkong700,display:"flex",alignItems:"center",gap:8}}>
-            <WishSeed size={16} color={C.kangkong600}/>
-            Pre-filled from wish: <strong>"{prefill.title}"</strong>
-          </div>
-        )}
-
-        {/* ── Section 1: The project ── */}
-        <SectionHeader title="The project"/>
-
-        <ModalField label="Project Name *" k="name" ph="e.g. SmartSort AI" form={form} onChange={setField}/>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <ModalField label="Your team" k="builtBy" type="select" opts={DEPTS} form={form} onChange={setField}/>
-          <MultiSelect
-            label="For" required
-            opts={DEPTS}
-            value={form.builtFor||[]}
-            onChange={v=>setField("builtFor",v)}
-            placeholder="Search departments…"
-          />
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          {/* You — read-only */}
-          <div style={{marginBottom:12}}>
-            <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>You</label>
-            <div style={{
-              padding:"8px 10px",borderRadius:DS.radius.md,
-              border:"1.5px solid "+C.mushroom200,background:C.mushroom50,
-              fontFamily:FF,fontSize:13,color:C.mushroom400,
-              boxSizing:"border-box",minHeight:36,
-            }}>{form.builder||authUser?.displayName||"—"}</div>
-          </div>
-          {/* Collaborators */}
-          <div style={{position:"relative"}}>
-            <CollaboratorInput
-              selected={form.collaboratorEmails}
-              onChange={v=>setField("collaboratorEmails",v)}
-              selfEmail={authUser?.email||""}
-            />
-          </div>
-        </div>
-
-        <MultiSelect
-          label="Tools you're using" required
-          opts={TOOLS}
-          value={form.toolUsed}
-          onChange={v=>setField("toolUsed",v)}
-          placeholder="Search tools…"
-          palette="green"
-        />
-
-        <MultiSelect
-          label="Agentic framework" optional
-          opts={AGENTIC_FRAMEWORKS}
-          value={form.agenticFramework||[]}
-          onChange={v=>setField("agenticFramework",v)}
-          placeholder="Search frameworks…"
-          palette="purple"
-        />
-
-        <MultiSelect
-          label="Data sources" optional
-          opts={DATA_SOURCES}
-          value={form.dataSources}
-          onChange={v=>setField("dataSources",v)}
-          placeholder="Search data sources…"
-          palette="blue"
-        />
-
-        {/* ── Section 2: About the project ── */}
-        <SectionHeader title="About the project"/>
-
-        {/* Story expander */}
-        <div style={{marginBottom:12}}>
-          <button
-            onClick={()=>setStoryExpanded(p=>!p)}
-            style={{
-              width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between",
-              padding:"9px 12px", borderRadius:DS.radius.md,
-              border:"1px solid "+C.mushroom200, background:C.white,
-              cursor:"pointer", fontFamily:FF, fontSize:12, fontWeight:600,
-              color:C.blueberry500, transition:"all 0.15s",
-            }}
-          >
-            <span>✦ Help me write this — answer 3 quick questions</span>
-            <span style={{fontSize:10,color:C.mushroom400,transition:"transform 0.2s",display:"inline-block",transform:storyExpanded?"rotate(180deg)":"none"}}>▾</span>
-          </button>
-
-          {storyExpanded&&(
-            <div style={{background:C.mushroom50,border:"1px solid "+C.mushroom200,borderTop:"none",borderRadius:"0 0 "+DS.radius.md+" "+DS.radius.md,padding:"14px 12px"}}>
-              <StoryQ k="problem" label="What problem are you solving?" hint="" form={form} onChange={setField} ph="What challenge or gap existed before?"/>
-              <StoryQ k="built" label="What are you building?" hint="" form={form} onChange={setField} ph="Describe what you're creating or automating…"/>
-              <StoryQ k="betterNow" label="What will be better?" hint="" form={form} onChange={setField} ph="What changes for the team or customers?"/>
-
-              <button
-                onClick={handleSummarize}
-                disabled={!canSummarize||aiSummarizing}
-                style={{
-                  display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",
-                  marginTop:4,padding:"7px 12px",borderRadius:DS.radius.md,
-                  border:"1.5px solid "+(aiSummaryDone?C.kangkong400:C.blueberry400||"#63b3ed"),
-                  background:aiSummaryDone?C.kangkong50:C.blueberry100||"#ebf8ff",
-                  color:aiSummaryDone?C.kangkong600:C.blueberry500||"#3182ce",
-                  fontFamily:FF,fontSize:12,fontWeight:700,
-                  cursor:canSummarize&&!aiSummarizing?"pointer":"not-allowed",
-                  opacity:canSummarize?1:0.5,transition:"all 0.15s",
-                }}
-              >
-                {aiSummarizing
-                  ? <><span style={{display:"inline-block",animation:"spin 1s linear infinite",fontSize:12}}>⟳</span> Writing description…</>
-                  : aiSummaryDone
-                  ? <><IcoCheck size={12} color={C.kangkong500}/> Regenerate description from answers</>
-                  : <>✦ Craft my description from these answers</>
-                }
-              </button>
-              {aiSummaryError&&(
-                <div style={{fontFamily:FF,fontSize:11,color:C.tomato600,marginTop:6,background:C.tomato50,border:"1px solid "+C.tomato200,borderRadius:DS.radius.md,padding:"6px 10px"}}>
-                  AI failed: {aiSummaryError}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Description textarea — always visible */}
-        <div style={{marginBottom:12}}>
-          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:4}}>Description</label>
-          <textarea rows={3} value={form.description} onChange={e=>setField("description",e.target.value)}
-            placeholder="Describe your project — or use the helper above to generate a draft…"
-            style={{...modalInputStyle,resize:"vertical",lineHeight:1.6}}/>
-          {aiSummaryDone&&(
-            <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,marginTop:5,display:"flex",alignItems:"center",gap:4}}>
-              <IcoCheck size={11} color={C.kangkong500}/> AI-generated — feel free to edit before saving
-            </div>
-          )}
-        </div>
-
-        {/* Project link */}
-        <div style={{marginBottom:12}}>
-          <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:600,color:C.mushroom600,marginBottom:4,textTransform:"uppercase",letterSpacing:0.5}}>
-            Project link <span style={{fontWeight:400,color:C.mushroom400,textTransform:"none",letterSpacing:0}}>(optional)</span>
-          </label>
-          <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}>
-              <IcoLink size={13} color={C.mushroom400}/>
-            </span>
-            <input type="text" value={form.demoLink} onChange={e=>setField("demoLink",e.target.value)}
-              placeholder="Prototype, internal tool, or live product — whatever you have"
-              style={{...modalInputStyle,paddingLeft:30}}/>
-          </div>
-        </div>
-
-        {/* ── Section 3: Stage ── */}
-        <SectionHeader title="Stage"/>
-
-        {/* Stage selector */}
-        <div style={{marginBottom:16}}>
-          <label style={{display:"block",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,marginBottom:8}}>Where is this project right now?</label>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-            {STAGES.filter(s => s !== 'nursery').map(s=>{
-              const sc = STAGE_COLORS[s];
-              const active = form.stage===s;
-              return (
-                <button key={s} onClick={()=>setField("stage",s)} style={{
-                  padding:"10px 8px",borderRadius:DS.radius.lg,cursor:"pointer",textAlign:"left",
-                  border:"2px solid "+(active?sc.dot:C.mushroom200),
-                  background:active?sc.bg:C.white,
-                  transition:"all 0.15s",
-                }}>
-                  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
-                    <StageIcon stage={s} size={13}/>
-                    <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:active?sc.text:C.mushroom700}}>{STAGE_LABELS[s]}</span>
-                    {active&&<IcoCheck size={11} color={sc.dot}/>}
-                  </div>
-                  <div style={{fontFamily:FF,fontSize:9,color:active?sc.text:C.mushroom400,lineHeight:1.4,opacity:0.85}}>{STAGE_DESC[s]}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Section 4: Tier Classification ── */}
-        <>
-            <SectionHeader title="Tier Classification"/>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-
-              {/* Q1 */}
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                  Does this project have a backend, database, or server-side logic?
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:false,l:"No — static / UI only"},{v:true,l:"Yes — has backend"}].map(opt=>(
-                    <button key={String(opt.v)} type="button"
-                      onClick={()=>setField("hasBackend",opt.v)}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.hasBackend===opt.v?C.kangkong400:C.mushroom200}`,background:form.hasBackend===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.hasBackend===opt.v?700:400,color:form.hasBackend===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Q2 */}
-              <div>
-                <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>
-                  Who are the target users?
-                </label>
-                <div style={{display:"flex",gap:8}}>
-                  {[{v:"internal",l:"Internal only"},{v:"external",l:"External only"},{v:"both",l:"Both"}].map(opt=>(
-                    <button key={opt.v} type="button"
-                      onClick={()=>setField("targetUsers",opt.v)}
-                      style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",border:`2px solid ${form.targetUsers===opt.v?C.kangkong400:C.mushroom200}`,background:form.targetUsers===opt.v?C.kangkong50:C.white,fontFamily:FF,fontSize:13,fontWeight:form.targetUsers===opt.v?700:400,color:form.targetUsers===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Resolved tier badge */}
-              {editingTier!==null&&(()=>{
-                const [tierColor,tierBg,tierBorder,tierLabel] =
-                  editingTier===1?[C.mushroom700,C.mushroom50, C.mushroom300,"Static / Internal"]:
-                  editingTier===2?[C.blueberry500,C.blueberry100,C.blueberry400,"Internal App — coordinate with Raffy"]:
-                                 [C.carrot500,  C.carrot100,  C.carrot500,  "External-Facing — coordinate with Belle or Coleen"];
-                return (
-                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:DS.radius.lg,background:tierBg,border:`1px solid ${tierBorder}`}}>
-                    <span style={{fontFamily:FF,fontSize:12,fontWeight:700,color:tierColor,padding:"3px 10px",background:C.white,border:`1.5px solid ${tierBorder}`,borderRadius:DS.radius.full}}>Tier {editingTier}</span>
-                    <span style={{fontFamily:FF,fontSize:12,color:C.mushroom600}}>{tierLabel}</span>
-                  </div>
-                );
-              })()}
-            </div>
-        </>
-
-        {/* ── Section 5: Security & Data ── */}
-        {editingTier!==null&&(
-          <>
-            <SectionHeader title="Security & Data"/>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,lineHeight:1.6,padding:"8px 10px",background:C.mushroom50,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.md}}>
-                Required before advancing to Bloom. Answer now to avoid being blocked later.
-              </div>
-              {[
-                {q:"Does this project require user login or authentication?",              k:"requiresAuth"},
-                {q:"Does it handle or process sensitive data? (PII, payroll, HR records)", k:"hasSensitiveData"},
-                {q:"Does it send employee or company data to external AI models?",          k:"sendsToExternalAI"},
-                {q:"Does it store or log user inputs / outputs persistently?",             k:"storesUserInputs"},
-              ].map(({q,k})=>(
-                <div key={k}>
-                  <label style={{display:"block",fontFamily:FF,fontSize:11,fontWeight:700,color:C.mushroom600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>{q}</label>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(opt=>(
-                      <button key={String(opt.v)} type="button"
-                        onClick={()=>setField(k,opt.v)}
-                        style={{flex:1,padding:"9px 0",borderRadius:DS.radius.lg,cursor:"pointer",
-                          border:`2px solid ${form[k]===opt.v?C.kangkong400:C.mushroom200}`,
-                          background:form[k]===opt.v?C.kangkong50:C.white,
-                          fontFamily:FF,fontSize:13,fontWeight:form[k]===opt.v?700:400,
-                          color:form[k]===opt.v?C.kangkong700:C.mushroom600,transition:"all 0.15s"}}>
-                        {opt.l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {form.targetUsers!=='internal'&&form.requiresAuth===false&&form.requiresAuth!==null&&(
-                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.md}}>
-                  <span style={{fontSize:14}}>⚠️</span>
-                  <div style={{fontFamily:FF,fontSize:11,color:C.mango600,fontWeight:600}}>Public access without auth — must resolve before shipping. Coordinate with Raffy.</div>
-                </div>
-              )}
-              {form.sendsToExternalAI===true&&form.hasSensitiveData===true&&(
-                <div style={{display:"flex",gap:8,padding:"8px 12px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.md}}>
-                  <span style={{fontSize:14}}>🔒</span>
-                  <div style={{fontFamily:FF,fontSize:11,color:C.carrot500,fontWeight:600}}>Sensitive data + external AI — flag for DPO / privacy review before launch. Coordinate with Belle or Coleen.</div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ── Section 6: Technical Details (Tier 2+) ── */}
-        {editingTier>=2&&(
-          <>
-            <SectionHeader title="Technical Details"/>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <ModalField label="GitHub repo" k="githubRepo" ph="github.com/org/repo" form={form} onChange={setField}/>
-                <ModalField label="Hosting" k="hosting" ph="e.g. Free Vercel, Azure, None" form={form} onChange={setField}/>
-              </div>
-              <ModalField label="Database" k="database" ph="e.g. Supabase, None, Firebase" form={form} onChange={setField}/>
-            </div>
-          </>
-        )}
-
-        {/* AI Duplicate Check result */}
-        {aiOverlapChecked&&(
-          <div style={{
-            background:aiOverlaps?.length===0?C.kangkong50:C.mango100,
-            border:"1.5px solid "+(aiOverlaps?.length===0?C.kangkong200:C.mango500),
-            borderRadius:DS.radius.lg,padding:"12px 14px",marginBottom:16,
-          }}>
-            <div style={{fontFamily:FF,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:6,
-              color:aiOverlaps?.length===0?C.kangkong600:C.mango600,
-              marginBottom:aiOverlaps?.length>0?10:0,
-            }}>
-              {aiOverlaps?.length>0
-                ? <><IcoWarning size={14} color={C.mango500}/> {aiOverlaps.length} potential overlap{aiOverlaps.length>1?"s":""} found</>
-                : <><IcoCheck size={14} color={C.kangkong500}/> No overlaps found</>
-              }
-            </div>
-            {aiOverlaps?.length>0&&(
-              <div>
-                {aiOverlaps.map((o,i)=>(
-                  <div key={i} style={{background:C.white,border:"1px solid "+C.mango500,borderRadius:DS.radius.md,padding:"8px 10px",marginBottom:6,display:"flex",gap:8,alignItems:"flex-start"}}>
-                    <span style={{background:o.severity==="high"?C.tomato100:C.mango100,color:o.severity==="high"?C.tomato600:C.mango600,fontFamily:FF,fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:DS.radius.full,textTransform:"uppercase",flexShrink:0,marginTop:1}}>{o.severity}</span>
-                    <div>
-                      <div style={{fontFamily:FF,fontSize:12,fontWeight:700,color:C.mushroom900}}>{o.name}</div>
-                      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginTop:2}}>{o.reason}</div>
-                    </div>
-                  </div>
-                ))}
-                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginTop:4}}>Consider collaborating with these teams instead of building separately.</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Submit */}
-        {(()=>{
-          const hasOverlaps = aiOverlapChecked && aiOverlaps?.length > 0;
-          const canSubmit = !!(form.name.trim() && form.toolUsed.length && (form.builtFor||[]).length && !submitting);
-          const bg = !canSubmit ? C.mushroom300 : hasOverlaps ? C.mango500 : C.kangkong500;
-          const shadow = canSubmit ? "0 4px 16px "+(hasOverlaps?C.mango500:C.kangkong500)+"40" : "none";
-          return (
-            <button onClick={submit} disabled={!canSubmit} style={{
-              width:"100%",padding:"11px",background:bg,
-              color:C.white,border:"none",borderRadius:DS.radius.lg,
-              cursor:canSubmit?"pointer":"not-allowed",
-              fontFamily:FF,fontSize:13,fontWeight:700,
-              boxShadow:shadow,transition:"all 0.2s",
-              display:"flex",alignItems:"center",justifyContent:"center",gap:8,
-            }}>
-              {submitting
-                ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</span> Checking for duplicates…</>
-                : hasOverlaps
-                ? <><IcoWarning size={16} color={C.white}/> Save anyway</>
-                : <><IcoAdd size={16} color={C.white}/> Add to the Garden</>
-              }
-            </button>
-          );
-        })()}
-      </div>
-    </div>
-  );
-};
 
 // ── Claim Modal ────────────────────────────────────────────────────────────────
 function ClaimModal({wish, authUser, onClose, onClaim}) {
@@ -7588,38 +8020,53 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
-// ── DevopsRequestModal ───────────────────────────────────────────────────────
-function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
-  const [submitting, setSubmitting] = React.useState(false);
-  const [copied,     setCopied]     = React.useState(false);
-  const [result,     setResult]     = React.useState(null); // null | {ok,jiraCreated,jiraError,jiraTicketKey,message}
-  const [githubRepo, setGithubRepo] = React.useState(project.githubRepo || '');
-  const [hosting,    setHosting]    = React.useState(project.hosting    || '');
-  const [database,   setDatabase]   = React.useState(
-    project.database ||
+function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSaveProject }) {
+  const arrToStr = a => Array.isArray(a) ? a.join(', ') : (a || '');
+  const [submitting,   setSubmitting]   = React.useState(false);
+  const [copied,       setCopied]       = React.useState(false);
+  const [result,       setResult]       = React.useState(null);
+  const [githubRepo,   setGithubRepo]   = React.useState(project.githubRepo || '');
+  const [hosting,      setHosting]      = React.useState(
+    arrToStr(project.hosting) ||
     (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
-    project.dataSource ||
-    ''
+    project.dataSource || ''
   );
-  const [remarks, setRemarks] = React.useState('');
+  const [database,     setDatabase]     = React.useState(
+    arrToStr(project.database) ||
+    (project.dataSources?.length ? project.dataSources.join(', ') : '') ||
+    project.dataSource || ''
+  );
+  const [githubAcct,   setGithubAcct]   = React.useState(project.versionControlAccount || 'company');
+  const [hostingAcct,  setHostingAcct]  = React.useState(project.hostingAccount        || 'company');
+  const [dbAcct,       setDbAcct]       = React.useState(project.databaseAccount       || 'company');
+  const [notes,        setNotes]        = React.useState('');
+
+  const effectiveTier = tier ?? project.tier ?? 2;
+  const assignee = effectiveTier >= 3
+    ? { name:'Coleen Bartido',   initials:'CB', role:'Technical Lead · Groundskeeper',          badgeBg:'#3182ce', bannerBg:'#ebf8ff', bannerBorder:'#63b3ed', avatarBg:'#3182ce', tierLabel:'Tier 3' }
+    : { name:'Raphael Enriquez', initials:'RE', role:'Infrastructure & DevOps · Groundskeeper', badgeBg:'#d69e2e', bannerBg:'#fefcbf', bannerBorder:'#d69e2e', avatarBg:'#d69e2e', tierLabel:'Tier 2' };
+
+  const acctLabel = v => v === 'company' ? 'Company (Sprout)' : 'Personal';
+  const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
   const ticketSummary = 'Grove SRC: ' + project.name;
-  const monoField = (label, value) =>
-    label.padEnd(13) + (value || 'TBD');
   const ticketDesc = [
     'Project: '  + project.name,
     'Builder: '  + project.builderEmail,
+    'Assigned to: ' + assignee.name,
     '',
     'Please set up the following:',
-    monoField("GitHub Repo:", githubRepo),
-    monoField("Hosting:",     hosting),
-    monoField("Database:",    database),
-    ...(remarks.trim() ? ['', 'Additional Remarks:', remarks.trim()] : []),
+    pad('GitHub Repo:',13) + (githubRepo || 'TBD') + '  [' + acctLabel(githubAcct) + ']',
+    pad('Hosting:',   13) + (hosting    || 'TBD') + '  [' + acctLabel(hostingAcct) + ']',
+    pad('Database:',  13) + (database   || 'TBD') + '  [' + acctLabel(dbAcct)      + ']',
+    ...(notes.trim() ? ['', 'Additional Notes:', notes.trim()] : []),
   ].join('\n');
+
   const handleCopy = () => {
     navigator.clipboard.writeText(ticketSummary + '\n\n' + ticketDesc).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000);
     });
   };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     setResult(null);
@@ -7631,101 +8078,189 @@ function DevopsRequestModal({ project, authUser, onClose, onSubmit }) {
       githubRepo,
       hosting,
       database,
-      remarks,
+      remarks:      notes,
       status:       'todo',
       country:      project.country,
+      tier,
     });
+    if (res?.ok && onSaveProject) {
+      const toArr = s => s.split(',').map(x=>x.trim()).filter(Boolean);
+      onSaveProject({
+        ...project,
+        githubRepo,
+        hosting:               toArr(hosting),
+        database:              toArr(database),
+        versionControlAccount: githubAcct,
+        hostingAccount:        hostingAcct,
+        databaseAccount:       dbAcct,
+      }).catch(e => console.warn('Setup support save error:', e));
+    }
     setSubmitting(false);
     setResult(res || { ok: false, message: 'No response from server' });
   };
-  const fieldRow = (label, value, setter, ph) => (
-    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-      <span style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,minWidth:96,flexShrink:0}}>{label}</span>
-      <input value={value} onChange={e=>setter(e.target.value)} placeholder={ph}
-        style={{flex:1,padding:'4px 8px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom800,background:C.white,outline:'none',transition:'border-color 0.15s'}}
-        onFocus={e=>e.target.style.borderColor=C.kangkong500}
-        onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+
+  const inputSt = {flex:1,padding:'5px 9px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom800,background:C.white,outline:'none',transition:'border-color 0.15s'};
+  const fieldBlock = (label, value, setter, ph, acct, setAcct) => (
+    <div style={{marginBottom:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+        <span style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,minWidth:96,flexShrink:0}}>{label}</span>
+        <input value={value} onChange={e=>setter(e.target.value)} placeholder={ph}
+          style={inputSt}
+          onFocus={e=>e.target.style.borderColor=C.kangkong500}
+          onBlur={e=>e.target.style.borderColor=C.mushroom300}/>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'4px 8px 4px 10px',background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.sm}}>
+        <span style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:C.mushroom500,flexShrink:0,whiteSpace:'nowrap'}}>Account type</span>
+        <div style={{display:'flex',gap:4,marginLeft:'auto'}}>
+          {['personal','company'].map(v=>{
+            const active = acct===v;
+            const isPersonal = v==='personal';
+            const bg     = active ? (isPersonal ? '#fefcbf' : C.kangkong50)     : C.white;
+            const border = active ? (isPersonal ? '#d69e2e' : C.kangkong400)    : C.mushroom300;
+            const color  = active ? (isPersonal ? '#b7791f' : C.kangkong600)    : C.mushroom500;
+            return (
+              <button key={v} onClick={()=>setAcct(v)}
+                style={{padding:'2px 10px',borderRadius:DS.radius.full,fontFamily:FF,fontSize:11,fontWeight:600,border:'1.5px solid '+border,background:bg,color,cursor:'pointer',transition:'all 0.15s'}}>
+                {v==='personal' ? 'Personal' : 'Company (Sprout)'}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
+
+  const tools = project.toolUsed || [];
+
   return (
     <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(32,30,24,0.55)',backdropFilter:'blur(6px)'}} onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,padding:28,maxWidth:500,width:'92%',maxHeight:'90vh',overflowY:'auto',boxShadow:DS.shadow.xl,border:'1px solid '+C.mushroom200,animation:'slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
-          <div>
-            <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900,display:'flex',alignItems:'center',gap:8}}>
-              <IcoDevops size={20} color={C.carrot500}/> Request DevOps Setup
+      <div onClick={e=>e.stopPropagation()} style={{background:C.white,borderRadius:DS.radius.xl,width:'92%',maxWidth:500,maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:DS.shadow.xl,border:'1px solid '+C.mushroom200,animation:'slideUp 0.25s cubic-bezier(0.34,1.2,0.64,1)'}}>
+
+        {/* Header */}
+        <div style={{padding:'20px 22px 0',display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:9}}>
+            <IcoDevops size={20} color={C.carrot500}/>
+            <div>
+              <div style={{fontFamily:FF,fontSize:17,fontWeight:700,color:C.mushroom900}}>Request Setup Support</div>
+              <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2,lineHeight:1.5}}>A Groundskeeper will be assigned to help configure your project's infrastructure.</div>
             </div>
-            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:3}}>Logs a request in Grove. Edit the details below, then copy or submit.</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,flexShrink:0}}><IcoClose size={18} color={C.mushroom400}/></button>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,flexShrink:0,marginTop:-2}}><IcoClose size={18} color={C.mushroom400}/></button>
         </div>
-        <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:16}}>
-          <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket info</div>
-          <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
 
-          {/* Date + Creator meta */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
-            {[
-              {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
-              {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
-            ].map(item=>(
-              <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
-                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
-                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+        {/* Scrollable body */}
+        <div style={{padding:'16px 22px',overflowY:'auto',flex:1}}>
+
+          {/* Assignee banner */}
+          <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:assignee.bannerBg,border:'1.5px solid '+assignee.bannerBorder,borderRadius:DS.radius.lg,marginBottom:14}}>
+            <div style={{width:38,height:38,borderRadius:DS.radius.full,background:assignee.avatarBg,color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FF,fontSize:13,fontWeight:700,flexShrink:0}}>
+              {assignee.initials}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:assignee.badgeBg,marginBottom:2}}>Ticket will be assigned to</div>
+              <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{assignee.name}</div>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginTop:1}}>{assignee.role}</div>
+            </div>
+            <div style={{padding:'3px 10px',borderRadius:DS.radius.full,background:assignee.badgeBg,color:C.white,fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{assignee.tierLabel}</div>
+          </div>
+
+          {/* Ticket block */}
+          <div style={{background:C.mushroom50,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'14px 16px',marginBottom:14}}>
+            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:1,color:C.mushroom400,marginBottom:8}}>Ticket preview</div>
+            <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:12}}>{ticketSummary}</div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+              {[
+                {l:'Date Created', v: new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})},
+                {l:'Requested By', v: authUser?.displayName || authUser?.email?.split('@')[0] || '—'},
+              ].map(item=>(
+                <div key={item.l} style={{background:C.white,borderRadius:DS.radius.md,padding:'8px 10px',border:'1px solid '+C.mushroom200}}>
+                  <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:3}}>{item.l}</div>
+                  <div style={{fontFamily:FF,fontSize:12,color:C.mushroom800,fontWeight:500}}>{item.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {tools.length>0&&(
+              <div style={{marginBottom:12}}>
+                <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:6,display:'flex',alignItems:'center',gap:6}}>
+                  Tools used
+                  <span style={{fontSize:9,fontWeight:600,padding:'1px 7px',borderRadius:DS.radius.full,background:C.kangkong100,color:C.kangkong600,border:'1px solid '+C.kangkong200}}>auto-filled</span>
+                </div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                  {tools.map(t=>(
+                    <span key={t} style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:DS.radius.full,background:C.kangkong50,border:'1.5px solid '+C.kangkong200,color:C.kangkong600}}>{t}</span>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:8}}>Setup details</div>
+            {fieldBlock("Version Control:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo", githubAcct, setGithubAcct)}
+            {fieldBlock("Hosting:",         hosting,    setHosting,    "e.g. Vercel, Azure",      hostingAcct, setHostingAcct)}
+            {fieldBlock("Database:",        database,   setDatabase,   "e.g. Supabase, MySQL",    dbAcct, setDbAcct)}
           </div>
 
-          <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom700,lineHeight:1.8,marginBottom:10,whiteSpace:'pre-wrap'}}>
-            {'Project: '  + project.name + '\n'}
-            {'Builder: '  + project.builderEmail + '\n\n'}
-            {'Please set up the following:'}
-          </div>
-          {fieldRow("GitHub Repo:", githubRepo, setGithubRepo, "e.g. sprout-ph/my-repo")}
-          {fieldRow("Hosting:",     hosting,    setHosting,    "e.g. Vercel, AWS")}
-          {fieldRow("Database:",    database,   setDatabase,   "e.g. Supabase, MySQL")}
-          <div style={{marginTop:10}}>
-            <div style={{fontFamily:'Roboto Mono, monospace',fontSize:11,color:C.mushroom500,marginBottom:5}}>Additional Remarks <span style={{color:C.mushroom400,fontSize:10}}>(optional)</span></div>
-            <textarea value={remarks} onChange={e=>setRemarks(e.target.value)}
-              placeholder="Any other details, special requirements, or context for the DevOps team…"
+          {/* Notes */}
+          <div style={{marginBottom:6}}>
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',color:C.mushroom600,marginBottom:5}}>
+              Additional notes <span style={{fontWeight:400,textTransform:'none',color:C.mushroom400,letterSpacing:0}}>(optional)</span>
+            </div>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)}
+              placeholder="Anything the Groundskeeper should know — special requirements, environment details, constraints, or context…"
               rows={3}
-              style={{width:'100%',padding:'8px 10px',borderRadius:DS.radius.sm,border:'1px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.5}}
+              style={{width:'100%',padding:'8px 11px',borderRadius:DS.radius.md,border:'1.5px solid '+C.mushroom300,fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.55}}
               onFocus={e=>e.target.style.borderColor=C.kangkong500}
               onBlur={e=>e.target.style.borderColor=C.mushroom300}
             />
           </div>
+
+          {/* Copy button */}
+          <button onClick={handleCopy} style={{width:'100%',padding:'8px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:12,marginTop:4,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+            {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
+          </button>
+
+          {/* Result banner */}
+          {result&&(
+            result.ok
+              ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:6}}>
+                  <IcoCheck size={16} color={C.kangkong600}/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created!</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
+                      {result.jiraTicketKey&&<><strong>{result.jiraTicketKey}</strong> — </>}
+                      Assigned to <strong>{assignee.name}</strong>. Visible in the Tool Shed.
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.kangkong600,marginTop:4,opacity:0.85}}>
+                      Setup details saved to this project — they'll be pre-filled next time.
+                    </div>
+                  </div>
+                </div>
+              : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:6}}>
+                  <IcoClose size={15} color={C.tomato600}/>
+                  <div>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Ticket could not be created</div>
+                    <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>
+                      {result.jiraError || result.message || 'Something went wrong. Please try again.'}
+                    </div>
+                  </div>
+                </div>
+          )}
         </div>
-        <button onClick={handleCopy} style={{width:'100%',padding:'9px',background:copied?C.kangkong50:C.white,border:'1.5px solid '+(copied?C.kangkong400:C.mushroom300),borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,fontWeight:600,cursor:'pointer',color:copied?C.kangkong600:C.mushroom600,marginBottom:16,transition:'all 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-          {copied ? <><IcoCheck size={13} color={C.kangkong500}/> Copied!</> : 'Copy ticket description'}
-        </button>
-        {/* Confirmation banner */}
-        {result&&(
-          result.ok
-            ? <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.kangkong50,border:'1px solid '+C.kangkong200,borderRadius:DS.radius.lg,marginBottom:14}}>
-                <IcoCheck size={16} color={C.kangkong600}/>
-                <div>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.kangkong700}}>Ticket created successfully!</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.kangkong600,marginTop:2}}>
-                    Jira ticket <strong>{result.jiraTicketKey}</strong> has been created and assigned to Coleen. It is now visible in the Tool Shed.
-                  </div>
-                </div>
-              </div>
-            : <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:C.tomato100,border:'1px solid '+C.tomato500,borderRadius:DS.radius.lg,marginBottom:14}}>
-                <span style={{fontSize:15,lineHeight:1}}>❌</span>
-                <div>
-                  <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.tomato600}}>Ticket could not be created</div>
-                  <div style={{fontFamily:FF,fontSize:12,color:C.tomato600,marginTop:2}}>
-                    {result.jiraError || result.message || 'Something went wrong. Please try again.'}
-                  </div>
-                </div>
-              </div>
-        )}
-        <div style={{display:'flex',gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600}}>{result?.ok ? 'Close' : 'Cancel'}</button>
-          <button onClick={handleSubmit} disabled={submitting||result?.ok} style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
-            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket'}
+
+        {/* Footer */}
+        <div style={{padding:'12px 22px',borderTop:'1px solid '+C.mushroom100,display:'flex',gap:10,flexShrink:0,background:C.white}}>
+          <button onClick={onClose} style={{flex:1,padding:'10px',background:C.white,border:'1px solid '+C.mushroom300,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,cursor:'pointer',color:C.mushroom600,transition:'background 0.15s'}}
+            onMouseOver={e=>e.currentTarget.style.background=C.mushroom100}
+            onMouseOut={e=>e.currentTarget.style.background=C.white}>
+            {result?.ok ? 'Close' : 'Cancel'}
+          </button>
+          <button onClick={handleSubmit} disabled={submitting||result?.ok}
+            style={{flex:2,padding:'10px',background:submitting?C.mushroom300:result?.ok?C.kangkong500:C.carrot500,color:C.white,border:'none',borderRadius:DS.radius.lg,fontFamily:FF,fontSize:13,fontWeight:700,cursor:(submitting||result?.ok)?'not-allowed':'pointer',transition:'all 0.15s'}}>
+            {submitting ? 'Creating…' : result?.ok ? 'Done ✓' : 'Create Ticket →'}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -7738,7 +8273,7 @@ const JIRA_COLS = [
   { id:'checking',    label:'For Checking',   statuses:['Ready for Checking','Ready for checking','For Checking'], color:C.blueberry500, bg:C.blueberry100,  border:C.blueberry400 },
   { id:'done',        label:'Done',           statuses:['Done','Closed','Resolved'],              color:C.kangkong600,  bg:C.kangkong50,    border:C.kangkong200  },
 ];
-function DevopsBoard({ authUser }) {
+function DevopsBoard({ authUser, rootingReviews }) {
   const [tickets,  setTickets]  = React.useState([]);
   const [loading,  setLoading]  = React.useState(true);
   const [error,    setError]    = React.useState(null);
@@ -7813,6 +8348,59 @@ function DevopsBoard({ authUser }) {
           ⚠ {error}
         </div>
       )}
+
+      {/* ── Rooting Reviews (internal Grove tracking) ── */}
+      <div style={{flexShrink:0,maxHeight:320,overflowY:'auto',padding:'16px 28px 0',borderBottom:'1px solid '+C.mushroom200}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+          <svg width={15} height={15} viewBox="0 0 20 20" fill="none" stroke={C.kangkong500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 18c0-4-4-7-4-11a4 4 0 0 1 8 0c0 4-4 7-4 11z"/><path d="M10 7v5"/>
+          </svg>
+          <span style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom800}}>Rooting Reviews</span>
+          <span style={{fontFamily:FF,fontSize:11,color:C.mushroom400}}>Internal tracking — not a Jira ticket</span>
+          {rootingReviews&&rootingReviews.length>0&&(
+            <span style={{marginLeft:'auto',fontFamily:FF,fontSize:11,fontWeight:700,background:C.mango100,color:C.mango600,border:'1px solid '+C.mango300,borderRadius:DS.radius.full,padding:'1px 8px'}}>
+              {rootingReviews.filter(r=>r.status==='pending').length} pending
+            </span>
+          )}
+        </div>
+        {(!rootingReviews||rootingReviews.length===0) ? (
+          <div style={{fontFamily:FF,fontSize:12,color:C.mushroom400,padding:'12px 0 16px',fontStyle:'italic'}}>No rooting reviews yet.</div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:8,paddingBottom:16}}>
+            {rootingReviews.map(r => {
+              const statusColor = r.status==='approved'?C.kangkong600:r.status==='rejected'?'#c53030':C.mango600;
+              const statusBg    = r.status==='approved'?C.kangkong100:r.status==='rejected'?'#fed7d7':C.mango100;
+              const statusBorder= r.status==='approved'?C.kangkong200:r.status==='rejected'?'#fc8181':C.mango300;
+              const fmtDate = ts => ts ? new Date(ts).toLocaleDateString('en-PH',{day:'numeric',month:'short',year:'numeric'}) : '—';
+              return (
+                <div key={r.id} style={{background:C.white,border:'1px solid '+C.mushroom200,borderRadius:DS.radius.lg,padding:'12px 14px',display:'flex',alignItems:'flex-start',gap:12,boxShadow:DS.shadow.sm}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.project_name}</div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500,marginBottom:2}}>
+                      Submitted by <strong style={{color:C.mushroom700}}>{r.builder_name||r.builder_email}</strong>
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:11,color:C.mushroom500}}>
+                      Reviewer: <strong style={{color:C.mushroom700}}>{r.reviewer_name||r.reviewer_email}</strong>
+                    </div>
+                    {r.rejection_reason&&(
+                      <div style={{fontFamily:FF,fontSize:11,color:'#c53030',marginTop:6,padding:'5px 8px',background:'#fff5f5',borderRadius:DS.radius.sm,border:'1px solid #fc8181',lineHeight:1.5}}>
+                        Reason: {r.rejection_reason}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:DS.radius.full,background:statusBg,color:statusColor,border:'1px solid '+statusBorder,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>
+                      {r.status}
+                    </div>
+                    <div style={{fontFamily:FF,fontSize:10,color:C.mushroom400}}>{fmtDate(r.created_at)}</div>
+                    {r.resolved_at&&<div style={{fontFamily:FF,fontSize:10,color:C.mushroom400,marginTop:1}}>Resolved {fmtDate(r.resolved_at)}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Kanban columns */}
       <div style={{flex:1,overflowX:'auto',overflowY:'hidden',padding:'20px 28px'}}>
@@ -7897,6 +8485,9 @@ function DevopsBoard({ authUser }) {
 function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove, onDeny, onOpenProject }) {
   const [auditFilter, setAuditFilter] = React.useState("all"); // "all" | "unclassified" | "pending_review" | "flagged"
   const [activeTab, setActiveTab] = React.useState("deletions"); // "deletions" | "audit"
+  const [selectedIds,  setSelectedIds]  = React.useState(new Set());
+  const [nudgeSending, setNudgeSending] = React.useState(false);
+  const [nudgeSent,    setNudgeSent]    = React.useState(new Set()); // projectIds that have been notified
 
   const pendingDels   = deleteRequests.filter(r => r.status === "pending");
   const resolvedDels  = deleteRequests.filter(r => r.status !== "pending");
@@ -7915,6 +8506,73 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
   const securityComplete = (p) =>
     [p.requiresAuth, p.externalAccess, p.hasSensitiveData, p.sendsToExternalAI, p.storesUserInputs]
       .every(v => v !== null && v !== undefined);
+
+  const exportProjectsCSV = () => {
+    const TIER_LABEL = { 1: "T1 – Static/Internal", 2: "T2 – Internal App", 3: "T3 – External-Facing" };
+    const esc = v => {
+      if (v === null || v === undefined) return "";
+      const s = Array.isArray(v) ? v.join("; ") : String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = [
+      "Name","Stage","Country","Tier","Builder","Builder Email","Department",
+      "Description","Demo Link","GitHub Repo",
+      "AI Tools Used","Agentic Frameworks","Data Sources",
+      "Hosting","Database","Auth Type","Version Control","Builder Tools",
+      "Requires Auth","Has Database","Connects Sprout DB","Sends to External AI",
+      "Data Sensitivity","Last Updated",
+    ];
+    const arr2str = v => (Array.isArray(v) ? v : v ? [v] : []).join("; ");
+    const bool2str = v => v === true ? "Yes" : v === false ? "No" : "";
+    const rows = projects.map(p => [
+      p.name, p.stage, p.country, TIER_LABEL[p.tier] || "Unclassified",
+      p.builder, p.builderEmail, p.builtBy,
+      p.description, p.demoLink, p.githubRepo,
+      arr2str(p.toolUsed), arr2str(p.agenticFramework), arr2str(p.dataSources),
+      arr2str(p.hosting), arr2str(p.database), arr2str(p.authType),
+      arr2str(p.versionControl), arr2str(p.builderTools),
+      bool2str(p.requiresAuth), bool2str(p.hasDatabase),
+      bool2str(p.connectsSproutDb), bool2str(p.sendsToExternalAI),
+      p.dataSensitivity || "",
+      p.lastUpdatedAt ? new Date(p.lastUpdatedAt).toLocaleDateString("en-PH") : "",
+    ].map(esc));
+    const csv = [headers.map(esc).join(","), ...rows.map(r => r.join(","))].join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `grove-projects-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleNudge = async (ids) => {
+    setNudgeSending(true);
+    const targets = unclassified.filter(p => ids.has(String(p.id)));
+    try {
+      const res = await fetch("/api/send-classification-nudge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projects: targets.map(p => ({
+            projectId:   String(p.id),
+            projectName: p.name,
+            builderName: p.builder || p.builtBy,
+            builderEmail: p.builderEmail,
+          })),
+          adminName: authUser?.name || authUser?.email,
+        }),
+      });
+      const data = await res.json();
+      const sentIds = new Set(nudgeSent);
+      (data.results || []).forEach(r => { if (r.ok) sentIds.add(r.projectId); });
+      setNudgeSent(sentIds);
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error("Nudge send error:", e);
+    } finally {
+      setNudgeSending(false);
+    }
+  };
 
   const TABS = [
     { id: "deletions", label: `Deletion Requests${pendingDels.length ? ` (${pendingDels.length})` : ""}` },
@@ -7961,16 +8619,30 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
           ))}
         </div>
 
-        {/* Tab bar */}
-        <div style={{display:"flex",gap:2,background:C.mushroom100,borderRadius:DS.radius.lg,padding:3,alignSelf:"flex-start",width:"fit-content"}}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
-              padding:"7px 18px",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,borderRadius:DS.radius.md,transition:"all 0.15s",
-              background:activeTab===t.id?C.white:"transparent",
-              color:activeTab===t.id?C.mushroom900:C.mushroom500,
-              boxShadow:activeTab===t.id?DS.shadow.sm:"none",
-            }}>{t.label}</button>
-          ))}
+        {/* Tab bar + Export */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",gap:2,background:C.mushroom100,borderRadius:DS.radius.lg,padding:3}}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                padding:"7px 18px",border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:600,borderRadius:DS.radius.md,transition:"all 0.15s",
+                background:activeTab===t.id?C.white:"transparent",
+                color:activeTab===t.id?C.mushroom900:C.mushroom500,
+                boxShadow:activeTab===t.id?DS.shadow.sm:"none",
+              }}>{t.label}</button>
+            ))}
+          </div>
+          <button onClick={exportProjectsCSV} style={{
+            display:"flex",alignItems:"center",gap:6,padding:"8px 14px",
+            background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,
+            cursor:"pointer",fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,
+            boxShadow:DS.shadow.sm,transition:"all 0.15s",
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.background=C.mushroom50;e.currentTarget.style.borderColor=C.mushroom300;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=C.white;e.currentTarget.style.borderColor=C.mushroom200;}}
+          >
+            <svg width={14} height={14} viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke={C.mushroom600} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -8054,7 +8726,7 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
               {k:"pending_review",label:`Pending RM Review (${pendingReview.length})`, active: pendingReview.length > 0},
               {k:"flagged",     label:`Security Flags (${flagged.length})`,     active: flagged.length > 0},
             ].map(f => (
-              <button key={f.k} onClick={()=>setAuditFilter(f.k)} style={{
+              <button key={f.k} onClick={()=>{ setAuditFilter(f.k); setSelectedIds(new Set()); }} style={{
                 padding:"5px 12px",borderRadius:DS.radius.full,cursor:"pointer",
                 fontFamily:FF,fontSize:12,fontWeight:600,border:"1px solid",transition:"all 0.15s",
                 background:auditFilter===f.k?C.kangkong500:"transparent",
@@ -8064,11 +8736,42 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
             ))}
           </div>
 
+          {/* Unclassified notify action bar */}
+          {auditFilter==="unclassified"&&unclassified.length>0&&(
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango300,borderRadius:DS.radius.md,flexWrap:"wrap"}}>
+              <div style={{flex:1,fontFamily:FF,fontSize:12,color:"#744210",fontWeight:600}}>
+                {selectedIds.size>0
+                  ? `${selectedIds.size} project${selectedIds.size>1?"s":""} selected`
+                  : `${unclassified.length} unclassified project${unclassified.length>1?"s":""} — select to notify builders`
+                }
+              </div>
+              <button onClick={()=>{
+                if(selectedIds.size===unclassified.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(unclassified.map(p=>String(p.id))));
+              }} style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,border:"1px solid #d69e2e",background:"transparent",color:"#744210",cursor:"pointer"}}>
+                {selectedIds.size===unclassified.length?"Deselect all":"Select all"}
+              </button>
+              <button
+                disabled={selectedIds.size===0||nudgeSending}
+                onClick={()=>handleNudge(selectedIds)}
+                style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"5px 14px",borderRadius:DS.radius.full,border:"none",background:selectedIds.size>0?C.mango500:"#e2dcc0",color:selectedIds.size>0?C.white:"#b0ac9c",cursor:selectedIds.size>0?"pointer":"not-allowed",transition:"all 0.15s"}}>
+                {nudgeSending?"Sending…":`Notify selected (${selectedIds.size})`}
+              </button>
+              <button
+                disabled={nudgeSending}
+                onClick={()=>handleNudge(new Set(unclassified.map(p=>String(p.id))))}
+                style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 14px",borderRadius:DS.radius.full,border:"1px solid #d69e2e",background:"transparent",color:"#744210",cursor:nudgeSending?"not-allowed":"pointer"}}>
+                {nudgeSending?"Sending…":"Notify all"}
+              </button>
+            </div>
+          )}
+
           {/* Table */}
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontFamily:FF,fontSize:12}}>
               <thead>
                 <tr style={{background:C.mushroom100}}>
+                  {auditFilter==="unclassified"&&<th style={{padding:"9px 12px",width:32}}/>}
                   {["Project","Team","Stage","Tier","Classified","RM Review","Flags","Builder"].map(h => (
                     <th key={h} style={{padding:"9px 12px",textAlign:"left",fontWeight:700,color:C.mushroom600,borderBottom:"2px solid "+C.mushroom200,whiteSpace:"nowrap",fontSize:11}}>{h}</th>
                   ))}
@@ -8076,19 +8779,31 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
               </thead>
               <tbody>
                 {auditList.length === 0 && (
-                  <tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match this filter.</td></tr>
+                  <tr><td colSpan={auditFilter==="unclassified"?9:8} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match this filter.</td></tr>
                 )}
                 {auditList.map((p,i) => {
                   const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
                   const classified = securityComplete(p);
                   const hasSecFlag = (p.externalAccess===true&&p.requiresAuth===false)||(p.sendsToExternalAI===true&&p.hasSensitiveData===true);
+                  const isSelected = selectedIds.has(String(p.id));
+                  const wasSent    = nudgeSent.has(String(p.id));
                   return (
-                    <tr key={p.id} style={{background:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
-                      onClick={()=>onOpenProject(p)}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.kangkong50}
-                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.white:C.mushroom50}>
+                    <tr key={p.id} style={{background:isSelected?C.mango100:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
+                      onClick={(e)=>{ if(auditFilter==="unclassified"&&e.target.type==="checkbox") return; onOpenProject(p); }}
+                      onMouseEnter={e=>{ if(!isSelected) e.currentTarget.style.background=C.kangkong50; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background=isSelected?C.mango100:i%2===0?C.white:C.mushroom50; }}>
+                      {auditFilter==="unclassified"&&(
+                        <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,textAlign:"center",verticalAlign:"middle"}} onClick={e=>e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={e=>{
+                            const next = new Set(selectedIds);
+                            e.target.checked ? next.add(String(p.id)) : next.delete(String(p.id));
+                            setSelectedIds(next);
+                          }} style={{cursor:"pointer",accentColor:C.mango500,width:14,height:14}}/>
+                        </td>
+                      )}
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,fontWeight:600,color:C.mushroom900,maxWidth:200}}>
                         <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                        {wasSent&&<div style={{fontSize:10,color:C.kangkong600,fontWeight:600,marginTop:2}}>Notified ✓</div>}
                       </td>
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom600}}>{p.builtBy}</td>
                       <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
@@ -8127,351 +8842,9 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
 
 // ── Grove Guide / Wiki ────────────────────────────────────────────────────────
 function GuideView() {
-  const [guidePage, setGuidePage] = useState("overview"); // "overview" | "process-flow"
-
-  const guidePages = [
-    { id: "overview",      label: "Grove Overview",              icon: "🌿" },
-    { id: "process-flow",  label: "Stage Gate & Review Process", icon: "🛡️" },
-  ];
-
-  if (guidePage === "process-flow") {
-    return (
-      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-        {/* Sub-nav */}
-        <div style={{background:C.white,borderBottom:"1px solid "+C.mushroom200,padding:"10px 48px",display:"flex",gap:6,alignItems:"center"}}>
-          {guidePages.map(p => (
-            <button key={p.id} onClick={()=>setGuidePage(p.id)}
-              style={{display:"flex",alignItems:"center",gap:6,padding:"6px 16px",borderRadius:DS.radius.full,border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:guidePage===p.id?700:500,
-                background:guidePage===p.id?C.mushroom900:C.mushroom100,
-                color:guidePage===p.id?C.white:C.mushroom600,
-                transition:"all 0.15s"}}>
-              <span>{p.icon}</span>{p.label}
-            </button>
-          ))}
-        </div>
-        <ProcessFlowGuide C={C} FF={FF} DS={DS}/>
-      </div>
-    );
-  }
-
-  const Section = ({title, icon, children}) => (
-    <div style={{marginBottom:36}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-        <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
-        <div style={{fontFamily:FF,fontSize:20,fontWeight:800,color:C.mushroom900}}>{title}</div>
-      </div>
-      {children}
-    </div>
-  );
-  const Card = ({children, bg=C.white, border=C.mushroom200, style={}}) => (
-    <div style={{background:bg,border:"1px solid "+border,borderRadius:DS.radius.xl,padding:"20px 24px",boxShadow:DS.shadow.sm,...style}}>{children}</div>
-  );
-  const Label = ({children}) => (
-    <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.9,color:C.mushroom400,marginBottom:4}}>{children}</div>
-  );
-
-  const stages = [
-    {key:"seedling", emoji:"🌱", label:"Seedling", desc:"You're actively building. Prototype + deck required to advance.", color:STAGE_COLORS.seedling},
-    {key:"nursery",  emoji:"🪴", label:"Nursery",  desc:"Under leadership review. Gathering feedback before scaling.", color:STAGE_COLORS.nursery},
-    {key:"sprout",   emoji:"🌿", label:"Sprout",   desc:"Approved and shipping. Full speed ahead.",                   color:STAGE_COLORS.sprout},
-    {key:"bloom",    emoji:"🌸", label:"Bloom",    desc:"Real users, real feedback. Measuring impact.",              color:STAGE_COLORS.bloom},
-    {key:"thriving", emoji:"🌳", label:"Thriving", desc:"Live, loved, and making a lasting impact at Sprout.",       color:STAGE_COLORS.thriving},
-  ];
-
-  const tiers = [
-    {
-      num:1, label:"Static / Internal",
-      color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300, accent:C.mushroom400,
-      desc:"No backend logic, internal use only. Scripts, static pages, prompt templates, or simple one-off tools.",
-      examples:"Prompt libraries, static dashboards, email templates, simple scripts",
-      triggers:["No backend", "Internal users only"],
-      coord: null,
-    },
-    {
-      num:2, label:"Internal App",
-      color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400, accent:C.blueberry500,
-      desc:"Has backend logic, deployed for Sprout employees only. Requires infrastructure, access control, and data handling review.",
-      examples:"HR dashboards, internal chatbots, payroll tools, team utilities",
-      triggers:["Has backend + internal users only", "No backend + external or both users"],
-      coord: "Coordinate with Raffy (DevOps) before shipping.",
-    },
-    {
-      num:3, label:"External-Facing",
-      color:C.carrot500, bg:C.carrot100, border:C.carrot500, accent:C.carrot500,
-      desc:"Has backend and accessible to customers, partners, or the public. Highest scrutiny and coordination required.",
-      examples:"Client portals, public-facing AI features, partner integrations, customer tools",
-      triggers:["Has backend + external or both users"],
-      coord: "Coordinate with Belle or Coleen before shipping.",
-    },
-  ];
-
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      {/* Sub-nav */}
-      <div style={{background:C.white,borderBottom:"1px solid "+C.mushroom200,padding:"10px 48px",display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-        {guidePages.map(p => (
-          <button key={p.id} onClick={()=>setGuidePage(p.id)}
-            style={{display:"flex",alignItems:"center",gap:6,padding:"6px 16px",borderRadius:DS.radius.full,border:"none",cursor:"pointer",fontFamily:FF,fontSize:13,fontWeight:guidePage===p.id?700:500,
-              background:guidePage===p.id?C.mushroom900:C.mushroom100,
-              color:guidePage===p.id?C.white:C.mushroom600,
-              transition:"all 0.15s"}}>
-            <span>{p.icon}</span>{p.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{flex:1,overflowY:"auto",background:C.mushroom50,fontFamily:FF}}>
-      {/* Hero */}
-      <div style={{background:"linear-gradient(135deg,"+C.kangkong700+" 0%,"+C.kangkong500+" 100%)",padding:"40px 48px 36px",color:C.white}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-          <GroveLogo/>
-          <div>
-            <div style={{fontFamily:FF,fontSize:28,fontWeight:800,lineHeight:1}}>Grove</div>
-            <div style={{fontFamily:FF,fontSize:13,opacity:0.8,marginTop:2}}>by Sprout · Philippines &amp; Thailand</div>
-          </div>
-        </div>
-        <div style={{fontFamily:FF,fontSize:16,opacity:0.9,maxWidth:600,lineHeight:1.6}}>
-          Grove is Sprout's internal AI project tracker — a shared garden where ideas take root, get built, and grow into products that make Sprout better.
-        </div>
-      </div>
-
-      <div style={{padding:"36px 48px",maxWidth:960,margin:"0 auto"}}>
-
-        {/* What is Grove */}
-        <Section title="What is Grove?" icon="🌿">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-            {[
-              {icon:"💡",title:"Capture Ideas",     body:"Submit seed ideas to the Wishlist so nothing gets lost. Teammates upvote the ones they want built."},
-              {icon:"🔨",title:"Track Projects",     body:"Document real AI initiatives as they're being built — who's building, what stage it's in, and what it does."},
-              {icon:"📊",title:"Stay Coordinated",   body:"Classify projects by tier so DevOps, security, and leadership know when to get involved."},
-            ].map(item=>(
-              <Card key={item.title}>
-                <div style={{fontSize:28,marginBottom:8}}>{item.icon}</div>
-                <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,marginBottom:6}}>{item.title}</div>
-                <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>{item.body}</div>
-              </Card>
-            ))}
-          </div>
-        </Section>
-
-        {/* Who can access */}
-        <Section title="Who can use Grove?" icon="👥">
-          <Card>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-              {[
-                {flag:"PH", domain:"@sprout.ph",          label:"Philippines office"},
-                {flag:"TH", domain:"@sproutsolutions.io",  label:"Thailand office"},
-              ].map(r=>(
-                <div key={r.flag} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:C.mushroom50,borderRadius:DS.radius.lg,border:"1px solid "+C.mushroom200}}>
-                  <CountryBadge country={r.flag} size="lg"/>
-                  <div>
-                    <div style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900}}>{r.label}</div>
-                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500}}>{r.domain}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{marginTop:14,fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>
-              Sign in with your Sprout Google account. Your country is automatically set from your email domain and cannot be changed.
-            </div>
-          </Card>
-        </Section>
-
-        {/* Process Flow */}
-        <Section title="How it works — User Process Flow" icon="🗺️">
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {[
-              {step:"1", color:C.kangkong500, bg:C.kangkong50, border:C.kangkong200,
-                title:"Submit a Seed 🌰",
-                body:"Have an AI idea? Post it to the Wishlist. Add a title and explain the problem it solves. Anyone can upvote seeds they want to see built."},
-              {step:"2", color:C.mango600, bg:C.mango50, border:C.mango300,
-                title:"Claim a Seed 🔨",
-                body:"Ready to build someone's idea? Claim it. This moves the seed to your name — only one person can claim a seed at a time."},
-              {step:"3", color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400,
-                title:"Add a Plant 🌱",
-                body:"If you're already building something, add it directly to the Garden. Fill in what it does, who it's for, and what tools you're using."},
-              {step:"4", color:"#805ad5", bg:"#faf5ff", border:"#9f7aea",
-                title:"Classify your project 🏷️",
-                body:"Go to the Technical tab. Answer two questions — does the project have a backend, and who are the intended users? Your tier (1–3) is computed automatically. A short checklist then collects hosting, version control, auth, and database details based on your tier."},
-              {step:"5", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
-                title:"Progress through stages 🚀",
-                body:"Move your project from Seedling → Nursery → Sprout → Bloom → Thriving as it grows. Each stage reflects where you are in the build journey."},
-            ].map((s,i)=>(
-              <div key={s.step} style={{display:"flex",gap:16,alignItems:"flex-start"}}>
-                <div style={{width:32,height:32,borderRadius:"50%",background:s.bg,border:"2px solid "+s.border,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:14,fontWeight:800,color:s.color,flexShrink:0,marginTop:2}}>{s.step}</div>
-                <div style={{flex:1,background:s.bg,border:"1px solid "+s.border,borderRadius:DS.radius.lg,padding:"14px 18px"}}>
-                  <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900,marginBottom:4}}>{s.title}</div>
-                  <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6}}>{s.body}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* Stages */}
-        <Section title="Project Stages" icon="📈">
-          <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
-            {stages.map((s,i)=>(
-              <div key={s.key} style={{flex:1,position:"relative",background:s.color.bg,border:"1px solid "+s.color.border,borderRadius:DS.radius.lg,padding:"14px 14px 14px 14px",display:"flex",flexDirection:"column"}}>
-                {i<stages.length-1&&(
-                  <div style={{position:"absolute",right:-12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.mushroom400,zIndex:1}}>›</div>
-                )}
-                <div style={{fontSize:22,marginBottom:6}}>{s.emoji}</div>
-                <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:s.color.text,marginBottom:4}}>{s.label}</div>
-                <div style={{fontFamily:FF,fontSize:11,color:s.color.text,opacity:0.8,lineHeight:1.5}}>{s.desc}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:12,padding:"10px 14px",background:C.mushroom100,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:C.mushroom600}}>
-            💡 <strong>Seedling → Nursery</strong> requires a prototype link and deck. Stage changes are one step at a time for builders; admins can skip stages.
-          </div>
-        </Section>
-
-        {/* Tiers */}
-        <Section title="Tier Classification" icon="🏷️">
-          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:20}}>
-            Every project needs a tier. Two questions determine it: does the project have a backend, and who are the intended users? Based on the result, a contextual checklist collects the right technical details — hosting, version control, auth, database — only asking what's relevant for that tier.
-          </div>
-          <div style={{display:"flex",gap:10,marginBottom:20,padding:"12px 16px",background:"#faf5ff",border:"1px solid #c4b5fd",borderRadius:DS.radius.lg}}>
-            <div style={{display:"flex",flexDirection:"column",gap:8,flex:1}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,color:"#6d28d9",textTransform:"uppercase",letterSpacing:0.8,marginBottom:2}}>How the tier is decided</div>
-              {[
-                ["No backend + Internal only","→","Tier 1"],
-                ["No backend + External or Both","→","Tier 2"],
-                ["Has backend + Internal only","→","Tier 2"],
-                ["Has backend + External or Both","→","Tier 3"],
-              ].map(([cond,arrow,tier])=>(
-                <div key={cond} style={{display:"flex",alignItems:"center",gap:8,fontFamily:FF,fontSize:12}}>
-                  <span style={{color:C.mushroom600,flex:1}}>{cond}</span>
-                  <span style={{color:C.mushroom400}}>{arrow}</span>
-                  <span style={{fontWeight:700,color:"#6d28d9",minWidth:40}}>{tier}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            {tiers.map(t=>(
-              <div key={t.num} style={{position:"relative",background:t.bg,border:"1px solid "+t.border,borderRadius:DS.radius.xl,padding:"20px 20px 20px 24px",overflow:"hidden"}}>
-                <div style={{position:"absolute",left:0,top:0,bottom:0,width:5,background:t.accent,borderRadius:DS.radius.xl+" 0 0 "+DS.radius.xl}}/>
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}>
-                  <div style={{flex:1,minWidth:260}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                      <span style={{fontFamily:FF,fontSize:15,fontWeight:800,color:t.color,background:C.white,border:"2px solid "+t.border,borderRadius:DS.radius.full,padding:"2px 12px"}}>Tier {t.num}</span>
-                      <span style={{fontFamily:FF,fontSize:14,fontWeight:700,color:t.color}}>{t.label}</span>
-                    </div>
-                    <div style={{fontFamily:FF,fontSize:13,color:C.mushroom700,lineHeight:1.6,marginBottom:8}}>{t.desc}</div>
-                    <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500}}><strong>Examples:</strong> {t.examples}</div>
-                    {t.coord&&<div style={{marginTop:8,padding:"6px 10px",background:C.white,border:"1px solid "+t.border,borderRadius:DS.radius.md,fontFamily:FF,fontSize:12,color:t.color,fontWeight:600}}>⚑ {t.coord}</div>}
-                  </div>
-                  <div style={{minWidth:200}}>
-                    <Label>Triggered when</Label>
-                    {t.triggers.map(tr=>(
-                      <div key={tr} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:4}}>
-                        <span style={{color:t.color,fontWeight:700,flexShrink:0}}>✓</span>
-                        <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{tr}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* Security & Data */}
-        <Section title="Per-Tier Checklist" icon="🔐">
-          <div style={{fontFamily:FF,fontSize:13,color:C.mushroom600,lineHeight:1.6,marginBottom:16}}>
-            After the tier is computed, a checklist appears in the Technical tab. The fields shown depend on the tier — only ask what's relevant.
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {[
-              {
-                tier:1, label:"Static / Internal", color:C.mushroom700, bg:C.mushroom50, border:C.mushroom300,
-                fields:["Live URL (optional)","Version control — repo URL if Yes"],
-              },
-              {
-                tier:2, label:"Internal App", color:C.blueberry500, bg:C.blueberry100, border:C.blueberry400,
-                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?"],
-              },
-              {
-                tier:3, label:"External-Facing", color:C.carrot500, bg:C.carrot100, border:C.carrot500,
-                fields:["Live URL","Hosting platform","Version control — repo URL if Yes","Authentication — auth type if Yes","Database — platform + connects to Sprout DB?","Data sensitivity level","Sends data to external AI models?"],
-              },
-            ].map(t=>(
-              <div key={t.tier} style={{background:t.bg,border:"1px solid "+t.border,borderRadius:DS.radius.lg,padding:"14px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,color:t.color,padding:"2px 10px",background:C.white,border:"1.5px solid "+t.border,borderRadius:DS.radius.full}}>Tier {t.tier}</span>
-                  <span style={{fontFamily:FF,fontSize:12,fontWeight:600,color:t.color}}>{t.label}</span>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                  {t.fields.map(f=>(
-                    <div key={f} style={{display:"flex",alignItems:"flex-start",gap:7}}>
-                      <span style={{color:t.color,fontWeight:700,fontSize:12,flexShrink:0,marginTop:1}}>·</span>
-                      <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.mango700}}>
-              <strong>⚠ No-auth warning (Tier 3):</strong> If the project is accessible to external users but has no authentication, a warning is shown — must be resolved before shipping. Coordinate with Raffy.
-            </div>
-            <div style={{padding:"10px 14px",background:C.carrot100,border:"1px solid "+C.carrot500,borderRadius:DS.radius.lg,fontFamily:FF,fontSize:12,color:C.carrot500}}>
-              <strong>🔒 Data + AI warning (Tier 3):</strong> If the project sends sensitive data (PII, payroll, HR, health) to an external AI model, a DPO/privacy review is required. Coordinate with Belle or Coleen before launch.
-            </div>
-          </div>
-        </Section>
-
-        {/* Roles */}
-        <Section title="Roles &amp; Permissions" icon="👤">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            {[
-              {role:"Employee", icon:"🌱", color:C.kangkong600, bg:C.kangkong50, border:C.kangkong200,
-                can:["Submit seed ideas to the Wishlist","Upvote any seed","Claim an unclaimed seed","Add a project to the Garden","Edit and move your own projects","Change stage (adjacent stages only)"]},
-              {role:"Admin (🌿 Gardener)", icon:"🌿", color:"#805ad5", bg:"#faf5ff", border:"#c4b5fd",
-                can:["Everything an employee can do","Edit any project or seed","Delete any project or seed","Skip stages in any direction","Access the Tool Shed (DevOps requests)","Moderate duplicates and manage records"]},
-            ].map(r=>(
-              <Card key={r.role} bg={r.bg} border={r.border}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                  <span style={{fontSize:22}}>{r.icon}</span>
-                  <div style={{fontFamily:FF,fontSize:15,fontWeight:700,color:r.color}}>{r.role}</div>
-                </div>
-                {r.can.map(c=>(
-                  <div key={c} style={{display:"flex",gap:6,alignItems:"flex-start",marginBottom:5}}>
-                    <span style={{color:r.color,fontWeight:700,flexShrink:0,fontSize:12}}>✓</span>
-                    <span style={{fontFamily:FF,fontSize:12,color:C.mushroom700}}>{c}</span>
-                  </div>
-                ))}
-              </Card>
-            ))}
-          </div>
-        </Section>
-
-        {/* Quick Tips */}
-        <Section title="Quick Tips" icon="💡">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {[
-              {tip:"Always classify your project",  body:"Go to the Technical tab and answer the tier + security questions. Unclassified projects show up in the Unclassified count."},
-              {tip:"Seeds are never deleted",         body:"Fulfilled wishes stay visible — they become part of the project's story. Just mark them fulfilled when you build them."},
-              {tip:"Coordinate early for Tier 2+",   body:"If your project is Tier 2 or 3, loop in Raffy (DevOps) or Belle/Coleen before you ship — use the Tool Shed to log the request."},
-              {tip:"Country is immutable",            body:"Your country (PH or TH) is set from your email domain at first login and can never be changed. Projects inherit this from their builder."},
-            ].map(t=>(
-              <Card key={t.tip}>
-                <div style={{fontFamily:FF,fontSize:13,fontWeight:700,color:C.mushroom900,marginBottom:4}}>💡 {t.tip}</div>
-                <div style={{fontFamily:FF,fontSize:12,color:C.mushroom600,lineHeight:1.6}}>{t.body}</div>
-              </Card>
-            ))}
-          </div>
-        </Section>
-
-        {/* Footer */}
-        <div style={{textAlign:"center",padding:"20px 0 40px",fontFamily:FF,fontSize:12,color:C.mushroom400}}>
-          Grove by Sprout · Philippines &amp; Thailand · Questions? Reach out to your Grove admin.
-        </div>
-      </div>
-      </div>{/* end overflowY scroll wrapper */}
+      <ProcessFlowGuide C={C} FF={FF} DS={DS}/>
     </div>
   );
 }
@@ -8486,17 +8859,20 @@ export default function SproutAIGarden() {
   const [view, setView]         = useState("dashboard");
   const [devopsRequests, setDevopsRequests] = useState([]);
   const [devopsRequestProject, setDevopsRequestProject] = useState(null);
+  const [rootingReviews, setRootingReviews] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detailProject, setDetailProject] = useState(null);
-  const [showForm, setShowForm] = useState(false);
   const [showContribute, setShowContribute] = useState(false);
   const [contributeInitialFlow, setContributeInitialFlow] = useState(null);
+  const [justCreatedId, setJustCreatedId] = useState(null);
 
   const [editingProject, setEditingProject] = useState(null);
-  const [gardenNav, setGardenNav] = useState({key:0, viewMode:"directory", stageFilter:"All"});
+  const [gardenNav, setGardenNav] = useState({key:0, viewMode:"grouped", stageFilter:"All"});
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null); // null | "profile" | "about"
   const profileDropRef = useRef(null);
+  const isPopNavRef    = useRef(false); // true while syncing state from a popstate event
+  const urlInitEmailRef = useRef(null); // email of the user who last ran URL→state init
   const [gateToast, setGateToast] = useState(null); // { message, reason } | null
   const [deleteRequests, setDeleteRequests] = useState([]);
   const [deleteReqModal, setDeleteReqModal] = useState(null); // { entity, entityType } | null
@@ -8610,6 +8986,24 @@ export default function SproutAIGarden() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Google Analytics page view tracking ──────────────────────────────────────
+  useEffect(() => {
+    if (typeof window.gtag !== "function") return;
+    const PAGE_TITLES = {
+      dashboard:      "Overview",
+      garden:         "Garden",
+      wishlist:       "Seeds",
+      devops:         "Tool Shed",
+      guide:          "Guide",
+      "project-detail": "Project Detail",
+      admin:          "Admin",
+    };
+    window.gtag("event", "page_view", {
+      page_title:    PAGE_TITLES[view] ?? view,
+      page_location: window.location.origin + "/#" + view,
+    });
+  }, [view]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setAuthUser(null);
@@ -8665,6 +9059,12 @@ export default function SproutAIGarden() {
       setDeleteRequests(delReqs);
       setDataLoading(false);
     });
+    // Load rooting reviews independently
+    supabase
+      .from("rooting_reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data: rvData }) => { if (rvData) setRootingReviews(rvData); });
   }, [authUser?.email]);
 
   // ── Load notifications ──────────────────────────────────────────────────────
@@ -8672,6 +9072,64 @@ export default function SproutAIGarden() {
     if (!authUser) return;
     loadNotifications().then(data => setNotifications(data));
   }, [authUser?.email]);
+
+  // ── Deep-link: ?project=ID opens project detail directly ─────────────────
+  const MAIN_VIEWS = ["dashboard","garden","wishlist","devops","admin","guide","project-detail"];
+  const NAV_VALID  = ["dashboard","garden","wishlist","devops","admin","guide"];
+
+  const applyUrlToState = (params) => {
+    const pid       = params.get("project");
+    const viewParam = params.get("view");
+    if (pid) {
+      const target = projects.find(p => String(p.id) === String(pid));
+      if (target) { setDetailProject(target); setView("project-detail"); return; }
+    }
+    if (viewParam && NAV_VALID.includes(viewParam)) {
+      if (viewParam === "admin" && !authUser?.isAdmin) { setView("dashboard"); return; }
+      setView(viewParam);
+      setDetailProject(null);
+    } else {
+      setView("dashboard");
+      setDetailProject(null);
+    }
+  };
+
+  // ── URL → state: read params on initial load (once per login session) ────
+  useEffect(() => {
+    if (!authUser || projects.length === 0) return;
+    if (urlInitEmailRef.current === authUser.email) return;
+    urlInitEmailRef.current = authUser.email;
+    applyUrlToState(new URLSearchParams(window.location.search));
+  }, [authUser?.email, projects.length]);
+
+  // ── state → URL: push a history entry on every navigation ────────────────
+  useEffect(() => {
+    if (!authUser) return;
+    if (!MAIN_VIEWS.includes(view)) return;   // skip internal panel states
+    if (isPopNavRef.current) { isPopNavRef.current = false; return; } // came from popstate — don't re-push
+    const params = new URLSearchParams();
+    if (view === "project-detail" && detailProject) {
+      params.set("view", "project-detail");
+      params.set("project", String(detailProject.id));
+    } else if (view !== "dashboard") {
+      params.set("view", view);
+    }
+    const newSearch = params.toString() ? "?" + params.toString() : "";
+    if (newSearch !== window.location.search) {
+      window.history.pushState(null, "", newSearch || "/");
+    }
+  }, [view, detailProject?.id, authUser?.email]);
+
+  // ── popstate: back / forward buttons sync URL → state ────────────────────
+  useEffect(() => {
+    const onPopState = () => {
+      if (!authUser) return;
+      isPopNavRef.current = true;
+      applyUrlToState(new URLSearchParams(window.location.search));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [authUser?.email, projects.length]);
 
   // ── DevOps request handlers ────────────────────────────────────────────────
   const handleCreateDevopsRequest = async (req) => {
@@ -8726,6 +9184,12 @@ export default function SproutAIGarden() {
     const { data, error } = await supabase.from("devops_requests").insert(fromDevopsRequest({ ...req, jiraTicketKey })).select().single();
     if (error) { console.error("createDevopsRequest:", error); return { ok: false, message: error.message }; }
     setDevopsRequests(prev => [toDevopsRequest(data), ...prev]);
+    notifySupportRequested({
+      projectName:  req.projectName,
+      requestedBy:  authUser?.displayName || req.requestedBy,
+      tier:         req.tier ?? null,
+      jiraTicketKey,
+    });
     return { ok: true, jiraTicketKey };
   };
 
@@ -8876,41 +9340,93 @@ export default function SproutAIGarden() {
     const withCountry = {...proj, country: proj.country || authUser?.country || "PH", builderEmail: proj.builderEmail || authUser?.email || ''};
     const row = {...fromProject(withCountry), country: withCountry.country}; // country excluded from fromProject (immutability), re-added for INSERT only
     const { data, error } = await supabase.from("projects").insert(row).select().single();
-    if (error) { console.error("addProject:", error); return; }
+    if (error) { console.error("addProject:", error); return null; }
     const saved = toProject(data);
     setProjects(prev => [saved, ...prev]);
     logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
+    notifyProjectCreated(saved);
+    return saved;
+  };
+
+  const handleStartProject = async (name, classification = {}) => {
+    // Bypass fromProject to avoid inserting v2 columns that may not exist yet.
+    // Only send the safe core columns present in all schema versions.
+    const { hasBackend = null, targetUsers = null, builtBy = "Marketing", builtFor = [] } = classification;
+    const tier = hasBackend === null || targetUsers === null ? null
+               : hasBackend === false ? 1
+               : targetUsers !== "internal" ? 3
+               : 2;
+    const row = {
+      name:                name.trim(),
+      builder:             authUser.displayName,
+      builder_email:       authUser.email,
+      stage:               "seedling",
+      built_by:            builtBy,
+      built_for:           builtFor,
+      description:         "",
+      demo_link:           "",
+      collaborator_emails: [],
+      tool_used:           [],
+      agentic_framework:   [],
+      data_sources:        [],
+      notes:               [],
+      milestones:          ["Seedling — " + new Date().toLocaleDateString("en-PH", {month:"short",year:"numeric"})],
+      impact_num:          "TBD",
+      interested_users:    [],
+      problem_space:       "",
+      zx:                  Math.round(40 + Math.random() * 20),
+      zy:                  Math.round(45 + Math.random() * 20),
+      last_updated:        new Date().toISOString(),
+      country:             authUser.country || "PH",
+      has_backend:         hasBackend,
+      target_users:        targetUsers,
+      tier,
+    };
+    const { data, error } = await supabase.from("projects").insert(row).select().single();
+    if (error) { console.error("handleStartProject:", error); return; }
+    const saved = toProject(data);
+    setProjects(prev => [saved, ...prev]);
+    logActivity("project_added", saved.name, { project_id: String(saved.id), to_stage: saved.stage });
+    notifyProjectCreated(saved);
+    setShowContribute(false);
+    setContributeInitialFlow(null);
+    setJustCreatedId(saved.id);
+    setDetailProject(saved);
+    setView("project-detail");
   };
 
   const handleUpdateProject = async (updated) => {
-    if (!authUser || (authUser.email !== updated.builderEmail && !authUser.isAdmin)) return;
+    if (!authUser || (authUser.email !== updated.builderEmail && !authUser.isAdmin)) return { ok: false };
     const row = fromProject(updated);
     delete row.country; // country is immutable — never send in UPDATE
     const { error } = await supabase.from("projects").update(row).eq("id", updated.id);
-    if (error) { console.error("handleUpdateProject:", error); return; }
+    if (error) { console.error("handleUpdateProject:", error); return { ok: false }; }
     setProjects(prev => prev.map(p => p.id === updated.id ? {...p, ...updated} : p));
+    return { ok: true };
   };
 
-  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, demoLink, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
+  const handleSaveClassification = async (projectId, {hasBackend, targetUsers, tier, githubRepo, hosting, requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails, dataSensitivity, sendsToExternalAI, hasSensitiveData}) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
     if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
     const now = new Date().toISOString();
     const { error } = await supabase.from("projects").update({
       has_backend: hasBackend, target_users: targetUsers, tier, last_updated: now,
-      demo_link: demoLink, github_repo: githubRepo, hosting,
+      github_repo: githubRepo, hosting,
       requires_auth: requiresAuth, auth_type: authType,
       has_database: hasDatabase, database, connects_sprout_db: connectsSproutDb,
+      sprout_db_details: sproutDbDetails || null,
       data_sensitivity: dataSensitivity, sends_to_external_ai: sendsToExternalAI,
       has_sensitive_data: hasSensitiveData,
     }).eq("id", projectId);
-    if (error) { console.error("saveClassification:", error); return; }
+    if (error) { console.error("saveClassification:", error); return { ok: false }; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, hasBackend, targetUsers, tier, demoLink, githubRepo, hosting,
-              requiresAuth, authType, hasDatabase, database, connectsSproutDb,
+      ? {...p, hasBackend, targetUsers, tier, githubRepo, hosting,
+              requiresAuth, authType, hasDatabase, database, connectsSproutDb, sproutDbDetails,
               dataSensitivity, sendsToExternalAI, hasSensitiveData, lastUpdated: 0}
       : p
     ));
+    return { ok: true };
   };
 
   const handleUpdateWish = async (updated) => {
@@ -9004,6 +9520,22 @@ export default function SproutAIGarden() {
         });
       } catch(e) { console.warn("Jira ticket for release review failed:", e.message); }
     }
+    // Notify Release Manager via email (non-fatal)
+    fetch("/api/send-release-review-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action:       "submit",
+        projectName:  project.name,
+        builderName:  project.builder || authUser?.displayName || authUser?.email,
+        builderEmail: project.builderEmail || authUser?.email,
+        stage:        project.stage,
+        tier:         project.tier,
+        demoLink:     project.demoLink || null,
+        description:  project.description || null,
+      }),
+    }).catch(e => console.warn("Release review notification email failed:", e.message));
+
     logActivity("release_review_submitted", project.name, { project_id: String(project.id), stage: project.stage });
   };
 
@@ -9022,6 +9554,23 @@ export default function SproutAIGarden() {
           releaseReviewedBy: authUser.email, releaseReviewedAt: now}
       : p
     ));
+    // Notify builder of the decision via email (non-fatal)
+    if (project.builderEmail) {
+      fetch("/api/send-release-review-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action:       "decision",
+          decisionType: action,
+          projectName:  project.name,
+          builderEmail: project.builderEmail,
+          stage:        project.stage,
+          reviewerName: authUser?.displayName || authUser?.email,
+          comment:      comment || null,
+        }),
+      }).catch(e => console.warn("Release review decision email failed:", e.message));
+    }
+
     logActivity("release_review_actioned", project.name, { project_id: String(project.id), action });
   };
 
@@ -9146,10 +9695,21 @@ export default function SproutAIGarden() {
   };
 
   const withdrawFromNursery = async (projectId) => {
-    const { error } = await supabase.rpc("withdraw_from_nursery", { p_id: projectId });
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    if (!authUser || (authUser.email !== project.builderEmail && !authUser.isAdmin)) return;
+    const { error } = await supabase.from("projects").update({
+      stage: "seedling",
+      review_status: null,
+      approval_status: null,
+      approval_requested_at: null,
+      approved_at: null,
+      approval_rejected_at: null,
+      approval_rejection_reason: null,
+    }).eq("id", projectId).eq("stage", "nursery");
     if (error) { console.error("withdrawFromNursery:", error); return; }
     setProjects(prev => prev.map(p => p.id === projectId
-      ? {...p, stage:"seedling", reviewStatus:null}
+      ? {...p, stage:"seedling", reviewStatus:null, approvalStatus:null, approvalRequestedAt:null, approvedAt:null, approvalRejectedAt:null, approvalRejectionReason:null}
       : p
     ));
     setSelected(null);
@@ -9408,10 +9968,10 @@ export default function SproutAIGarden() {
   const tod = getTimeOfDayStyle();
 
   return (
-    <div style={{fontFamily:FF,background:tod.bg,minHeight:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",transition:"background 2s ease"}}>
+    <div style={{fontFamily:FF,background:C.mushroom50,height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
 
-      {/* Time-of-day glow — sits behind all content */}
-      {tod.glow&&(
+      {/* Time-of-day glow — disabled */}
+      {false&&tod.glow&&(
         <div style={{position:"fixed",inset:0,background:tod.glow,opacity:tod.glowOpacity,pointerEvents:"none",zIndex:0}}/>
       )}
 
@@ -9541,10 +10101,10 @@ export default function SproutAIGarden() {
       {/* ── Main content + Detail Panel ── */}
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}}/>}
+          {view==="dashboard" && <OverviewDashboard projects={visibleProjects} wishes={visibleWishes} activityLog={activityLog} authUser={authUser} onSelectProject={handleSelectProject} onNavigateGarden={(vm,sf)=>{setGardenNav(prev=>({key:prev.key+1,viewMode:vm,stageFilter:sf}));setView("garden");}} onNavigateWishlist={()=>setView("wishlist")} onOpenProject={p=>{setSelected(p);}} onContribute={()=>{setContributeInitialFlow("plant");setShowContribute(true);}}/>}
           {view==="garden"    && <GardenHub key={gardenNav.key} initialViewMode={gardenNav.viewMode} initialStageFilter={gardenNav.stageFilter} projects={visibleProjects} wishes={visibleWishes} selected={selected} setSelected={setSelected} authUser={authUser} onMoveStage={handleMoveStage} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onViewDetail={p=>{setDetailProject(p);setSelected(null);setView("project-detail");}} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
-          {view==="devops"    && <DevopsBoard authUser={authUser}/>}
+          {view==="devops"    && <DevopsBoard authUser={authUser} rootingReviews={rootingReviews}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
           {view==="project-detail"&&detailProject&&!approvedDeleteIds.has(String(detailProject.id))&&(
@@ -9552,7 +10112,9 @@ export default function SproutAIGarden() {
               project={visibleProjects.find(p=>p.id===detailProject.id)||detailProject}
               allProjects={visibleProjects}
               authUser={authUser}
-              onBack={()=>{setView("garden");setDetailProject(null);}}
+              onBack={()=>{setView("garden");setDetailProject(null);setJustCreatedId(null);}}
+              justCreated={justCreatedId === detailProject?.id}
+              onDismissCreated={() => setJustCreatedId(null)}
               onNote={addNote}
               onUpdateProject={handleUpdateProject}
               onViewRelated={r=>{setDetailProject(r);}}
@@ -9564,10 +10126,12 @@ export default function SproutAIGarden() {
               onToggleInterested={handleToggleInterested}
               onSaveClassification={handleSaveClassification}
               onCreateDevopsRequest={handleCreateDevopsRequest}
+              devopsRequests={devopsRequests.filter(r=>String(r.projectId)===String(detailProject.id))}
               onMoveStage={handleMoveStage}
               onSubmitReleaseReview={handleSubmitReleaseReview}
               onReleaseReviewAction={handleReleaseReviewAction}
               onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
+              pendingDeleteIds={pendingDeleteIds}
             />
           )}
         </div>
@@ -9588,6 +10152,7 @@ export default function SproutAIGarden() {
             onSubmitReleaseReview={handleSubmitReleaseReview}
             onReleaseReviewAction={handleReleaseReviewAction}
             onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})}
+            pendingDeleteIds={pendingDeleteIds}
           />
         )}
 
@@ -9610,19 +10175,12 @@ export default function SproutAIGarden() {
         />
       )}
 
-      {showForm && (
-        <AddProjectModal
-          onClose={()=>setShowForm(false)}
-          onAdd={addProject} projects={projects}
-          authUser={authUser}
-        />
-      )}
-
       {showContribute && (
         <ContributeModal
           onClose={()=>setShowContribute(false)}
           onAdd={addProject}
           onAddWish={handleAddWish}
+          onStartProject={handleStartProject}
           projects={projects}
           authUser={authUser}
           initialFlow={contributeInitialFlow}

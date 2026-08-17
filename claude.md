@@ -61,9 +61,17 @@ From PRD Section 7.2. Any violation is a build failure.
 
 ---
 
-## 4. Permissions — Two Roles Only
+## 4. Permissions — Role Overview
 
-### Normal User (any authenticated employee)
+**Display roles (UI labels):**
+- **Gardener** — any Sprout employee who owns or builds an AI project
+- **Groundskeeper** — Raffy, Coleen, Nikki, Blaise; Project Support & DevOps team who help projects go live. Not a DB role — they are regular users in the system. IS / Execom approval must be secured before tickets are raised for them.
+- **Release Manager** — Belle Asis, Diane Litan; reviews and approves stage advancement (same DB role as Admin)
+- **Admin** — Belle Asis, Diane Litan; system-level access (`is_gardener = true` in DB)
+
+**DB roles (two only — Supabase RLS):**
+
+### Gardener (any authenticated employee)
 
 | Action | Allowed | Rule |
 |---|---|---|
@@ -80,7 +88,7 @@ From PRD Section 7.2. Any violation is a build failure.
 
 ### Admin (`is_gardener = true`, ~1–2 people)
 
-Everything a Normal User can do, plus:
+Everything a Gardener can do, plus:
 
 | Action | Allowed |
 |---|---|
