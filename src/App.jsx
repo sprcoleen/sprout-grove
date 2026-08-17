@@ -8873,6 +8873,8 @@ export default function SproutAIGarden() {
   const profileDropRef = useRef(null);
   const isPopNavRef    = useRef(false); // true while syncing state from a popstate event
   const urlInitEmailRef = useRef(null); // email of the user who last ran URL→state init
+  // Capture URL params at mount — Supabase's PKCE cleanup wipes window.location.search async
+  const initialUrlParams = useRef(new URLSearchParams(window.location.search));
   const [gateToast, setGateToast] = useState(null); // { message, reason } | null
   const [deleteRequests, setDeleteRequests] = useState([]);
   const [deleteReqModal, setDeleteReqModal] = useState(null); // { entity, entityType } | null
@@ -9099,7 +9101,7 @@ export default function SproutAIGarden() {
     if (!authUser || projects.length === 0) return;
     if (urlInitEmailRef.current === authUser.email) return;
     urlInitEmailRef.current = authUser.email;
-    applyUrlToState(new URLSearchParams(window.location.search));
+    applyUrlToState(initialUrlParams.current);
   }, [authUser?.email, projects.length]);
 
   // ── state → URL: push a history entry on every navigation ────────────────
