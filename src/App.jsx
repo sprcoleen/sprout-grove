@@ -4214,8 +4214,8 @@ const ProjectDetailPage = ({
 
   const computedTier =
     cHasBackend === null || cTargetUsers === null ? null :
-    cHasBackend === false && cTargetUsers === 'internal' ? 1 :
-    cHasBackend === true  && cTargetUsers !== 'internal' ? 3 :
+    cHasBackend === false ? 1 :
+    cTargetUsers !== 'internal' ? 3 :
     2;
 
   const SENSITIVE_LEVELS = ['Sensitive (PII, HR, payroll)', 'Highly sensitive (health, financial)'];
@@ -6471,8 +6471,8 @@ const ContributeModal = ({onClose, onAdd, onAddWish, onStartProject=null, projec
             </div>
 
             {plantHasBackend !== null && plantTargetUsers !== null && (() => {
-              const t = plantHasBackend === false && plantTargetUsers === "internal" ? 1
-                      : plantHasBackend === true  && plantTargetUsers !== "internal" ? 3
+              const t = plantHasBackend === false ? 1
+                      : plantTargetUsers !== "internal" ? 3
                       : 2;
               const tLabel = t === 1 ? "Tier 1 — Static / Internal" : t === 2 ? "Tier 2 — Internal App" : "Tier 3 — External-Facing";
               const tColor = t === 1 ? C.mushroom600 : t === 2 ? C.blueberry500 : C.carrot500;
@@ -9353,8 +9353,8 @@ export default function SproutAIGarden() {
     // Only send the safe core columns present in all schema versions.
     const { hasBackend = null, targetUsers = null, builtBy = "Marketing", builtFor = [] } = classification;
     const tier = hasBackend === null || targetUsers === null ? null
-               : hasBackend === false && targetUsers === "internal" ? 1
-               : hasBackend === true  && targetUsers !== "internal" ? 3
+               : hasBackend === false ? 1
+               : targetUsers !== "internal" ? 3
                : 2;
     const row = {
       name:                name.trim(),
