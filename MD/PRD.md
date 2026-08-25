@@ -120,7 +120,11 @@ Release review lifecycle: `null → pending → approved | rejected`. Submitting
 | Approve / reject a release review | ❌ | ✅ |
 | Approve a deletion request | ❌ | ✅ |
 
-**Nobody deletes directly.** Owners and admins file a *deletion request*; only an admin approving it performs the hard delete. Fulfilled Seeds are refused outright.
+**Nobody deletes directly — with one exception.** Owners and admins file a *deletion request*; only an admin approving it performs the hard delete. Fulfilled Seeds are refused outright.
+
+> ⚠️ The exception is undocumented and lives only in RLS: the `"Builder delete own seedling"` policy lets a builder hard-delete their own project while it is still at `seedling`, with no request and no audit row. The UI does not offer this, but the database allows it. Flagged in [NEXT-STEPS.md](NEXT-STEPS.md) — keep and document, or remove.
+
+**Approvers** (`is_approver`) can update **any** project, not just review fields — the `projects` update policy resolves to `builder OR is_admin() OR is_approver()` despite being named "Own or admin update". Also flagged for confirmation.
 
 Admin identity resolves from `ADMIN_EMAILS` in [src/config/roles.js](../src/config/roles.js) and is synced into `profiles.is_admin` on login so RLS stays in lockstep. **Adding an admin is a code change, not a dashboard change.**
 

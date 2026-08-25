@@ -34,8 +34,9 @@ src/
 api/                       Vercel serverless functions
 server/local-api.js        Local stand-in for api/* on :3001, loads .env.local
 supabase/
-  schema.sql               Original bootstrap schema (STALE — see §7)
-  migrations/02..24-*.sql  Incremental DDL, applied by hand in the SQL editor
+  schema.sql               Bootstrap schema, GENERATED from the live DB — do not hand-edit
+  migrations/02..25-*.sql  Incremental DDL, applied by hand in the SQL editor
+  tools/dump-schema.sql    Regenerates schema.sql from pg_catalog (SQL editor)
   functions/               Deno edge functions
 e2e/                       Playwright specs + auth setup
 docs/                      Design briefs, historical specs and plans
@@ -123,21 +124,36 @@ Most mutations follow: optimistic `setProjects(...)` → `supabase.from(...).upd
 | `rooting_reviews` | Internal Rooting review tickets (not Jira) |
 | `delete_requests` | Deletion queue — nothing is hard-deleted without an approval here |
 | `help_items` | Help panel feedback / questions |
+| `changelog` | Admin-authored release notes. Full RLS, but **nothing in `src/` reads it** and no migration creates it |
 
 ### RLS model
 
+Two `SECURITY DEFINER` helpers gate everything:
+
 ```sql
 create or replace function is_admin() returns boolean as $$
-  select coalesce((select is_gardener from profiles where id = auth.uid()), false);
+  select coalesce((select is_admin from profiles where id = auth.uid()), false);
 $$ language sql security definer;
+-- is_approver() is identical, reading profiles.is_approver
 ```
 
 - `profiles` — public read; insert/update own row only.
-- `projects` — authenticated read + insert; update if `auth.email() = builder_email` or admin; delete admin only.
+- `projects` — authenticated read + insert; update if builder **or admin or approver**; delete admin only, **plus builders on their own `seedling` rows**.
 - `wishes` — authenticated read + insert; update if wisher, claimer, or admin; delete admin only.
+- `activity_log`, `rooting_reviews` — authenticated read + insert.
+- `notifications` — own rows only.
+- `delete_requests` — authenticated read; insert own; admin update/delete.
+- `devops_requests` — authenticated read + insert; update by admin or `is_devops`.
+- `help_items` — authenticated read; insert own; submitter may edit while open; admin update/delete.
+- `changelog` — authenticated read; admin writes.
 
-> ⚠️ The snippet above is what `schema.sql` still contains, and it is **wrong** — it reads `is_gardener`, a column migration `04` renamed to `is_admin`.
-> **Production is fine.** Verified 2026-08-25: `profiles.is_gardener` no longer exists, and the `is_admin()` RPC returns `false` cleanly rather than raising `42703`, which it would if the deployed body still referenced the old column. Someone recreated the function correctly and never updated the repo file. `schema-staging.sql` has the correct version.
+> ⚠️ Two policies do not match their names, both live in production:
+> - `"Service role update"` on `rooting_reviews` is scoped `to public using (true)` — **any authenticated user can update any rooting review**, including approving it.
+> - `"Builder delete own seedling"` on `projects` allows a hard delete with no `delete_request` and no audit row, contradicting the documented flow.
+>
+> Neither is reachable through the UI, but RLS is the layer meant to hold when the UI is bypassed. Both are written up in [NEXT-STEPS.md](NEXT-STEPS.md) §P0.
+
+The full current policy set is in [`supabase/schema.sql`](../supabase/schema.sql), generated from the live database.
 
 ### Migrations
 
@@ -155,9 +171,16 @@ Status as of 2026-08-25. Production was checked directly; **none of the original
 
 | # | Issue | Status |
 |---|---|---|
-| 1 | **Neither bootstrap file can recreate the database.** `schema.sql` declares the old stages (`sprout/growing/blooming/thriving`) and the old `is_gardener` column. `schema-staging.sql` is correct on stages, roles and RLS but declares only 32 of the 76 columns the app writes — it stops around migration `12`. | **Open.** The highest-value remaining fix. See [NEXT-STEPS.md](NEXT-STEPS.md) |
+| 1 | Neither bootstrap file could recreate the database — `schema.sql` had the old stages and `is_gardener`; `schema-staging.sql` covered 32 of 76 columns | **Fixed.** `schema.sql` regenerated from the live DB; all 76 written columns verified present; `schema-staging.sql` deleted |
 | 2 | Migration `01-stage-rename.sql` exists only inside `.claude/worktrees/grove-v2/`, so `supabase/migrations/` starts at `02` | **Open**, cosmetic |
-| 3 | `is_admin()` in `schema.sql` reads `is_gardener` | **Not a production bug.** Deployed function verified correct; repo file is stale. Fixed when #1 is |
+| 3 | `is_admin()` in `schema.sql` read `is_gardener` | **Was never a production bug** — deployed function verified correct. Repo file now regenerated |
+| 11 | `"Service role update"` on `rooting_reviews` is `to public using (true)` | **Open — P0.** Any authenticated user can update any rooting review |
+| 12 | `"Builder delete own seedling"` allows hard delete outside the `delete_requests` queue | **Open — P0.** Contradicts the documented flow; may be intentional |
+| 13 | `projects` update policy grants `is_approver()` full update on every project | **Open — P0.** Broader than the name or docs suggest |
+| 14 | `approval_token` is `uuid` in production; migration `24` declares `text` | **Open.** Second undocumented dashboard change |
+| 15 | `projects.stage` still defaults to `'sprout'` | **Open.** Latent — the app always sets it explicitly |
+| 16 | `withdraw_from_nursery(p_id uuid)` cannot match a row (`projects.id` is `bigint`) and is uncalled | **Open.** Dead `SECURITY DEFINER` function |
+| 17 | No indexes beyond PK/unique | **Open.** Fine at current row counts |
 | 4 | Migration `18` declares `auth_type text`; production is `text[]` | **Reconciled.** Someone widened it in the dashboard without a migration. `25-auth-type-array.sql` records it and is a no-op on prod |
 | 5 | No record of which migrations are applied | **Open by design.** `02`–`24` now verified applied; re-verify with the PostgREST probe in §6 |
 | 6 | `nursery` (DB) vs "Rooting" (UI) | **Won't fix** — renaming the column would touch every row and every query. Documented instead |

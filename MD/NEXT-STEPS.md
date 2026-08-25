@@ -30,40 +30,79 @@ Method, for repeating this later: PostgREST validates column names before RLS, s
 
 ---
 
-## P1 — The one real remaining gap
+### Bootstrap schema rebuilt
 
-### 1. Build a bootstrap schema that actually works
+`supabase/schema.sql` is now generated from the live database (2026-08-25) via [`tools/dump-schema.sql`](../supabase/tools/dump-schema.sql), and `schema-staging.sql` is deleted. All 76 columns the app writes are present, verified against `fromProject`.
 
-Neither file in `supabase/` can recreate the database:
+`pg_dump` was not usable: this machine has neither `pg_dump` nor Docker, and `supabase db dump` shells `pg_dump` into a container. The catalog script sidesteps both and needs no database password. It does not capture triggers, grants or extensions — for full fidelity, `winget install PostgreSQL.PostgreSQL.17` then `pg_dump --schema-only --no-owner --no-privileges "$SUPABASE_DB_URL"`.
 
-| File | Stages | Role column | Column coverage |
-|---|---|---|---|
-| `schema.sql` | ❌ old (`sprout/growing/blooming/thriving`) | ❌ `is_gardener` | ~20 migrations behind |
-| `schema-staging.sql` | ✅ correct | ✅ `is_admin` | 32 of the 76 columns the app writes — stops around migration `12` |
+Regenerating the dump also surfaced everything in P0 and P1 below — none of which was visible from the migration files alone.
 
-So there is no way to stand up a new environment, and no single file that describes the current shape. That is also why the `auth_type` drift went unnoticed for so long.
+---
 
-**Do this:** run [`supabase/tools/dump-schema.sql`](../supabase/tools/dump-schema.sql) in the Supabase SQL editor and save its output over `supabase/schema.sql`.
+## P0 — Two RLS policies do not do what their names say
 
-That script generates the DDL for the whole `public` schema — tables, columns, defaults, constraints, indexes, functions, RLS enablement and every policy — from `pg_catalog`. It needs no local tooling and no database password.
+Both are live in production. Neither is exploitable from the UI, but RLS is the layer that is supposed to hold when the UI is bypassed, and these do not.
 
-Why not `pg_dump`: this machine has neither `pg_dump` nor Docker, and `supabase db dump` shells `pg_dump` into a container, so it fails the same way. If you would rather use the real thing, `winget install PostgreSQL.PostgreSQL.17` provides `pg_dump`, and then:
+### 1. Any authenticated user can update any rooting review
 
-```bash
-pg_dump --schema-only --no-owner --no-privileges "$SUPABASE_DB_URL" > supabase/schema.sql
+```sql
+create policy "Service role update" on rooting_reviews
+  for update to public using (true);
 ```
 
-`SUPABASE_DB_URL` is the connection string from Supabase → Project Settings → Database. It carries the DB password, so keep it in `.env.local` (gitignored) rather than pasting it anywhere shared. `pg_dump` also captures triggers, grants and extensions, which the SQL-editor script deliberately skips.
+Named "Service role update", but scoped `to public` with `using (true)` — so every signed-in employee can rewrite any rooting review, including flipping `status` to `approved` and clearing `rejection_reason`. Rooting is the leadership review gate; this policy makes its record editable by the people it gates.
 
-Either way: delete `schema-staging.sql` once `schema.sql` is authoritative, and mark the new file **generated — do not hand-edit**.
+**Fix:** scope it to the service role, or to `is_admin() or is_approver()`, matching who is actually meant to resolve a review.
 
-While you are in there, move `01-stage-rename.sql` out of `.claude/worktrees/grove-v2/` into `supabase/migrations/`, or note in a folder README that numbering starts at `02` deliberately.
+### 2. Builders can hard-delete their own seedling projects
+
+```sql
+create policy "Builder delete own seedling" on projects
+  for delete to public using (auth.email() = builder_email and stage = 'seedling');
+```
+
+This bypasses the `delete_requests` queue entirely and contradicts `claude.md` §3 ("Delete anything ❌") and the documented flow where only an admin approving a request performs a hard delete.
+
+It may well be deliberate — letting someone remove a project they just created by mistake is reasonable. But it is undocumented, and it is a hard delete with no audit row. **Decide:** keep it and document it, or drop the policy and route seedling deletes through the queue like everything else.
+
+### 3. Approvers can update any project
+
+`"Own or admin update"` on `projects` resolves to `builder OR is_admin() OR is_approver()`. The name and all the docs say builder-or-admin. Approvers needing to act at the Rooting gate is plausible, but the policy grants them every column on every project at every stage, not just the review fields. Confirm the scope is intended.
+
+---
+
+## P1 — Drift the migration files cannot see
+
+### 4. `approval_token` is `uuid`, migration 24 says `text`
+
+The second undocumented dashboard change, same shape as the `auth_type` one. Production is `uuid`; the migration that created it declares `text`. Anything built from the migrations gets the wrong type. Fold this into `26-*.sql` alongside a fix for #5.
+
+### 5. `projects.stage` still defaults to `'sprout'`
+
+The check constraint is correct (`seedling/nursery/sprout/bloom/thriving`), but the column default was never updated from the pre-rename schema. Latent only because `handleStartProject` always sets `stage` explicitly — any insert that omits it lands a project in the middle of the pipeline. Set the default to `'seedling'`.
+
+### 6. `withdraw_from_nursery(p_id uuid)` is dead and broken
+
+`projects.id` is `bigint`, so the parameter type can never match a row. Nothing in `src/` calls it. Drop it, or fix the signature and wire it up — right now it is a `SECURITY DEFINER` function that cannot work.
+
+### 7. No indexes beyond primary keys
+
+The dump returned an empty index section. `projects.builder_email`, `delete_requests.status`, `activity_log.created_at` and `devops_requests.project_id` are all filtered or ordered on every load. Not urgent at current row counts, but the first thing to reach for if the dashboard slows.
+
+### 8. `changelog` table is undocumented
+
+Exists with full RLS and admin-only writes, but nothing in `src/` reads it and no migration in `supabase/migrations/` creates it. Either it predates the migration folder or it was made in the dashboard. Work out which, then document or drop it.
+
+### 9. Migration `01-stage-rename.sql` lives only in `.claude/worktrees/grove-v2/`
+
+Move it into `supabase/migrations/`, or note in a folder README that numbering starts at `02` deliberately.
 
 ---
 
 ## P2 — Cover the logic that governs everything
 
-### 2. Extract and test the gate and the tier function
+### 10. Extract and test the gate and the tier function
 
 Unit coverage reaches `utils.js`, the `db.js` transforms, and approver logic. It does **not** reach the three functions that decide what users are allowed to do:
 
@@ -77,7 +116,7 @@ The tier expression is duplicated in **three** places ([App.jsx:4215](../src/App
 
 This is the highest-value code change on the list.
 
-### 3. Harden the Jira status mapping
+### 11. Harden the Jira status mapping
 
 `JIRA_COLS` matches Jira status names by exact string. Renaming a status in Jira makes tickets vanish from every Tool Shed column with no error. Add a fallback column for unmatched statuses so tickets surface instead of disappearing.
 
@@ -85,13 +124,13 @@ This is the highest-value code change on the list.
 
 ## P3 — Worth doing, no urgency
 
-### 4. De-hardcode the Release Manager
+### 12. De-hardcode the Release Manager
 `cbasis@sprout.ph` is hardcoded in `api/handle-approval.js` and `api/send-release-review-email.js`. Move it to an env var so the role can change hands without a deploy.
 
-### 5. Branch hygiene
+### 13. Branch hygiene
 All six `feature/*` branches are fully merged into `master` (0 commits ahead) — delete them locally and on the remote. `origin/main` is a single orphan "Initial commit" unrelated to `master`; delete it or document why it exists.
 
-### 6. Refactor the monolith
+### 14. Refactor the monolith
 `src/App.jsx` is ~10,250 lines. Not currently a problem — everything is inline-styled, the tokens are local, and splitting it would create import churn for no functional gain.
 
 Split it when one of these becomes true:
@@ -117,7 +156,8 @@ Still explicitly out of scope per the PRD: realtime subscriptions, pg_cron, Sent
 
 ## Suggested order
 
-1. Run `25-auth-type-array.sql` in the SQL editor (no-op, but marks it applied)
-2. Run `tools/dump-schema.sql` in the SQL editor → real `schema.sql`, retire `schema-staging.sql` (**P1 #1**)
-3. Extract `getStageGate` and the tier function, test the truth table (**P2 #2**)
-4. Everything else as capacity allows
+1. **Decide on the two RLS policies (#1, #2) and the approver scope (#3)** — these are product calls, not cleanups. #1 in particular lets any employee approve their own rooting review
+2. Write `26-*.sql` folding together the fixes for #1–#6 that you agreed, run it, then regenerate `schema.sql` from `tools/dump-schema.sql`
+3. Run `25-auth-type-array.sql` (no-op, but marks it applied)
+4. Extract `getStageGate` and the tier function, test the truth table (**#10**)
+5. Everything else as capacity allows
