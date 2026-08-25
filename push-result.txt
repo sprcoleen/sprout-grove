@@ -1,2 +1,0 @@
-To https://github.com/kvirata-web/sprout-garden.git
-   4ad5d55..9fe53b1  main -> main

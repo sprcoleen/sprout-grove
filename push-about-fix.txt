@@ -1,2 +1,0 @@
-To https://github.com/kvirata-web/sprout-garden.git
-   c149a17..97696db  staging -> staging

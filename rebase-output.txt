@@ -1,3 +1,0 @@
-error: cannot rebase: You have unstaged changes.
-error: Please commit or stash them.
-EXIT:1

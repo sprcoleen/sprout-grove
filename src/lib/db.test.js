@@ -71,7 +71,8 @@ describe('toProject', () => {
     expect(project.country).toBe('PH')
     expect(project.name).toBe('Test Project')
     expect(project.builtBy).toBe('Engineering')
-    expect(project.builtFor).toBe('Finance')
+    // built_for became text[] in migration 10; toProject coerces scalars to an array
+    expect(project.builtFor).toEqual(['Finance'])
     expect(project.stage).toBe('seedling')
     expect(project.builder).toBe('Alice')
     expect(project.builderEmail).toBe('alice@sprout.ph')

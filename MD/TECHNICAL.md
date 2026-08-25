@@ -136,27 +136,35 @@ $$ language sql security definer;
 - `projects` — authenticated read + insert; update if `auth.email() = builder_email` or admin; delete admin only.
 - `wishes` — authenticated read + insert; update if wisher, claimer, or admin; delete admin only.
 
-> ⚠️ `is_admin()` in `schema.sql` still reads the **`is_gardener`** column, which migration `04` renamed to `is_admin`. Verify what is actually deployed before trusting either. See [NEXT-STEPS.md](NEXT-STEPS.md).
+> ⚠️ The snippet above is what `schema.sql` still contains, and it is **wrong** — it reads `is_gardener`, a column migration `04` renamed to `is_admin`.
+> **Production is fine.** Verified 2026-08-25: `profiles.is_gardener` no longer exists, and the `is_admin()` RPC returns `false` cleanly rather than raising `42703`, which it would if the deployed body still referenced the old column. Someone recreated the function correctly and never updated the repo file. `schema-staging.sql` has the correct version.
 
 ### Migrations
 
-`supabase/migrations/02` … `24`, applied **by hand** in the Supabase SQL editor — the anon key cannot run DDL. There is no migration runner and no applied-state tracking, so the only way to know what is live is to inspect the deployed schema.
+`supabase/migrations/02` … `25`, applied **by hand** in the Supabase SQL editor — the anon key cannot run DDL. There is no migration runner and no applied-state tracking.
 
-Notable: `18` (tier v2 fields), `22` (edit form v2 / production stack fields), `23` (story + tier columns), `24` (`approval_token`, required by the email approve/reject links).
+Notable: `18` (tier v2 fields), `22` (edit form v2 / production stack fields), `23` (story + tier columns), `24` (`approval_token`, required by the email approve/reject links), `25` (reconciles `auth_type`).
+
+**Applied state, verified against the live database 2026-08-25:** every column added by migrations `11`–`24` is present, and the tables from `11`, `13`, `17`, `20` (`activity_log`, `devops_requests`, `delete_requests`, `rooting_reviews`) all exist. Migrations `02`–`24` are live.
+
+The verification method, if you need to repeat it: PostgREST validates column names *before* RLS, so `GET /rest/v1/<table>?select=<column>&limit=1` with the anon key returns `200` for a column that exists and `400 / 42703` for one that does not. Array vs scalar is distinguishable the same way — `?col=cs.{x}` succeeds only on an array, `?col=eq.x` fails on one with `malformed array literal`.
 
 ## 7. Known drift and gotchas
 
-| # | Issue | Impact |
+Status as of 2026-08-25. Production was checked directly; **none of the original three P0 suspicions turned out to be live defects.** What remains is repo-side drift.
+
+| # | Issue | Status |
 |---|---|---|
-| 1 | `supabase/schema.sql` declares `stage in ('sprout','growing','blooming','thriving')` — the app uses `seedling / nursery / sprout / bloom / thriving` | The bootstrap file cannot recreate a working DB. Migration `01-stage-rename.sql` exists only in the `grove-v2` worktree, not in `supabase/migrations/` |
-| 2 | `is_admin()` selects `is_gardener`; migration `04` renamed it to `is_admin` | If the deployed function was never updated, admin RLS silently fails |
-| 3 | Migration `18` declares `auth_type text`; `db.js` reads and writes it as an array | Multi-value auth types may be lost on write |
-| 4 | No record of which migrations are applied | Every schema change is a manual, unverified step |
-| 5 | `schema.sql` predates ~20 migrations | It documents almost nothing about the current shape |
-| 6 | `nursery` (DB) vs "Rooting" (UI) | Constant source of confusion when reading code |
-| 7 | `CLAUDE.md` §5 tier matrix and §11 stage names are both stale | Following it produces wrong classification logic |
-| 8 | 133 tracked `*.txt` scratch files and 9 `mockup-*.html` files in the repo root | Noise; several are already-committed build logs |
-| 9 | `origin/main` is an orphan single-commit branch, unrelated to `master` | `CLAUDE.md` says Vercel deploys from `main` — it deploys from `master` |
+| 1 | **Neither bootstrap file can recreate the database.** `schema.sql` declares the old stages (`sprout/growing/blooming/thriving`) and the old `is_gardener` column. `schema-staging.sql` is correct on stages, roles and RLS but declares only 32 of the 76 columns the app writes — it stops around migration `12`. | **Open.** The highest-value remaining fix. See [NEXT-STEPS.md](NEXT-STEPS.md) |
+| 2 | Migration `01-stage-rename.sql` exists only inside `.claude/worktrees/grove-v2/`, so `supabase/migrations/` starts at `02` | **Open**, cosmetic |
+| 3 | `is_admin()` in `schema.sql` reads `is_gardener` | **Not a production bug.** Deployed function verified correct; repo file is stale. Fixed when #1 is |
+| 4 | Migration `18` declares `auth_type text`; production is `text[]` | **Reconciled.** Someone widened it in the dashboard without a migration. `25-auth-type-array.sql` records it and is a no-op on prod |
+| 5 | No record of which migrations are applied | **Open by design.** `02`–`24` now verified applied; re-verify with the PostgREST probe in §6 |
+| 6 | `nursery` (DB) vs "Rooting" (UI) | **Won't fix** — renaming the column would touch every row and every query. Documented instead |
+| 7 | `CLAUDE.md` stage names, tier matrix, role column, deploy branch | **Fixed** on this branch |
+| 8 | 133 tracked `*.txt` scratch files and 9 root `mockup-*.html` files | **Fixed** — removed; mockups moved to `docs/mockups/`, help spec to `docs/specs/`. `.gitignore` now blocks `*.txt` outside `docs/` |
+| 9 | `origin/main` is an orphan single-commit branch, unrelated to `master` | **Open** — delete it or document it; `CLAUDE.md` no longer points at it |
+| 10 | The tier expression is duplicated in three places in `App.jsx` | **Open.** One of them already drifted once (`0b19e1b`) |
 
 ## 8. Integrations
 

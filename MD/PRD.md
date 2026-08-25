@@ -73,7 +73,7 @@ Two questions determine everything downstream. Tier is **always derived, never s
 
 If either answer is missing, `tier` is `null` and the project is **Unclassified**.
 
-> A project with no backend is Tier 1 regardless of audience — corrected in commit `0b19e1b`. The older matrix in `CLAUDE.md` (no-backend + external → Tier 2) is out of date and should be fixed there.
+> A project with no backend is Tier 1 regardless of audience — corrected in commit `0b19e1b`. The older matrix in `CLAUDE.md` (no-backend + external → Tier 2) was stale and has been corrected there too.
 
 **What each tier means operationally:**
 

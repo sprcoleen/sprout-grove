@@ -14,14 +14,14 @@ When sources disagree, in order:
 
 1. **The code** — always authoritative
 2. **These three files**
-3. `CLAUDE.md` — the build rulebook, but three sections are currently stale (see [NEXT-STEPS.md §5](NEXT-STEPS.md#5-update-claudemd))
+3. `CLAUDE.md` — the build rulebook; corrected 2026-08-25 to match this set
 4. `SproutAIGarden_PRD.docx` — prototype-era, superseded, mentions Firebase and a React artifact environment that were never used
 
 ## Start here
 
 Never touched Grove before: [PRD.md §3–§6](PRD.md#3-core-objects) — objects, stages, tiers, gate. That is the whole product model in four sections.
 
-Picking up work: [NEXT-STEPS.md](NEXT-STEPS.md). The three P0 items are verification tasks that can invalidate anything built on top of them.
+Picking up work: [NEXT-STEPS.md](NEXT-STEPS.md). The P0 verification pass is done — production checked out clean. The one substantial item left is rebuilding `supabase/schema.sql` from a live dump, because neither file in `supabase/` can currently recreate the database.
 
 ## Keeping these current
 

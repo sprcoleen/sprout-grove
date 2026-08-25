@@ -1,12 +1,10 @@
 # Windows reserved device name in working directory
 NUL
 
-# Temp build/dev output files
-build-output.txt
-dev-output.txt
-dev-error.txt
-git-output.txt
-git-add-output.txt
+# Temp build/dev output files — scratch logs must never be committed again.
+# 130 of these were removed in the docs/grove-reference cleanup; see MD/NEXT-STEPS.md
+*.txt
+!docs/**/*.txt
 
 # Logs
 logs

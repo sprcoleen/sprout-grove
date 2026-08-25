@@ -3,13 +3,22 @@
 
 > Read this file completely before writing a single line of code.
 > After reading, confirm: "I have read AGENTS.md and am ready to build."
-> The PRD (`SproutAIGarden_PRD.docx`) is the product authority. This file is the build authority.
+> This file is the **build authority**. [MD/PRD.md](MD/PRD.md) is the **product authority**.
 
-> ⚠️ **PRD override notes — read before touching the PRD:**
-> The PRD was written during the prototype phase. Some references are outdated. Ignore them and follow AGENTS.md instead:
-> - The PRD mentions **Firebase** for auth → ignore. Auth is **Supabase**.
-> - The PRD mentions **"React artifact environment"** and **"localStorage in artifact"** → ignore. The environment is a standard **Vite app**.
-> - All other PRD content (features, data model, UI rules, permissions) remains valid.
+> 📚 **Reference set — read these for detail, not this file:**
+> - [MD/PRD.md](MD/PRD.md) — product model: stages, tiers, the stage gate, permissions, views
+> - [MD/TECHNICAL.md](MD/TECHNICAL.md) — stack, auth flow, data layer, DB, integrations, known drift
+> - [MD/NEXT-STEPS.md](MD/NEXT-STEPS.md) — prioritised backlog
+>
+> These are reconstructed from the shipped code and are kept current. When this file
+> and the MD set disagree, the MD set is newer — fix this file.
+
+> ⚠️ **`SproutAIGarden_PRD.docx` is superseded — do not build from it.**
+> It was written during the prototype phase and is wrong in ways that matter:
+> - It mentions **Firebase** for auth → ignore. Auth is **Supabase**.
+> - It mentions **"React artifact environment"** and **"localStorage in artifact"** → ignore. The environment is a standard **Vite app**.
+> - Its stage names and tier matrix predate the current model.
+> Use [MD/PRD.md](MD/PRD.md) instead.
 
 ---
 
@@ -17,7 +26,7 @@
 
 SproutAIGarden is an internal AI project tracker for Sprout — offices in the **Philippines (PH)** and **Thailand (TH)**. It tracks AI initiatives from seed idea → prototype → production.
 
-The app is live on Vercel. All four build phases are complete. Current work is post-launch feature development on the `feature/stage-gate-release-review` branch.
+The app is live on Vercel. All four build phases are complete. Current work is post-launch feature development. All `feature/*` branches are merged; work from `master`.
 
 ---
 
@@ -26,9 +35,9 @@ The app is live on Vercel. All four build phases are complete. Current work is p
 | Layer | Tool | Notes |
 |---|---|---|
 | Frontend | React + Vite | Single file: `src/App.jsx` |
-| Database | Supabase (Postgres) | Tables: `profiles`, `projects`, `wishes` |
-| Auth | Supabase Auth | Email + password only |
-| Hosting | Vercel | Auto-deploy from `main` branch |
+| Database | Supabase (Postgres) | 9 tables — see [MD/TECHNICAL.md](MD/TECHNICAL.md) §6 |
+| Auth | Supabase Auth | Google SSO, domain-locked to @sprout.ph and @sproutsolutions.io |
+| Hosting | Vercel | Auto-deploy from `master` branch (the repo default; `origin/main` is an unrelated orphan commit) |
 
 **That's it. Nothing else for v1.**
 
@@ -67,7 +76,7 @@ From PRD Section 7.2. Any violation is a build failure.
 - **Gardener** — any Sprout employee who owns or builds an AI project
 - **Groundskeeper** — Raffy, Coleen, Nikki, Blaise; Project Support & DevOps team who help projects go live. Not a DB role — they are regular users in the system. IS / Execom approval must be secured before tickets are raised for them.
 - **Release Manager** — Belle Asis, Diane Litan; reviews and approves stage advancement (same DB role as Admin)
-- **Admin** — Belle Asis, Diane Litan; system-level access (`is_gardener = true` in DB)
+- **Admin** — Belle Asis, Diane Litan; system-level access (`is_admin = true` in DB)
 
 **DB roles (two only — Supabase RLS):**
 
@@ -86,7 +95,7 @@ From PRD Section 7.2. Any violation is a build failure.
 | Delete anything | ❌ | — |
 | Change country | ❌ | Immutable always |
 
-### Admin (`is_gardener = true`, ~1–2 people)
+### Admin (`is_admin = true`, ~1–2 people)
 
 Everything a Gardener can do, plus:
 
@@ -109,10 +118,11 @@ Full schemas in PRD Section 2. Critical rules:
 
 **profiles**
 - `country`: set at signup from email domain. Never updatable. Never send it in an UPDATE payload.
-- `is_gardener`: default false. Set only via Supabase dashboard by a human admin. Never by the app.
+- `is_admin`: default false. Set only via Supabase dashboard by a human admin. Never by the app.
 
 **projects**
-- `stage`: `sprout | growing | blooming | thriving` only. Never `seed`.
+- `stage`: `seedling | nursery | sprout | bloom | thriving` only. Never `seed`.
+  Note `nursery` is displayed in the UI as **"Rooting"** — `nursery` is the persisted value everywhere.
 - `country`: auto-set from user profile at creation. Immutable.
 - `last_updated`: set to `now()` on every mutation. Calculate "days ago" at query time — no scheduled job needed.
 - `tier`: `1 | 2 | 3` — computed from `has_backend` × `target_users`. Never set manually; always derive from the two classification questions.
@@ -123,14 +133,16 @@ Full schemas in PRD Section 2. Critical rules:
 
 | `has_backend` | `target_users` | Tier |
 |---|---|---|
-| `false` | `'internal'` | 1 — Static / Internal |
-| `false` | `'external'` or `'both'` | 2 — Internal App |
+| `false` | **any** | 1 — Static / Internal |
 | `true` | `'internal'` | 2 — Internal App |
 | `true` | `'external'` or `'both'` | 3 — External-Facing |
 
+> No backend is **always** Tier 1, regardless of audience — corrected in commit `0b19e1b`.
+> If either answer is missing, `tier` is `null` and the project is Unclassified.
+
 **Hosting by tier:**
 - **Tier 1:** Hosted on **Markup** — uploaded directly by the project owner. No deployment infrastructure required.
-- **Tier 2 & 3:** Hosted on **Sprout Vercel** or **Sprout Azure** (Company Repository). Requires IS / Execom approval before deployment. This is a prerequisite to going Live (Blooming / Thriving).
+- **Tier 2 & 3:** Hosted on **Sprout Vercel** or **Sprout Azure** (Company Repository). Requires IS / Execom approval before deployment. This is a prerequisite to going Live (Bloom / Thriving).
 
 **Per-tier checklist fields** (set via Classification panel, not at creation):
 - All tiers: `demo_link`, `github_repo`
@@ -139,14 +151,16 @@ Full schemas in PRD Section 2. Critical rules:
 
 **Security fields — definitions:**
 - `requires_auth`: project requires user login / authentication
-- `auth_type`: e.g. "Supabase Auth", "Google SSO"
+- `auth_type` (`text[]`): e.g. `{"Supabase Auth","Google SSO"}` — an array, not a scalar
 - `has_database`: project uses a database
 - `connects_sprout_db`: connects to or reads from Sprout's internal database
 - `data_sensitivity`: `'None' | 'Internal (non-sensitive)' | 'Sensitive (PII, HR, payroll)' | 'Highly sensitive (health, financial)'`
 - `sends_to_external_ai`: project sends Sprout employee or company data to an external AI provider (OpenAI, Anthropic, Gemini, etc.) — triggers DPO/privacy review flag when combined with sensitive data
 - `has_sensitive_data`: legacy field, kept for backwards compat; prefer `data_sensitivity`
 
-**Pending migration:** `supabase/migrations/18-tier-classification-v2.sql` adds `has_backend`, `target_users`, `has_database`, `connects_sprout_db`, `auth_type`, `data_sensitivity`. Must be run manually in the Supabase dashboard SQL editor — the anon key cannot run DDL.
+**Migration state (verified against the live DB, 2026-08-25):** migrations `02`–`24` are all applied in production, including `18` (tier v2) and `24` (`approval_token`). Migrations are run **by hand** in the Supabase SQL editor — the anon key cannot run DDL, and nothing tracks applied state. After adding a migration file, run it and say so in the PR.
+
+One known file-vs-production drift: migration `18` declares `auth_type` as `text`, but production is `text[]` (widened in the dashboard without a migration). `25-auth-type-array.sql` reconciles this and is a no-op on production.
 
 **wishes**
 - `id`: format `"w" + integer`, e.g. `"w10"`.
@@ -281,7 +295,7 @@ When escalating: explain what you were doing, what the blocker is, and what your
 create or replace function is_admin()
 returns boolean as $$
   select coalesce(
-    (select is_gardener from profiles where id = auth.uid()),
+    (select is_admin from profiles where id = auth.uid()),
     false
   );
 $$ language sql security definer;
@@ -321,32 +335,37 @@ create policy "Admin delete" on wishes for delete
 
 ## 11. Stage Transition Rules
 
-1. Check: `builderEmail === authUser.email` OR `authUser.isGardener === true`
-2. Target stage must be in `['sprout', 'growing', 'blooming', 'thriving']`
+1. Check: `builderEmail === authUser.email` OR `authUser.isAdmin === true`
+2. Target stage must be in `['seedling', 'nursery', 'sprout', 'bloom', 'thriving']`
 3. Target must not equal current stage
 4. Normal users: adjacent stages only
-5. Admins: can skip stages in any direction
-6. On success: update `stage`, set `last_updated = now()`, append milestone label + date
-7. On failure: surface clear error to user, no state change
+5. Admins: can skip stages in any direction, and bypass the stage gate entirely
+6. **`nursery` is never entered by drag or direct move** — entry is form-only, via submit-for-approval
+7. **`nursery` is never exited by a non-admin** — an approver decision moves it out
+8. On success: update `stage`, set `last_updated = now()`, append milestone label + date
+9. Advancing past `sprout` or `bloom` with an approved release review resets `release_review_status` to `null` — the next gate needs its own review
+10. On failure: surface clear error to user, no state change
+
+Implemented in `handleMoveStage()` in `src/App.jsx`. Full detail: [MD/PRD.md](MD/PRD.md) §4.
 
 **IS / Execom Approval Gate** (for tickets assigned to Coleen, Blaise, Nikki, or Raffy):
-- At `sprout` stage: optional — encouraged before creating tickets
-- At `growing` stage: **required** — approval must be secured before the project advances to Blooming
+- At `seedling` stage: optional — encouraged before creating tickets
+- At `sprout` stage: **required** — approval must be secured before the project advances to Bloom
 
 ---
 
 ## 12. Release Review Gate (Stage-Gate System)
 
-Projects at Tier 2 and Tier 3 require a release review before advancing to Blooming/Thriving. The gate is enforced in `getStageGate()` in `src/App.jsx`.
+Projects at Tier 2 and Tier 3 require a release review before advancing to Bloom/Thriving. The gate is enforced in `getStageGate()` in `src/App.jsx`.
 
 **Tier thresholds:**
 - Tier 1 (Static / Internal): no release review required at any stage
-- Tier 2 (Internal App): review required before Blooming and Thriving
-- Tier 3 (External-Facing): review required before Blooming and Thriving; full sign-off required before Thriving
+- Tier 2 (Internal App): review required before Bloom and Thriving
+- Tier 3 (External-Facing): review required before Bloom and Thriving; full sign-off required before Thriving
 
 **Review statuses:** `null → 'pending' → 'approved' | 'rejected'`
 
-**Who reviews:** Admins (`is_gardener = true`) can approve or reject release reviews.
+**Who reviews:** Admins (`is_admin = true`) can approve or reject release reviews.
 
 **Activity feed:** `deletion_requested` and `deletion_approved` events are filtered from the public Momentum feed — they are admin-only actions and should not appear to regular users.
 

@@ -1,3 +1,0 @@
-To https://github.com/kvirata-web/sprout-garden.git
-   7261c8f..ade28b2  main -> main
-Exit code: 0
