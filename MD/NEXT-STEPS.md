@@ -43,13 +43,19 @@ Neither file in `supabase/` can recreate the database:
 
 So there is no way to stand up a new environment, and no single file that describes the current shape. That is also why the `auth_type` drift went unnoticed for so long.
 
-**Do this:** dump the live schema and commit it as the generated bootstrap.
+**Do this:** run [`supabase/tools/dump-schema.sql`](../supabase/tools/dump-schema.sql) in the Supabase SQL editor and save its output over `supabase/schema.sql`.
+
+That script generates the DDL for the whole `public` schema — tables, columns, defaults, constraints, indexes, functions, RLS enablement and every policy — from `pg_catalog`. It needs no local tooling and no database password.
+
+Why not `pg_dump`: this machine has neither `pg_dump` nor Docker, and `supabase db dump` shells `pg_dump` into a container, so it fails the same way. If you would rather use the real thing, `winget install PostgreSQL.PostgreSQL.17` provides `pg_dump`, and then:
 
 ```bash
 pg_dump --schema-only --no-owner --no-privileges "$SUPABASE_DB_URL" > supabase/schema.sql
 ```
 
-The connection string is in Supabase → Project Settings → Database. It needs the DB password, not the anon key — that is why this could not be done from the CLI session that produced these docs. Delete `schema-staging.sql` once `schema.sql` is authoritative, and mark the new file **generated — do not hand-edit**.
+`SUPABASE_DB_URL` is the connection string from Supabase → Project Settings → Database. It carries the DB password, so keep it in `.env.local` (gitignored) rather than pasting it anywhere shared. `pg_dump` also captures triggers, grants and extensions, which the SQL-editor script deliberately skips.
+
+Either way: delete `schema-staging.sql` once `schema.sql` is authoritative, and mark the new file **generated — do not hand-edit**.
 
 While you are in there, move `01-stage-rename.sql` out of `.claude/worktrees/grove-v2/` into `supabase/migrations/`, or note in a folder README that numbering starts at `02` deliberately.
 
@@ -112,6 +118,6 @@ Still explicitly out of scope per the PRD: realtime subscriptions, pg_cron, Sent
 ## Suggested order
 
 1. Run `25-auth-type-array.sql` in the SQL editor (no-op, but marks it applied)
-2. Dump the live schema → real `schema.sql`, retire `schema-staging.sql` (**P1 #1**)
+2. Run `tools/dump-schema.sql` in the SQL editor → real `schema.sql`, retire `schema-staging.sql` (**P1 #1**)
 3. Extract `getStageGate` and the tier function, test the truth table (**P2 #2**)
 4. Everything else as capacity allows
