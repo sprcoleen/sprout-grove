@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabase";
 import { loadProjects, loadWishes, loadProfiles, loadActivityLog, fromProject, fromWish, toProject, toWish, loadNotifications, loadDevopsRequests, toDevopsRequest, fromDevopsRequest, daysAgo, loadDeleteRequests, toDeleteRequest } from "./lib/db";
 import { extractKeywords, countOverlap, getRelatedProjects, getActivityFeed } from "./lib/utils.js";
 import { ADMIN_EMAILS } from "./config/roles.js";
+import { NUDGE_TEMPLATES, NUDGE_TOKENS, CLASSIFICATION_TEMPLATE, STALE_TEMPLATE, COMBINED_TEMPLATE } from "./lib/nudgeTemplates.js";
 import ProcessFlowGuide from "./guide/ProcessFlowGuide.jsx";
 // ── Sprout Design System Tokens ───────────────────────────────────────────────
 const DS = {
@@ -5367,7 +5368,7 @@ const ProjectDetailPage = ({
           )}
 
           {/* ── Release Gate: Sprout → Bloom and Bloom → Thriving ─────────────── */}
-          {(project.stage==="sprout"||project.stage==="bloom")&&(
+          {(project.stage==="sprout"||project.stage==="bloom")&&activeTab===project.stage&&(
             <div style={{marginBottom:24}}>
               <ReleaseGateBanner
                 project={project}
@@ -8482,12 +8483,255 @@ function DevopsBoard({ authUser, rootingReviews }) {
 }
 
 // ── Admin / RTE Dashboard ─────────────────────────────────────────────────────
+// ── Nudge Composer ────────────────────────────────────────────────────────────
+// Edits the copy for an outbound nudge and sends it. Every send in the Admin
+// Dashboard goes through here, so there is exactly one path to real email.
+// `targets` is [{ projectId, projectName, builderName, builderEmail, note }].
+function NudgeComposer({ targets, authUser, onClose, onSent }) {
+  const startingPreset = React.useMemo(() => {
+    const notes = targets.map(t => t.note || "");
+    const anyTier  = notes.some(n => n.includes("No tier"));
+    const anyStale = notes.some(n => n.includes("update"));
+    if (anyTier && anyStale) return COMBINED_TEMPLATE;
+    return anyStale ? STALE_TEMPLATE : CLASSIFICATION_TEMPLATE;
+  }, [targets]);
+
+  const [presetId, setPresetId] = React.useState(startingPreset.id);
+  const [heading,  setHeading]  = React.useState(startingPreset.heading);
+  const [subject,  setSubject]  = React.useState(startingPreset.subject);
+  const [body,     setBody]     = React.useState(startingPreset.body);
+  const [deadline, setDeadline] = React.useState("2026-09-25");
+  const [edited,   setEdited]   = React.useState(false);
+
+  const [previewHtml, setPreviewHtml] = React.useState(null);
+  const [previewFor,  setPreviewFor]  = React.useState(null);
+  const [busy,   setBusy]   = React.useState(null); // "preview" | "test" | "send"
+  const [notice, setNotice] = React.useState(null); // {tone, text}
+
+  const recipients = React.useMemo(() => {
+    const m = new Map();
+    targets.forEach(t => {
+      const k = (t.builderEmail || "").toLowerCase();
+      if (!k) return;
+      if (!m.has(k)) m.set(k, { email: t.builderEmail, name: t.builderName, n: 0 });
+      m.get(k).n += 1;
+    });
+    return [...m.values()].sort((a, b) => b.n - a.n);
+  }, [targets]);
+
+  const applyPreset = (p) => {
+    if (edited && !window.confirm("Switching templates will replace your edits. Continue?")) return;
+    setPresetId(p.id); setHeading(p.heading); setSubject(p.subject); setBody(p.body);
+    setEdited(false); setPreviewHtml(null);
+  };
+
+  const touch = (setter) => (v) => { setter(v); setEdited(true); setPreviewHtml(null); };
+
+  const post = async (extra) => {
+    const res = await fetch("/api/send-classification-nudge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projects: targets.map(t => ({
+          projectId: String(t.projectId),
+          projectName: t.projectName,
+          builderName: t.builderName,
+          builderEmail: t.builderEmail,
+          note: t.note || "",
+        })),
+        adminName:  authUser?.displayName || authUser?.email,
+        adminEmail: authUser?.email,
+        deadline:   deadline || null,
+        heading, subjectTemplate: subject, bodyTemplate: body,
+        ...extra,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && !data.results) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  };
+
+  const doPreview = async () => {
+    setBusy("preview"); setNotice(null);
+    try {
+      const data = await post({ dryRun: true });
+      const first = (data.previews || [])[0];
+      if (!first) throw new Error("Nothing to preview");
+      setPreviewHtml(first.html);
+      setPreviewFor(first);
+    } catch (e) {
+      setNotice({ tone: "err", text: `Preview failed: ${e.message}` });
+    } finally { setBusy(null); }
+  };
+
+  const doSend = async (isTest) => {
+    if (!isTest) {
+      const ok = window.confirm(
+        `Send this to ${recipients.length} ${recipients.length === 1 ? "person" : "people"} `
+        + `about ${targets.length} project${targets.length === 1 ? "" : "s"}?\n\n`
+        + `This sends real email now and cannot be undone.`
+      );
+      if (!ok) return;
+    }
+    setBusy(isTest ? "test" : "send"); setNotice(null);
+    try {
+      const data = await post(isTest ? { testEmail: authUser?.email } : {});
+      const failed = (data.results || []).filter(r => !r.ok);
+      if (failed.length) {
+        setNotice({ tone: "err", text: `${failed.length} failed: ${failed[0].error || "unknown error"}` });
+      } else if (isTest) {
+        setNotice({ tone: "ok", text: `Test sent to ${authUser?.email} — ${data.groups} email${data.groups === 1 ? "" : "s"}, one per creator.` });
+      } else {
+        onSent(data, targets);
+      }
+    } catch (e) {
+      setNotice({ tone: "err", text: `Could not send: ${e.message}` });
+    } finally { setBusy(null); }
+  };
+
+  const label = { fontFamily:FF, fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.6, color:C.mushroom500, marginBottom:5, display:"block" };
+  const field = { width:"100%", fontFamily:FF, fontSize:13, padding:"8px 10px", border:`1px solid ${C.mushroom300}`, borderRadius:DS.radius.md, background:C.white, color:C.mushroom900, boxSizing:"border-box" };
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:70,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(32,30,24,0.6)",backdropFilter:"blur(6px)",padding:20}}>
+      <div style={{background:C.mushroom50,borderRadius:DS.radius.xl,width:"100%",maxWidth:1020,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:DS.shadow.xl,overflow:"hidden"}}>
+
+        {/* Header */}
+        <div style={{padding:"16px 22px",borderBottom:`1px solid ${C.mushroom200}`,display:"flex",alignItems:"center",gap:12,background:C.white}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:FF,fontSize:16,fontWeight:800,color:C.mushroom900}}>Compose nudge</div>
+            <div style={{fontFamily:FF,fontSize:12,color:C.mushroom500,marginTop:2}}>
+              {recipients.length} {recipients.length===1?"creator":"creators"} · {targets.length} project{targets.length===1?"":"s"} · one email each
+            </div>
+          </div>
+          <button onClick={onClose} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:C.mushroom500,lineHeight:1,padding:4}} aria-label="Close">×</button>
+        </div>
+
+        {/* Body: editor | preview */}
+        <div style={{flex:1,overflow:"auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:0,minHeight:0}}>
+
+          {/* Editor */}
+          <div style={{padding:"18px 22px",display:"flex",flexDirection:"column",gap:14,overflow:"auto",borderRight:`1px solid ${C.mushroom200}`}}>
+            <div>
+              <span style={label}>Template</span>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {NUDGE_TEMPLATES.map(p => (
+                  <button key={p.id} onClick={()=>applyPreset(p)} title={p.blurb} style={{
+                    fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,cursor:"pointer",
+                    border:"1px solid "+(presetId===p.id?C.kangkong500:C.mushroom300),
+                    background:presetId===p.id?C.kangkong500:C.white,
+                    color:presetId===p.id?C.white:C.mushroom600,
+                  }}>{p.label}</button>
+                ))}
+                {edited && <span style={{fontFamily:FF,fontSize:11,color:C.mango600,alignSelf:"center",fontWeight:600}}>edited</span>}
+              </div>
+            </div>
+
+            <div>
+              <span style={label}>Header line</span>
+              <input value={heading} onChange={e=>touch(setHeading)(e.target.value)} style={field}/>
+            </div>
+
+            <div>
+              <span style={label}>Subject</span>
+              <input value={subject} onChange={e=>touch(setSubject)(e.target.value)} style={field}/>
+            </div>
+
+            <div>
+              <span style={label}>Deadline <span style={{textTransform:"none",fontWeight:500,color:C.mushroom400}}>— clear it to drop the {"{{deadline}}"} line</span></span>
+              <input type="date" value={deadline} onChange={e=>touch(setDeadline)(e.target.value)} style={{...field,maxWidth:200}}/>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:220}}>
+              <span style={label}>Message</span>
+              <textarea value={body} onChange={e=>touch(setBody)(e.target.value)} spellCheck
+                style={{...field,flex:1,minHeight:220,resize:"vertical",lineHeight:1.6,fontFamily:DS.fonts.mono,fontSize:12}}/>
+              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:6,lineHeight:1.5}}>
+                Plain text — blank lines make paragraphs. Grove adds the branding, the button and the project links.
+              </div>
+            </div>
+
+            <div>
+              <span style={label}>Tokens</span>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {NUDGE_TOKENS.map(t => (
+                  <span key={t.token} title={t.desc} style={{fontFamily:DS.fonts.mono,fontSize:10.5,padding:"3px 7px",borderRadius:DS.radius.sm,background:C.mushroom100,border:`1px solid ${C.mushroom200}`,color:C.mushroom600,cursor:"help"}}>{t.token}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div style={{display:"flex",flexDirection:"column",minHeight:0,background:C.mushroom100}}>
+            <div style={{padding:"12px 18px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.mushroom200}`,background:C.white}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,color:C.mushroom500}}>Preview</div>
+                {previewFor
+                  ? <div style={{fontFamily:FF,fontSize:11.5,color:C.mushroom600,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      as {previewFor.realRecipient} would see it
+                    </div>
+                  : <div style={{fontFamily:FF,fontSize:11.5,color:C.mushroom400,marginTop:2}}>rendered by the mail server, exactly as it sends</div>}
+              </div>
+              <button onClick={doPreview} disabled={!!busy} style={{
+                fontFamily:FF,fontSize:11,fontWeight:700,padding:"6px 14px",borderRadius:DS.radius.full,cursor:busy?"not-allowed":"pointer",
+                border:`1px solid ${C.mushroom300}`,background:C.white,color:C.mushroom700,
+              }}>{busy==="preview"?"Rendering…":previewHtml?"Refresh":"Render preview"}</button>
+            </div>
+            <div style={{flex:1,minHeight:260,overflow:"auto"}}>
+              {previewHtml
+                ? <iframe title="Email preview" srcDoc={previewHtml} sandbox=""
+                    style={{width:"100%",height:"100%",minHeight:520,border:"none",background:"#fafaf8"}}/>
+                : <div style={{padding:"40px 24px",textAlign:"center",fontFamily:FF,fontSize:13,color:C.mushroom400,lineHeight:1.6}}>
+                    Hit <strong>Render preview</strong> to see the finished email.<br/>
+                    It's built by the same code that sends it, so nothing can look different on the way out.
+                  </div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Notice */}
+        {notice && (
+          <div style={{
+            padding:"9px 22px",fontFamily:FF,fontSize:12,fontWeight:600,
+            background:notice.tone==="ok"?C.kangkong50:C.tomato100,
+            color:notice.tone==="ok"?C.kangkong700:C.tomato600,
+            borderTop:`1px solid ${notice.tone==="ok"?C.kangkong200:C.tomato500}`,
+          }}>{notice.text}</div>
+        )}
+
+        {/* Footer */}
+        <div style={{padding:"14px 22px",borderTop:`1px solid ${C.mushroom200}`,display:"flex",alignItems:"center",gap:10,background:C.white,flexWrap:"wrap"}}>
+          <div style={{flex:1,fontFamily:FF,fontSize:11.5,color:C.mushroom500,minWidth:180}}>
+            From <strong>{authUser?.displayName || authUser?.email} (via Grove)</strong> · replies go to you
+          </div>
+          <button onClick={onClose} disabled={!!busy} style={{fontFamily:FF,fontSize:12,fontWeight:600,padding:"8px 16px",borderRadius:DS.radius.md,border:`1px solid ${C.mushroom300}`,background:C.white,color:C.mushroom600,cursor:busy?"not-allowed":"pointer"}}>Cancel</button>
+          <button onClick={()=>doSend(true)} disabled={!!busy} title="Sends every email to you instead of the creators"
+            style={{fontFamily:FF,fontSize:12,fontWeight:700,padding:"8px 16px",borderRadius:DS.radius.md,border:`1px solid ${C.mushroom400}`,background:C.white,color:C.mushroom700,cursor:busy?"not-allowed":"pointer"}}>
+            {busy==="test"?"Sending…":"Send test to me"}
+          </button>
+          <button onClick={()=>doSend(false)} disabled={!!busy}
+            style={{fontFamily:FF,fontSize:12,fontWeight:700,padding:"8px 18px",borderRadius:DS.radius.md,border:"none",background:C.kangkong500,color:C.white,cursor:busy?"not-allowed":"pointer"}}>
+            {busy==="send"?"Sending…":`Send to ${recipients.length} ${recipients.length===1?"creator":"creators"}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove, onDeny, onOpenProject }) {
   const [auditFilter, setAuditFilter] = React.useState("all"); // "all" | "unclassified" | "pending_review" | "flagged"
-  const [activeTab, setActiveTab] = React.useState("deletions"); // "deletions" | "audit"
+  const [activeTab, setActiveTab] = React.useState("attention"); // "attention" | "deletions" | "audit"
   const [selectedIds,  setSelectedIds]  = React.useState(new Set());
-  const [nudgeSending, setNudgeSending] = React.useState(false);
   const [nudgeSent,    setNudgeSent]    = React.useState(new Set()); // projectIds that have been notified
+  const [nudgeNotice,  setNudgeNotice]  = React.useState(null);      // {tone:"ok"|"err", text}
+  const [composerTargets, setComposerTargets] = React.useState(null); // non-null = modal open
+
+  // ── Needs Attention ──
+  const STALE_DAYS = 30; // matches the wilting marker on the Board
+  const [attnFilter, setAttnFilter] = React.useState("all"); // "all" | "untiered" | "stale" | "both"
+  const [attnSelected, setAttnSelected] = React.useState(new Set());
+  const [expandedCreators, setExpandedCreators] = React.useState(new Set());
 
   const pendingDels   = deleteRequests.filter(r => r.status === "pending");
   const resolvedDels  = deleteRequests.filter(r => r.status !== "pending");
@@ -8502,6 +8746,82 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
                   : auditFilter === "pending_review" ? pendingReview
                   : auditFilter === "flagged"        ? flagged
                   : projects;
+
+  // Every project with something the admin needs chased, tagged with why.
+  const attentionAll = React.useMemo(() => projects.reduce((acc, p) => {
+    const untiered = p.tier === null || p.tier === undefined;
+    const stale    = (p.lastUpdated ?? 0) > STALE_DAYS;
+    if (!untiered && !stale) return acc;
+    const issues = [];
+    if (untiered) issues.push("untiered");
+    if (stale)    issues.push("stale");
+    acc.push({
+      project: p,
+      issues,
+      kind: issues.length === 2 ? "both" : issues[0],
+      // The note appears under the project name in the email.
+      note: [untiered && "No tier set", stale && `No update in ${p.lastUpdated} days`]
+        .filter(Boolean).join(" · "),
+    });
+    return acc;
+  }, []), [projects]);
+
+  const attentionList = attnFilter === "all" ? attentionAll
+                      : attnFilter === "both" ? attentionAll.filter(a => a.kind === "both")
+                      : attentionAll.filter(a => a.issues.includes(attnFilter === "untiered" ? "untiered" : "stale"));
+
+  const countKind = (k) => k === "all" ? attentionAll.length
+                         : k === "both" ? attentionAll.filter(a => a.kind === "both").length
+                         : attentionAll.filter(a => a.issues.includes(k)).length;
+
+  // The action is "email the creator", so the list is grouped by creator.
+  const attentionByCreator = React.useMemo(() => {
+    const m = new Map();
+    attentionList.forEach(a => {
+      const key = (a.project.builderEmail || "").toLowerCase() || "—";
+      if (!m.has(key)) m.set(key, {
+        key,
+        email: a.project.builderEmail || "",
+        name:  a.project.builder || a.project.builtBy || a.project.builderEmail || "Unknown",
+        items: [],
+      });
+      m.get(key).items.push(a);
+    });
+    return [...m.values()]
+      .map(g => ({ ...g, worst: Math.max(...g.items.map(i => i.project.lastUpdated ?? 0)) }))
+      .sort((a, b) => b.items.length - a.items.length || b.worst - a.worst);
+  }, [attentionList]);
+
+  const idsOf = (items) => items.map(i => String(i.project.id));
+  const toggleSet = (set, ids, on) => {
+    const next = new Set(set);
+    ids.forEach(id => on ? next.add(id) : next.delete(id));
+    return next;
+  };
+
+  // Turn a set of project ids into the payload the composer sends.
+  const targetsFrom = (ids, source) => source
+    .filter(a => ids.has(String(a.project.id)))
+    .map(a => ({
+      projectId:    String(a.project.id),
+      projectName:  a.project.name,
+      builderName:  a.project.builder || a.project.builtBy,
+      builderEmail: a.project.builderEmail,
+      note:         a.note,
+    }));
+
+  const handleSent = (data, targets) => {
+    const sent = new Set(nudgeSent);
+    (data.results || []).forEach(r => { if (r.ok) sent.add(r.projectId); });
+    setNudgeSent(sent);
+    setComposerTargets(null);
+    setAttnSelected(new Set());
+    setSelectedIds(new Set());
+    setNudgeNotice({
+      tone: "ok",
+      text: `Sent ${data.emailsSent} email${data.emailsSent === 1 ? "" : "s"} covering ${targets.length} project${targets.length === 1 ? "" : "s"}.`,
+    });
+  };
 
   const securityComplete = (p) =>
     [p.requiresAuth, p.externalAccess, p.hasSensitiveData, p.sendsToExternalAI, p.storesUserInputs]
@@ -8545,36 +8865,26 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
     URL.revokeObjectURL(url);
   };
 
-  const handleNudge = async (ids) => {
-    setNudgeSending(true);
-    const targets = unclassified.filter(p => ids.has(String(p.id)));
-    try {
-      const res = await fetch("/api/send-classification-nudge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projects: targets.map(p => ({
-            projectId:   String(p.id),
-            projectName: p.name,
-            builderName: p.builder || p.builtBy,
-            builderEmail: p.builderEmail,
-          })),
-          adminName: authUser?.name || authUser?.email,
-        }),
-      });
-      const data = await res.json();
-      const sentIds = new Set(nudgeSent);
-      (data.results || []).forEach(r => { if (r.ok) sentIds.add(r.projectId); });
-      setNudgeSent(sentIds);
-      setSelectedIds(new Set());
-    } catch (e) {
-      console.error("Nudge send error:", e);
-    } finally {
-      setNudgeSending(false);
-    }
+  // One email per builder, not per project — count the people we'd actually mail.
+  const builderCount = (ids) =>
+    new Set(
+      unclassified
+        .filter(p => ids.has(String(p.id)))
+        .map(p => (p.builderEmail || "").toLowerCase())
+        .filter(Boolean)
+    ).size;
+
+  // Open the composer for a set of unclassified project ids (Garden Audit path).
+  const composeForAudit = (ids) => {
+    const wrapped = unclassified
+      .filter(p => ids.has(String(p.id)))
+      .map(p => ({ project: p, note: "No tier set" }));
+    if (wrapped.length === 0) return;
+    setComposerTargets(targetsFrom(new Set(idsOf(wrapped)), wrapped));
   };
 
   const TABS = [
+    { id: "attention", label: `Needs Attention${attentionAll.length ? ` (${attentionAll.length})` : ""}` },
     { id: "deletions", label: `Deletion Requests${pendingDels.length ? ` (${pendingDels.length})` : ""}` },
     { id: "audit",     label: "Garden Audit" },
   ];
@@ -8647,6 +8957,141 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
       </div>
 
       {/* ── Deletion Requests Tab ── */}
+      {/* ── Needs Attention Tab ── */}
+      {activeTab === "attention" && (
+        <div>
+          {attentionAll.length === 0 ? (
+            <div style={{textAlign:"center",padding:"48px 24px",color:C.mushroom400,fontFamily:FF,fontSize:14}}>
+              Nothing needs chasing — every project has a tier and a recent update. 🌿
+            </div>
+          ) : (
+            <>
+              {/* Issue buckets */}
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
+                {[
+                  { k:"all",       label:"Needs attention",  sub:`${attentionByCreator.length} creator${attentionByCreator.length===1?"":"s"}`, bg:C.mushroom50, border:C.mushroom300, color:C.mushroom800 },
+                  { k:"untiered",  label:"No tier set",      sub:"blocks the release gate",  bg:C.mango50,    border:C.mango300,   color:C.mango700 },
+                  { k:"stale",     label:`No update in ${STALE_DAYS}+ days`, sub:"record may be out of date", bg:C.carrot100, border:C.carrot500, color:C.carrot500 },
+                  { k:"both",      label:"Both",             sub:"chase these first",        bg:C.tomato100,  border:C.tomato500,  color:C.tomato600 },
+                ].map(b => (
+                  <button key={b.k} onClick={()=>setAttnFilter(b.k)} style={{
+                    textAlign:"left",padding:"11px 15px",borderRadius:DS.radius.lg,minWidth:150,cursor:"pointer",
+                    background:b.bg, color:b.color,
+                    border:"1px solid "+b.border,
+                    outline:attnFilter===b.k?`2px solid ${b.color}`:"none", outlineOffset:1,
+                  }}>
+                    <div style={{fontFamily:FF,fontSize:22,fontWeight:800,lineHeight:1}}>{countKind(b.k)}</div>
+                    <div style={{fontFamily:FF,fontSize:11,fontWeight:700,marginTop:4,lineHeight:1.3}}>{b.label}</div>
+                    <div style={{fontFamily:FF,fontSize:10,fontWeight:500,opacity:0.75,marginTop:1}}>{b.sub}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Selection + compose bar */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"10px 14px",background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,flexWrap:"wrap",boxShadow:DS.shadow.sm}}>
+                <div style={{flex:1,fontFamily:FF,fontSize:12,color:C.mushroom700,fontWeight:600,minWidth:200}}>
+                  {attnSelected.size>0
+                    ? `${attnSelected.size} project${attnSelected.size>1?"s":""} selected — ${new Set(targetsFrom(attnSelected,attentionAll).map(t=>(t.builderEmail||"").toLowerCase())).size} email${new Set(targetsFrom(attnSelected,attentionAll).map(t=>(t.builderEmail||"").toLowerCase())).size===1?"":"s"}, one per creator`
+                    : `${attentionList.length} project${attentionList.length===1?"":"s"} across ${attentionByCreator.length} creator${attentionByCreator.length===1?"":"s"} — select to email`}
+                </div>
+                <button onClick={()=>{
+                  const all = idsOf(attentionList);
+                  setAttnSelected(all.every(id=>attnSelected.has(id)) ? new Set() : new Set(all));
+                }} style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,border:`1px solid ${C.mushroom300}`,background:"transparent",color:C.mushroom600,cursor:"pointer"}}>
+                  {idsOf(attentionList).every(id=>attnSelected.has(id)) && attentionList.length>0 ? "Deselect all" : "Select all"}
+                </button>
+                <button
+                  disabled={attnSelected.size===0}
+                  onClick={()=>setComposerTargets(targetsFrom(attnSelected, attentionAll))}
+                  style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"6px 16px",borderRadius:DS.radius.full,border:"none",
+                    background:attnSelected.size>0?C.kangkong500:C.mushroom200,
+                    color:attnSelected.size>0?C.white:C.mushroom400,
+                    cursor:attnSelected.size>0?"pointer":"not-allowed"}}>
+                  Compose email…
+                </button>
+              </div>
+
+              {nudgeNotice && (
+                <div style={{
+                  display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"9px 14px",borderRadius:DS.radius.md,
+                  fontFamily:FF,fontSize:12,fontWeight:600,
+                  background:nudgeNotice.tone==="ok"?C.kangkong50:C.tomato100,
+                  border:"1px solid "+(nudgeNotice.tone==="ok"?C.kangkong200:C.tomato500),
+                  color:nudgeNotice.tone==="ok"?C.kangkong700:C.tomato600,
+                }}>
+                  <span style={{flex:1}}>{nudgeNotice.text}</span>
+                  <button onClick={()=>setNudgeNotice(null)} aria-label="Dismiss"
+                    style={{border:"none",background:"transparent",cursor:"pointer",fontFamily:FF,fontSize:14,lineHeight:1,color:"inherit",padding:"0 2px"}}>×</button>
+                </div>
+              )}
+
+              {/* Grouped by creator */}
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {attentionByCreator.map(g => {
+                  const ids = idsOf(g.items);
+                  const allOn = ids.every(id => attnSelected.has(id));
+                  const someOn = !allOn && ids.some(id => attnSelected.has(id));
+                  const open = expandedCreators.has(g.key);
+                  const nUntiered = g.items.filter(i => i.issues.includes("untiered")).length;
+                  const nStale    = g.items.filter(i => i.issues.includes("stale")).length;
+                  return (
+                    <div key={g.key} style={{background:C.white,border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,overflow:"hidden",boxShadow:DS.shadow.sm}}>
+                      {/* Creator row */}
+                      <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",flexWrap:"wrap"}}>
+                        <input type="checkbox" checked={allOn}
+                          ref={el => { if (el) el.indeterminate = someOn; }}
+                          onChange={e => setAttnSelected(toggleSet(attnSelected, ids, e.target.checked))}
+                          style={{cursor:"pointer",accentColor:C.kangkong500,width:15,height:15,flexShrink:0}}/>
+                        <div style={{flex:1,minWidth:170}}>
+                          <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{g.name}</div>
+                          <div style={{fontFamily:DS.fonts.mono,fontSize:11,color:C.mushroom500,marginTop:1}}>{g.email||"no email on record"}</div>
+                        </div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {nUntiered>0 && <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"3px 9px",borderRadius:DS.radius.full,background:C.mango100,color:C.mango700,border:`1px solid ${C.mango300}`}}>{nUntiered} untiered</span>}
+                          {nStale>0 && <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"3px 9px",borderRadius:DS.radius.full,background:C.carrot100,color:C.carrot500,border:`1px solid ${C.carrot500}`}}>{nStale} stale</span>}
+                        </div>
+                        <button onClick={()=>setExpandedCreators(prev => { const n=new Set(prev); n.has(g.key)?n.delete(g.key):n.add(g.key); return n; })}
+                          style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,border:`1px solid ${C.mushroom300}`,background:"transparent",color:C.mushroom600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          {open ? "Hide" : `Show ${g.items.length}`}
+                        </button>
+                        <button onClick={()=>setComposerTargets(targetsFrom(new Set(ids), attentionAll))}
+                          style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"5px 12px",borderRadius:DS.radius.full,border:`1px solid ${C.kangkong500}`,background:"transparent",color:C.kangkong600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          Email
+                        </button>
+                      </div>
+
+                      {/* Projects */}
+                      {open && (
+                        <div style={{borderTop:`1px solid ${C.mushroom100}`,background:C.mushroom50}}>
+                          {g.items.map(it => {
+                            const id = String(it.project.id);
+                            const wasSent = nudgeSent.has(id);
+                            return (
+                              <div key={id} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 16px 9px 44px",borderBottom:`1px solid ${C.mushroom100}`,flexWrap:"wrap"}}>
+                                <input type="checkbox" checked={attnSelected.has(id)}
+                                  onChange={e => setAttnSelected(toggleSet(attnSelected, [id], e.target.checked))}
+                                  style={{cursor:"pointer",accentColor:C.kangkong500,width:14,height:14,flexShrink:0}}/>
+                                <button onClick={()=>onOpenProject(it.project)}
+                                  style={{flex:1,minWidth:180,textAlign:"left",border:"none",background:"transparent",cursor:"pointer",padding:0,fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900}}>
+                                  {it.project.name}
+                                  {wasSent && <span style={{fontFamily:FF,fontSize:10,color:C.kangkong600,fontWeight:600,marginLeft:8}}>Notified ✓</span>}
+                                </button>
+                                <span style={{fontFamily:FF,fontSize:11,color:C.mushroom500,minWidth:70}}>{STAGE_LABELS[it.project.stage]||it.project.stage}</span>
+                                <span style={{fontFamily:DS.fonts.mono,fontSize:11,color:C.mushroom500,minWidth:150,textAlign:"right"}}>{it.note}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {activeTab === "deletions" && (
         <div>
           {pendingDels.length === 0 && resolvedDels.length === 0 && (
@@ -8741,8 +9186,8 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:C.mango100,border:"1px solid "+C.mango300,borderRadius:DS.radius.md,flexWrap:"wrap"}}>
               <div style={{flex:1,fontFamily:FF,fontSize:12,color:"#744210",fontWeight:600}}>
                 {selectedIds.size>0
-                  ? `${selectedIds.size} project${selectedIds.size>1?"s":""} selected`
-                  : `${unclassified.length} unclassified project${unclassified.length>1?"s":""} — select to notify builders`
+                  ? `${selectedIds.size} project${selectedIds.size>1?"s":""} selected — ${builderCount(selectedIds)} email${builderCount(selectedIds)===1?"":"s"}, one per builder`
+                  : `${unclassified.length} unclassified project${unclassified.length>1?"s":""} across ${builderCount(new Set(unclassified.map(p=>String(p.id))))} builders — select to notify`
                 }
               </div>
               <button onClick={()=>{
@@ -8752,17 +9197,25 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
                 {selectedIds.size===unclassified.length?"Deselect all":"Select all"}
               </button>
               <button
-                disabled={selectedIds.size===0||nudgeSending}
-                onClick={()=>handleNudge(selectedIds)}
-                style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"5px 14px",borderRadius:DS.radius.full,border:"none",background:selectedIds.size>0?C.mango500:"#e2dcc0",color:selectedIds.size>0?C.white:"#b0ac9c",cursor:selectedIds.size>0?"pointer":"not-allowed",transition:"all 0.15s"}}>
-                {nudgeSending?"Sending…":`Notify selected (${selectedIds.size})`}
+                onClick={()=>composeForAudit(selectedIds.size>0 ? selectedIds : new Set(unclassified.map(p=>String(p.id))))}
+                style={{fontFamily:FF,fontSize:11,fontWeight:700,padding:"5px 14px",borderRadius:DS.radius.full,border:"none",background:C.mango500,color:C.white,cursor:"pointer",transition:"all 0.15s"}}>
+                {selectedIds.size>0 ? `Compose email (${selectedIds.size})` : "Compose email (all)"}
               </button>
-              <button
-                disabled={nudgeSending}
-                onClick={()=>handleNudge(new Set(unclassified.map(p=>String(p.id))))}
-                style={{fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 14px",borderRadius:DS.radius.full,border:"1px solid #d69e2e",background:"transparent",color:"#744210",cursor:nudgeSending?"not-allowed":"pointer"}}>
-                {nudgeSending?"Sending…":"Notify all"}
-              </button>
+            </div>
+          )}
+
+          {/* Send result */}
+          {auditFilter==="unclassified"&&nudgeNotice&&(
+            <div style={{
+              display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"9px 14px",borderRadius:DS.radius.md,
+              fontFamily:FF,fontSize:12,fontWeight:600,
+              background:nudgeNotice.tone==="ok"?C.kangkong50:C.tomato100,
+              border:"1px solid "+(nudgeNotice.tone==="ok"?C.kangkong200:C.tomato500),
+              color:nudgeNotice.tone==="ok"?C.kangkong700:C.tomato600,
+            }}>
+              <span style={{flex:1}}>{nudgeNotice.text}</span>
+              <button onClick={()=>setNudgeNotice(null)} aria-label="Dismiss"
+                style={{border:"none",background:"transparent",cursor:"pointer",fontFamily:FF,fontSize:14,lineHeight:1,color:"inherit",padding:"0 2px"}}>×</button>
             </div>
           )}
 
@@ -8835,6 +9288,15 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
             </table>
           </div>
         </div>
+      )}
+
+      {composerTargets && (
+        <NudgeComposer
+          targets={composerTargets}
+          authUser={authUser}
+          onClose={()=>setComposerTargets(null)}
+          onSent={handleSent}
+        />
       )}
     </div>
   );
