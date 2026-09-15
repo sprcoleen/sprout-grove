@@ -5567,8 +5567,8 @@ const ProjectDetailPage = ({
               </div>
 
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {(devopsRequests||[]).map(req=>{
-                  const isDeleted = req.status==="jira_deleted";
+                {(devopsRequests||[]).filter(req=>req.status!=="jira_deleted").map(req=>{
+                  const isDeleted = false;
                   const statusColor =
                     isDeleted              ? {bg:C.mushroom100,border:C.mushroom300,dot:C.mushroom400,text:C.mushroom500,label:"Removed in Jira"} :
                     req.status==="done"    ? {bg:C.kangkong100,border:C.kangkong200,dot:C.kangkong500,text:C.kangkong700,label:"Done"}            :
