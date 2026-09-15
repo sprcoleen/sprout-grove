@@ -8021,6 +8021,13 @@ function HelpPanel({ open, onClose, items, filter, setFilter, page, setPage,
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── DevopsRequestModal ───────────────────────────────────────────────────────
+const GROUNDSKEEPERS = [
+  { name:'Raphael Enriquez', initials:'RE', role:'Infrastructure & DevOps' },
+  { name:'Coleen Bartido',   initials:'CB', role:'Technical Lead'          },
+  { name:'Nikki',            initials:'NK', role:'Groundskeeper'           },
+  { name:'Blaise',           initials:'BL', role:'Groundskeeper'           },
+];
+
 function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSaveProject }) {
   const arrToStr = a => Array.isArray(a) ? a.join(', ') : (a || '');
   const [submitting,   setSubmitting]   = React.useState(false);
@@ -8043,9 +8050,20 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
   const [notes,        setNotes]        = React.useState('');
 
   const effectiveTier = tier ?? project.tier ?? 2;
-  const assignee = effectiveTier >= 3
-    ? { name:'Coleen Bartido',   initials:'CB', role:'Technical Lead · Groundskeeper',          badgeBg:'#3182ce', bannerBg:'#ebf8ff', bannerBorder:'#63b3ed', avatarBg:'#3182ce', tierLabel:'Tier 3' }
-    : { name:'Raphael Enriquez', initials:'RE', role:'Infrastructure & DevOps · Groundskeeper', badgeBg:'#d69e2e', bannerBg:'#fefcbf', bannerBorder:'#d69e2e', avatarBg:'#d69e2e', tierLabel:'Tier 2' };
+  const defaultAssigneeIndex = effectiveTier >= 3 ? 1 : 0; // Coleen for T3, Raffy for T2
+  const [selectedAssigneeIdx, setSelectedAssigneeIdx] = React.useState(defaultAssigneeIndex);
+  const gk = GROUNDSKEEPERS[selectedAssigneeIdx];
+  const isAutoAssigned = selectedAssigneeIdx === defaultAssigneeIndex;
+  const assignee = {
+    name:         gk.name,
+    initials:     gk.initials,
+    role:         gk.role + ' · Groundskeeper',
+    badgeBg:      effectiveTier >= 3 ? '#3182ce' : '#d69e2e',
+    bannerBg:     effectiveTier >= 3 ? '#ebf8ff' : '#fefcbf',
+    bannerBorder: effectiveTier >= 3 ? '#63b3ed' : '#d69e2e',
+    avatarBg:     '#2d8c2d',
+    tierLabel:    effectiveTier >= 3 ? 'Tier 3' : 'Tier 2',
+  };
 
   const acctLabel = v => v === 'company' ? 'Company (Sprout)' : 'Personal';
   const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
@@ -8076,6 +8094,7 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
       projectName:  project.name,
       builderEmail: project.builderEmail,
       requestedBy:  authUser.email,
+      assignedTo:   assignee.name,
       githubRepo,
       hosting,
       database,
@@ -8152,17 +8171,45 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
         {/* Scrollable body */}
         <div style={{padding:'16px 22px',overflowY:'auto',flex:1}}>
 
-          {/* Assignee banner */}
-          <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:assignee.bannerBg,border:'1.5px solid '+assignee.bannerBorder,borderRadius:DS.radius.lg,marginBottom:14}}>
-            <div style={{width:38,height:38,borderRadius:DS.radius.full,background:assignee.avatarBg,color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FF,fontSize:13,fontWeight:700,flexShrink:0}}>
-              {assignee.initials}
+          {/* Assignee selector */}
+          <div style={{background:assignee.bannerBg,border:'1.5px solid '+assignee.bannerBorder,borderRadius:DS.radius.lg,marginBottom:14,overflow:'hidden'}}>
+            {/* Selected assignee row */}
+            <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
+              <div style={{width:38,height:38,borderRadius:DS.radius.full,background:assignee.avatarBg,color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FF,fontSize:13,fontWeight:700,flexShrink:0}}>
+                {assignee.initials}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                  <span style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:assignee.badgeBg}}>Assigned to</span>
+                  {isAutoAssigned && <span style={{fontFamily:FF,fontSize:9,fontWeight:600,padding:'1px 7px',borderRadius:DS.radius.full,background:assignee.badgeBg+'22',color:assignee.badgeBg,border:'1px solid '+assignee.badgeBg+'44'}}>Auto-assigned</span>}
+                </div>
+                <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{assignee.name}</div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginTop:1}}>{assignee.role}</div>
+              </div>
+              <div style={{padding:'3px 10px',borderRadius:DS.radius.full,background:assignee.badgeBg,color:C.white,fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{assignee.tierLabel}</div>
             </div>
-            <div style={{flex:1}}>
-              <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:assignee.badgeBg,marginBottom:2}}>Ticket will be assigned to</div>
-              <div style={{fontFamily:FF,fontSize:14,fontWeight:700,color:C.mushroom900}}>{assignee.name}</div>
-              <div style={{fontFamily:FF,fontSize:11,color:C.mushroom600,marginTop:1}}>{assignee.role}</div>
+            {/* Groundskeeper picker */}
+            <div style={{borderTop:'1px solid '+assignee.bannerBorder,padding:'8px 14px',background:'rgba(255,255,255,0.55)'}}>
+              <div style={{fontFamily:FF,fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:7}}>Change assignee</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {GROUNDSKEEPERS.map((g, idx) => {
+                  const active = idx === selectedAssigneeIdx;
+                  return (
+                    <button key={g.name} onClick={()=>setSelectedAssigneeIdx(idx)}
+                      title={g.name + ' · ' + g.role}
+                      style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px 4px 5px',borderRadius:DS.radius.full,border:'1.5px solid '+(active?C.kangkong500:C.mushroom300),background:active?C.kangkong50:C.white,cursor:'pointer',transition:'all 0.15s',fontFamily:FF,flexShrink:0}}>
+                      <div style={{width:22,height:22,borderRadius:DS.radius.full,background:active?C.kangkong500:C.mushroom300,color:C.white,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,flexShrink:0}}>
+                        {g.initials}
+                      </div>
+                      <span style={{fontSize:11,fontWeight:active?700:500,color:active?C.kangkong700:C.mushroom600,whiteSpace:'nowrap'}}>{g.name.split(' ')[0]}</span>
+                      {idx === defaultAssigneeIndex && !active && (
+                        <span style={{fontSize:9,color:C.mushroom400}}>default</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div style={{padding:'3px 10px',borderRadius:DS.radius.full,background:assignee.badgeBg,color:C.white,fontFamily:FF,fontSize:10,fontWeight:700,flexShrink:0}}>{assignee.tierLabel}</div>
           </div>
 
           {/* Ticket block */}
