@@ -3949,11 +3949,26 @@ const ProjectDetailPage = ({
   onSubmitToNursery, onWithdrawFromNursery,
   onApproveProject, onNeedsRework,
   onMarkNotificationsRead, onToggleInterested, onSaveClassification, onCreateDevopsRequest,
+  onSyncJiraTickets,
   onMoveStage, onSubmitReleaseReview, onReleaseReviewAction, onRequestDeletion,
   devopsRequests, pendingDeleteIds,
   justCreated = false, onDismissCreated,
 }) => {
   const [noteText, setNoteText]                   = useState("");
+  const [jiraSyncing,    setJiraSyncing]    = useState(false);
+  const [jiraLastSynced, setJiraLastSynced] = useState(null);
+  const [jiraSyncResult, setJiraSyncResult] = useState(null); // {synced, total} | {error}
+
+  useEffect(() => {
+    const ticketRequests = (devopsRequests || []).filter(r => r.jiraTicketKey);
+    if (!ticketRequests.length || !onSyncJiraTickets) return;
+    setJiraSyncing(true);
+    onSyncJiraTickets(ticketRequests).then(result => {
+      setJiraSyncing(false);
+      setJiraLastSynced(new Date());
+      setJiraSyncResult(result);
+    });
+  }, [project.id]); // run once when the detail page opens
   const [prototypeLink, setPrototypeLink]         = useState(project.prototypeLink || "");
   const [deckLink, setDeckLink]                   = useState(project.deckLink || "");
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -5514,37 +5529,70 @@ const ProjectDetailPage = ({
           {/* ── Linked Tickets ── */}
           {(devopsRequests||[]).length>0&&(
             <div style={{marginTop:20,paddingTop:18,borderTop:"1px solid "+C.mushroom200}}>
-              <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
-                <svg width={14} height={14} viewBox="0 0 16 16" fill="none">
-                  <rect x="1.5" y="3" width="13" height="10" rx="2" stroke={C.mushroom400} strokeWidth="1.4"/>
-                  <path d="M5 7h6M5 10h4" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-                Linked Tickets
-                <span style={{marginLeft:2,padding:"1px 7px",borderRadius:DS.radius.full,background:C.mushroom100,color:C.mushroom600,fontFamily:FF,fontSize:10,fontWeight:700}}>
-                  {(devopsRequests||[]).length}
-                </span>
+              {/* Header row */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <svg width={14} height={14} viewBox="0 0 16 16" fill="none">
+                    <rect x="1.5" y="3" width="13" height="10" rx="2" stroke={C.mushroom400} strokeWidth="1.4"/>
+                    <path d="M5 7h6M5 10h4" stroke={C.mushroom400} strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  <span style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:C.mushroom500}}>Linked Tickets</span>
+                  <span style={{padding:"1px 7px",borderRadius:DS.radius.full,background:C.mushroom100,color:C.mushroom600,fontFamily:FF,fontSize:10,fontWeight:700}}>
+                    {(devopsRequests||[]).length}
+                  </span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  {jiraLastSynced&&!jiraSyncing&&(
+                    <span style={{fontFamily:FF,fontSize:10,color:C.mushroom400}}>
+                      Synced {jiraLastSynced.toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})}
+                      {jiraSyncResult?.synced>0&&<span style={{color:C.kangkong600,fontWeight:600}}> · {jiraSyncResult.synced} updated</span>}
+                    </span>
+                  )}
+                  <button
+                    onClick={()=>{
+                      const ticketRequests=(devopsRequests||[]).filter(r=>r.jiraTicketKey);
+                      if(!ticketRequests.length||jiraSyncing||!onSyncJiraTickets)return;
+                      setJiraSyncing(true);setJiraSyncResult(null);
+                      onSyncJiraTickets(ticketRequests).then(result=>{setJiraSyncing(false);setJiraLastSynced(new Date());setJiraSyncResult(result);});
+                    }}
+                    disabled={jiraSyncing}
+                    style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:DS.radius.full,border:"1px solid "+C.mushroom200,background:C.white,fontFamily:FF,fontSize:10,fontWeight:600,color:C.mushroom600,cursor:jiraSyncing?"not-allowed":"pointer",transition:"all 0.15s",opacity:jiraSyncing?0.6:1}}>
+                    <svg width={10} height={10} viewBox="0 0 16 16" fill="none" style={{animation:jiraSyncing?"spin 1s linear infinite":"none"}}>
+                      <path d="M14 8A6 6 0 1 1 8 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      <path d="M8 2l2 2-2 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {jiraSyncing?"Syncing…":"Sync"}
+                  </button>
+                </div>
               </div>
+
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {(devopsRequests||[]).map(req=>{
+                  const isDeleted = req.status==="jira_deleted";
                   const statusColor =
-                    req.status==="done"       ? {bg:C.kangkong100,border:C.kangkong200,dot:C.kangkong500,text:C.kangkong700} :
-                    req.status==="in_progress"? {bg:"#fefcbf",    border:"#d69e2e",    dot:"#b7791f",    text:"#744210"}      :
-                    req.status==="blocked"    ? {bg:C.tomato100,  border:"#fc8181",    dot:C.tomato500,  text:C.tomato600}    :
-                                                {bg:C.mushroom50, border:C.mushroom200,dot:C.mushroom400,text:C.mushroom600};
-                  const statusLabel =
-                    req.status==="done"        ? "Done"        :
-                    req.status==="in_progress" ? "In progress" :
-                    req.status==="blocked"     ? "Blocked"     : "To do";
+                    isDeleted              ? {bg:C.mushroom100,border:C.mushroom300,dot:C.mushroom400,text:C.mushroom500,label:"Removed in Jira"} :
+                    req.status==="done"    ? {bg:C.kangkong100,border:C.kangkong200,dot:C.kangkong500,text:C.kangkong700,label:"Done"}            :
+                    req.status==="checking"? {bg:C.blueberry100,border:C.blueberry400,dot:C.blueberry500,text:C.blueberry500,label:"For Checking"} :
+                    req.status==="inprogress"||req.status==="in_progress"
+                                           ? {bg:"#fefcbf",border:"#d69e2e",dot:"#b7791f",text:"#744210",label:"In Progress"}                    :
+                    req.status==="blocked" ? {bg:C.tomato100,border:"#fc8181",dot:C.tomato500,text:C.tomato600,label:"Blocked"}                   :
+                                             {bg:C.mushroom50,border:C.mushroom200,dot:C.mushroom400,text:C.mushroom600,label:"To Do"};
                   return (
-                    <div key={req.id} style={{background:C.white,border:"1px solid "+C.mushroom200,borderRadius:DS.radius.lg,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:12}}>
+                    <div key={req.id} style={{background:isDeleted?C.mushroom50:C.white,border:"1px solid "+(isDeleted?C.mushroom200:C.mushroom200),borderRadius:DS.radius.lg,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:12,opacity:isDeleted?0.7:1}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
                           {req.jiraTicketKey&&(
-                            <span style={{fontFamily:"Roboto Mono, monospace",fontSize:11,fontWeight:700,color:C.kangkong600,background:C.kangkong50,border:"1px solid "+C.kangkong200,borderRadius:DS.radius.sm,padding:"1px 7px",flexShrink:0}}>
+                            <a
+                              href={`https://sprouthq.atlassian.net/browse/${req.jiraTicketKey}`}
+                              target="_blank" rel="noreferrer"
+                              style={{fontFamily:"Roboto Mono, monospace",fontSize:11,fontWeight:700,color:isDeleted?C.mushroom500:C.kangkong600,background:isDeleted?C.mushroom100:C.kangkong50,border:"1px solid "+(isDeleted?C.mushroom300:C.kangkong200),borderRadius:DS.radius.sm,padding:"1px 7px",flexShrink:0,textDecoration:"none",textDecorationLine:isDeleted?"line-through":"none"}}
+                              onMouseOver={e=>{if(!isDeleted)e.currentTarget.style.textDecoration="underline";}}
+                              onMouseOut={e=>e.currentTarget.style.textDecoration="none"}
+                            >
                               {req.jiraTicketKey}
-                            </span>
+                            </a>
                           )}
-                          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:C.mushroom900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          <span style={{fontFamily:FF,fontSize:13,fontWeight:600,color:isDeleted?C.mushroom500:C.mushroom900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:isDeleted?"line-through":"none"}}>
                             Grove SRC: {req.projectName}
                           </span>
                         </div>
@@ -5563,7 +5611,7 @@ const ProjectDetailPage = ({
                       <div style={{flexShrink:0}}>
                         <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:DS.radius.full,background:statusColor.bg,border:"1px solid "+statusColor.border,fontFamily:FF,fontSize:10,fontWeight:700,color:statusColor.text}}>
                           <span style={{width:6,height:6,borderRadius:"50%",background:statusColor.dot,flexShrink:0}}/>
-                          {statusLabel}
+                          {statusColor.label}
                         </span>
                       </div>
                     </div>
@@ -8398,6 +8446,15 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
 }
 
 // ── DevopsBoard ──────────────────────────────────────────────────────────────
+function jiraStatusToGrove(jiraStatusName) {
+  if (!jiraStatusName) return 'todo';
+  const s = jiraStatusName.toLowerCase();
+  if (['done','closed','resolved'].some(x => s.includes(x))) return 'done';
+  if (['for checking','ready for checking'].some(x => s.includes(x))) return 'checking';
+  if (['in progress','for pr review'].some(x => s.includes(x))) return 'inprogress';
+  return 'todo';
+}
+
 const JIRA_COLS = [
   { id:'todo',        label:'To Do',          statuses:['Backlog','To Do','Open'],                color:C.mushroom600,  bg:C.mushroom50,    border:C.mushroom200  },
   { id:'inprogress',  label:'In Progress',    statuses:['In Progress','For PR Review'],           color:C.mango600,     bg:C.mango50,       border:C.mango300     },
@@ -9796,6 +9853,43 @@ export default function SproutAIGarden() {
     setDevopsRequests(prev => prev.map(r => r.id===id ? {...r, status, devopsNotes: notes||r.devopsNotes} : r));
   };
 
+  const handleSyncJiraTickets = async (requests) => {
+    const withKeys = (requests || []).filter(r => r.jiraTicketKey);
+    if (!withKeys.length) return { synced: 0, total: 0 };
+    try {
+      const res = await fetch('/api/sync-jira-tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys: withKeys.map(r => r.jiraTicketKey) }),
+      });
+      const { results, error } = await res.json();
+      if (error) return { error };
+      let synced = 0;
+      for (const result of results) {
+        const req = withKeys.find(r => r.jiraTicketKey === result.key);
+        if (!req) continue;
+        const newStatus = result.found === false
+          ? 'jira_deleted'
+          : result.error
+            ? req.status
+            : jiraStatusToGrove(result.jiraStatus);
+        if (newStatus !== req.status) {
+          const { error: dbErr } = await supabase.from('devops_requests').update({
+            status: newStatus, updated_at: new Date().toISOString(),
+          }).eq('id', req.id);
+          if (!dbErr) {
+            setDevopsRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: newStatus } : r));
+            synced++;
+          }
+        }
+      }
+      return { synced, total: withKeys.length };
+    } catch (e) {
+      console.error('Jira sync error:', e);
+      return { error: e.message };
+    }
+  };
+
   // ── Help panel data loading & mutations ──────────────────────────────────────
   const loadHelpItems = async () => {
     const { data, error } = await supabase
@@ -10720,6 +10814,7 @@ export default function SproutAIGarden() {
               onToggleInterested={handleToggleInterested}
               onSaveClassification={handleSaveClassification}
               onCreateDevopsRequest={handleCreateDevopsRequest}
+              onSyncJiraTickets={handleSyncJiraTickets}
               devopsRequests={devopsRequests.filter(r=>String(r.projectId)===String(detailProject.id))}
               onMoveStage={handleMoveStage}
               onSubmitReleaseReview={handleSubmitReleaseReview}
