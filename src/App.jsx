@@ -8049,6 +8049,23 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
   const [dbAcct,       setDbAcct]       = React.useState(project.databaseAccount       || 'company');
   const [notes,        setNotes]        = React.useState('');
 
+  const REQUEST_TYPES = [
+    'Setup of GitHub',
+    'Migration of GitHub from Personal to Company Account',
+    'Setup & Migration of Vercel',
+    'Setup & Migration of Azure',
+    'Migration of DB to Company Account',
+    'Change of Domain Name',
+  ];
+  const [selectedRequests, setSelectedRequests] = React.useState([]);
+  const [othersChecked,    setOthersChecked]    = React.useState(false);
+  const [othersText,       setOthersText]       = React.useState('');
+
+  const toggleRequest = (label) =>
+    setSelectedRequests(prev =>
+      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
+    );
+
   const effectiveTier = tier ?? project.tier ?? 2;
   const defaultAssigneeIndex = effectiveTier >= 3 ? 1 : 0; // Coleen for T3, Raffy for T2
   const [selectedAssigneeIdx, setSelectedAssigneeIdx] = React.useState(defaultAssigneeIndex);
@@ -8068,11 +8085,16 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
   const acctLabel = v => v === 'company' ? 'Company (Sprout)' : 'Personal';
   const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
   const ticketSummary = 'Grove SRC: ' + project.name;
+  const allRequestLines = [
+    ...selectedRequests,
+    ...(othersChecked && othersText.trim() ? ['Others: ' + othersText.trim()] : []),
+  ];
   const ticketDesc = [
     'Project: '  + project.name,
     'Builder: '  + project.builderEmail,
     'Assigned to: ' + assignee.name,
     '',
+    ...(allRequestLines.length ? ['Request type(s):', ...allRequestLines.map(r => '  • ' + r), ''] : []),
     'Please set up the following:',
     pad('GitHub Repo:',13) + (githubRepo || 'TBD') + '  [' + acctLabel(githubAcct) + ']',
     pad('Hosting:',   13) + (hosting    || 'TBD') + '  [' + acctLabel(hostingAcct) + ']',
@@ -8095,6 +8117,7 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
       builderEmail: project.builderEmail,
       requestedBy:  authUser.email,
       assignedTo:   assignee.name,
+      requestTypes: allRequestLines,
       githubRepo,
       hosting,
       database,
@@ -8209,6 +8232,45 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
                   );
                 })}
               </div>
+            </div>
+          </div>
+
+          {/* Request type checklist */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontFamily:FF,fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',color:C.mushroom700,marginBottom:8}}>
+              What do you need? <span style={{fontWeight:400,textTransform:'none',color:C.mushroom400,letterSpacing:0,fontSize:11}}>(select all that apply)</span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {REQUEST_TYPES.map(label => {
+                const checked = selectedRequests.includes(label);
+                return (
+                  <label key={label} onClick={()=>toggleRequest(label)} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 10px',borderRadius:DS.radius.md,border:'1.5px solid '+(checked?C.kangkong400:C.mushroom200),background:checked?C.kangkong50:C.white,cursor:'pointer',transition:'all 0.15s',userSelect:'none'}}>
+                    <div style={{width:16,height:16,borderRadius:4,border:'2px solid '+(checked?C.kangkong500:C.mushroom300),background:checked?C.kangkong500:C.white,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1,transition:'all 0.15s'}}>
+                      {checked && <svg width={10} height={10} viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span style={{fontFamily:FF,fontSize:12,color:checked?C.kangkong700:C.mushroom700,fontWeight:checked?600:400,lineHeight:1.4}}>{label}</span>
+                  </label>
+                );
+              })}
+              {/* Others */}
+              <label onClick={()=>setOthersChecked(v=>!v)} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 10px',borderRadius:DS.radius.md,border:'1.5px solid '+(othersChecked?C.kangkong400:C.mushroom200),background:othersChecked?C.kangkong50:C.white,cursor:'pointer',transition:'all 0.15s',userSelect:'none'}}>
+                <div style={{width:16,height:16,borderRadius:4,border:'2px solid '+(othersChecked?C.kangkong500:C.mushroom300),background:othersChecked?C.kangkong500:C.white,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1,transition:'all 0.15s'}}>
+                  {othersChecked && <svg width={10} height={10} viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <span style={{fontFamily:FF,fontSize:12,color:othersChecked?C.kangkong700:C.mushroom700,fontWeight:othersChecked?600:400,lineHeight:1.4}}>Others — please specify below</span>
+              </label>
+              {othersChecked && (
+                <textarea
+                  value={othersText}
+                  onChange={e=>setOthersText(e.target.value)}
+                  onClick={e=>e.stopPropagation()}
+                  placeholder="Describe the request…"
+                  rows={2}
+                  style={{width:'100%',padding:'8px 11px',borderRadius:DS.radius.md,border:'1.5px solid '+(othersText.trim()?C.kangkong400:C.mushroom300),fontFamily:FF,fontSize:12,color:C.mushroom800,background:C.white,outline:'none',resize:'vertical',transition:'border-color 0.15s',boxSizing:'border-box',lineHeight:1.5,marginTop:2}}
+                  onFocus={e=>e.target.style.borderColor=C.kangkong500}
+                  onBlur={e=>e.target.style.borderColor=othersText.trim()?C.kangkong400:C.mushroom300}
+                />
+              )}
             </div>
           </div>
 
