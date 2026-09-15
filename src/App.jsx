@@ -9788,10 +9788,14 @@ export default function SproutAIGarden() {
     let jiraCreated = false;
     let jiraError = null;
     try {
+      const requestTypeLines = Array.isArray(req.requestTypes) && req.requestTypes.length
+        ? req.requestTypes
+        : [];
       const ticketDesc = [
         "Project: "  + req.projectName,
         "Builder: "  + req.builderEmail,
         "",
+        ...(requestTypeLines.length ? ["Request type(s):", ...requestTypeLines.map(r => "  • " + r), ""] : []),
         "Please set up the following:",
         "GitHub Repo: " + (req.githubRepo || "TBD"),
         "Hosting:     " + (req.hosting    || "TBD"),
@@ -9807,6 +9811,7 @@ export default function SproutAIGarden() {
           labels: ["Src-Grove"],
           requestedBy: authUser?.displayName || req.requestedBy,
           projectName: req.projectName,
+          requestTypes: requestTypeLines,
           githubRepo: req.githubRepo,
           hosting: req.hosting,
           database: req.database,

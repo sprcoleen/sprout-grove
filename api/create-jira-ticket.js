@@ -20,7 +20,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Jira credentials not configured on server' });
   }
 
-  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, githubRepo, hosting, database, remarks } = req.body || {};
+  const { summary, description, assigneeAccountId, labels, requestedBy, projectName, requestTypes, githubRepo, hosting, database, remarks } = req.body || {};
+  const requestTypeLines = Array.isArray(requestTypes) && requestTypes.length ? requestTypes : [];
   if (!summary) {
     return res.status(400).json({ error: 'summary is required' });
   }
@@ -58,7 +59,17 @@ export default async function handler(req, res) {
         customfield_10036: {
           type: 'doc', version: 1,
           content: [
-            { type: 'paragraph', content: [{ type: 'text', text: 'Please set up the DevOps infrastructure for this project:' }] },
+            ...(requestTypeLines.length ? [
+              { type: 'paragraph', content: [{ type: 'text', text: 'Request type(s):', marks: [{ type: 'strong' }] }] },
+              {
+                type: 'bulletList',
+                content: requestTypeLines.map(r => ({
+                  type: 'listItem',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: r }] }],
+                })),
+              },
+            ] : []),
+            { type: 'paragraph', content: [{ type: 'text', text: 'Please set up the DevOps infrastructure for this project:', marks: [{ type: 'strong' }] }] },
             ...[
               githubRepo ? `GitHub Repo: ${githubRepo}` : null,
               hosting    ? `Hosting: ${hosting}`        : null,
