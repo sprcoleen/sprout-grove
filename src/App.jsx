@@ -8291,6 +8291,27 @@ function DevopsRequestModal({ project, authUser, tier, onClose, onSubmit, onSave
               ))}
             </div>
 
+            {/* Request types in ticket preview */}
+            {allRequestLines.length > 0 && (
+              <div style={{marginBottom:12,padding:'8px 10px',background:C.white,borderRadius:DS.radius.md,border:'1px solid '+C.mushroom200}}>
+                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:6}}>Request type(s)</div>
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  {allRequestLines.map(r=>(
+                    <div key={r} style={{display:'flex',alignItems:'flex-start',gap:6}}>
+                      <div style={{width:5,height:5,borderRadius:'50%',background:C.kangkong500,flexShrink:0,marginTop:5}}/>
+                      <span style={{fontFamily:FF,fontSize:11,color:C.mushroom800,lineHeight:1.4}}>{r}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {allRequestLines.length === 0 && (
+              <div style={{marginBottom:12,padding:'8px 10px',background:C.white,borderRadius:DS.radius.md,border:'1px dashed '+C.mushroom200}}>
+                <div style={{fontFamily:FF,fontSize:9,color:C.mushroom400,textTransform:'uppercase',letterSpacing:0.8,marginBottom:2}}>Request type(s)</div>
+                <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,fontStyle:'italic'}}>No tasks selected yet — check the options above.</div>
+              </div>
+            )}
+
             {tools.length>0&&(
               <div style={{marginBottom:12}}>
                 <div style={{fontFamily:FF,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:C.mushroom500,marginBottom:6,display:'flex',alignItems:'center',gap:6}}>
