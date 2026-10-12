@@ -4,15 +4,16 @@
  * Setup:
  *  1. Go to https://script.google.com → New project
  *  2. Paste this file → save
- *  3. Run setupDailyTrigger() once to register the time-based trigger
- *  4. Authorize when prompted
+ *  3. In Project Settings → Script Properties, add:
+ *       GC_WEBHOOK = <your Google Chat webhook URL>
+ *  4. Run setupDailyTrigger() once to register the time-based trigger
+ *  5. Authorize when prompted
  *
  * The trigger calls groveHealthCheck() every day at 8am Manila time.
- * Results are logged to Apps Script execution log and emailed on failure.
+ * Results are logged to Apps Script execution log and posted to Google Chat on failure.
  */
 
-var GROVE_URL  = 'https://grove.sprout.solutions';
-var NOTIFY_EMAIL = 'cbasis@sprout.ph'; // change if you want alerts elsewhere
+var GROVE_URL = 'https://grove.sprout.solutions';
 
 function groveHealthCheck() {
   var results = [];
@@ -59,12 +60,25 @@ function groveHealthCheck() {
   });
   Logger.log('[' + timestamp + '] Grove health check\n' + lines.join('\n'));
 
-  // --- Email on failure ---
+  // --- Notify Google Chat on failure ---
   if (!allOk) {
-    var subject = '🚨 Grove health check FAILED — ' + new Date().toDateString();
-    var body    = 'Grove daily health check detected issues:\n\n' + lines.join('\n') + '\n\nCheck: ' + GROVE_URL;
-    MailApp.sendEmail(NOTIFY_EMAIL, subject, body);
+    notifyGoogleChat('🚨 *Grove health check FAILED* — ' + new Date().toDateString() + '\n\n' + lines.join('\n') + '\n\n' + GROVE_URL);
   }
+}
+
+function notifyGoogleChat(text) {
+  // Store webhook URL in Project Settings → Script Properties as GC_WEBHOOK
+  var webhook = PropertiesService.getScriptProperties().getProperty('GC_WEBHOOK');
+  if (!webhook) {
+    Logger.log('GC_WEBHOOK not set in Script Properties — skipping Google Chat notification.');
+    return;
+  }
+  UrlFetchApp.fetch(webhook, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({ text: text }),
+    muteHttpExceptions: true,
+  });
 }
 
 /**
