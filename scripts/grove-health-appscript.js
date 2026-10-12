@@ -5,21 +5,24 @@
  *  1. Go to https://script.google.com → New project
  *  2. Paste this file → save
  *  3. In Project Settings → Script Properties, add:
+ *       GROVE_URL  = https://grove.sprout.solutions
  *       GC_WEBHOOK = <your Google Chat webhook URL>
  *  4. Run setupDailyTrigger() once to register the time-based trigger
  *  5. Authorize when prompted
  *
- * The trigger calls groveHealthCheck() every day at 8am Manila time.
- * Results are logged to Apps Script execution log and posted to Google Chat on failure.
+ * Runs groveHealthCheck() every day at 8am Manila time.
+ * Results are always posted to Google Chat.
  */
 
-var GROVE_URL = 'https://grove.sprout.solutions';
-
 function groveHealthCheck() {
-  var results = [];
-  var allOk   = true;
+  var props = PropertiesService.getScriptProperties();
+  var GROVE_URL  = props.getProperty('GROVE_URL');
+  var GC_WEBHOOK = props.getProperty('GC_WEBHOOK');
 
-  // --- Check 1: Health endpoint (also keeps Supabase active) ---
+  var results = [];
+  var allOk = true;
+
+  // Check 1: Health endpoint (also keeps Supabase active)
   try {
     var r1 = UrlFetchApp.fetch(GROVE_URL + '/api/health', { muteHttpExceptions: true });
     var body1 = JSON.parse(r1.getContentText());
@@ -31,7 +34,7 @@ function groveHealthCheck() {
     allOk = false;
   }
 
-  // --- Check 2: Main app page ---
+  // Check 2: Main app page
   try {
     var r2 = UrlFetchApp.fetch(GROVE_URL + '/', { muteHttpExceptions: true });
     var pass2 = r2.getResponseCode() === 200;
@@ -42,7 +45,7 @@ function groveHealthCheck() {
     allOk = false;
   }
 
-  // --- Check 3: Jira tickets API ---
+  // Check 3: Jira tickets API
   try {
     var r3 = UrlFetchApp.fetch(GROVE_URL + '/api/get-jira-tickets', { muteHttpExceptions: true });
     var pass3 = r3.getResponseCode() === 200;
@@ -53,51 +56,34 @@ function groveHealthCheck() {
     allOk = false;
   }
 
-  // --- Log results ---
+  // Log results
   var timestamp = new Date().toISOString();
   var lines = results.map(function(r) {
-    return (r.pass ? '✅ PASS' : '❌ FAIL') + ' — ' + r.check + ' [HTTP ' + r.status + ']' + (r.detail ? ' — ' + r.detail : '');
+    return (r.pass ? 'PASS' : 'FAIL') + ' - ' + r.check + ' [HTTP ' + r.status + ']' + (r.detail ? ' - ' + r.detail : '');
   });
   Logger.log('[' + timestamp + '] Grove health check\n' + lines.join('\n'));
 
-  // --- Notify Google Chat on failure ---
-  if (!allOk) {
-    notifyGoogleChat('🚨 *Grove health check FAILED* — ' + new Date().toDateString() + '\n\n' + lines.join('\n') + '\n\n' + GROVE_URL);
-  }
-}
-
-function notifyGoogleChat(text) {
-  // Store webhook URL in Project Settings → Script Properties as GC_WEBHOOK
-  var webhook = PropertiesService.getScriptProperties().getProperty('GC_WEBHOOK');
-  if (!webhook) {
-    Logger.log('GC_WEBHOOK not set in Script Properties — skipping Google Chat notification.');
-    return;
-  }
-  UrlFetchApp.fetch(webhook, {
+  // Always notify Google Chat
+  var status = allOk ? 'All checks passed' : 'ISSUES DETECTED';
+  var msg = '*Grove Daily Health Check — ' + status + '*\n' + new Date().toDateString() + '\n\n' + lines.join('\n') + '\n\n' + GROVE_URL;
+  UrlFetchApp.fetch(GC_WEBHOOK, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({ text: text }),
-    muteHttpExceptions: true,
+    payload: JSON.stringify({ text: msg }),
+    muteHttpExceptions: true
   });
 }
 
-/**
- * Run this ONCE manually to register the daily trigger.
- * After that, groveHealthCheck() runs automatically every day at 8am.
- */
 function setupDailyTrigger() {
-  // Remove any existing Grove triggers first to avoid duplicates
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'groveHealthCheck') {
       ScriptApp.deleteTrigger(t);
     }
   });
-
   ScriptApp.newTrigger('groveHealthCheck')
     .timeBased()
     .everyDays(1)
-    .atHour(8)  // 8am in the script's timezone — set it to Asia/Manila in Project Settings
+    .atHour(8)
     .create();
-
-  Logger.log('Daily trigger registered. groveHealthCheck() will run every day at 8am.');
+  Logger.log('Daily trigger registered.');
 }
