@@ -11,7 +11,7 @@
  * Results are logged to Apps Script execution log and emailed on failure.
  */
 
-var GROVE_URL  = 'https://sprout-grove.vercel.app';
+var GROVE_URL  = 'https://grove.sprout.solutions';
 var NOTIFY_EMAIL = 'cbasis@sprout.ph'; // change if you want alerts elsewhere
 
 function groveHealthCheck() {
