@@ -389,6 +389,23 @@ const getDeptColor = (dept) => DEPT_COLORS[dept] || C.kangkong500;
 const builtForArr      = (v) => Array.isArray(v) ? v : (v ? [v] : []);
 const builtForDisplay  = (v) => builtForArr(v).join(", ") || "—";
 const builtForColor    = (v) => { const first = builtForArr(v)[0]; return DEPT_COLORS[first] || C.mushroom400; };
+
+// Where a project actually runs, for the Garden list's "Resides" column.
+// Declared hosting is sparse (9 of 113 projects at the Oct 2026 audit, 1 with
+// production_hosting), so fall back to the demo link's domain and flag it as
+// inferred — a guess must not read as a declaration.
+const residesOf = (p) => {
+  const prod = (p.productionHosting || "").trim();
+  if (prod) return { text: prod, inferred: false };
+  const declared = (Array.isArray(p.hosting) ? p.hosting : []).filter(Boolean);
+  if (declared.length) return { text: declared.join(" / "), inferred: false };
+  const link = (p.demoLink || "").trim();
+  if (link) {
+    const host = link.replace(/^https?:\/\//i, "").split("/")[0].split("?")[0];
+    if (host) return { text: host, inferred: true };
+  }
+  return { text: "", inferred: false, missing: true };
+};
 const builtForIncludes = (v, dept) => builtForArr(v).includes(dept);
 
 const INITIAL_WISHES = [
@@ -2010,6 +2027,7 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
     else if (sortCol==="builder") { av=a.builder||""; bv=b.builder||""; }
     else if (sortCol==="country") { av=a.country||""; bv=b.country||""; }
     else if (sortCol==="builtFor"){ av=builtForArr(a.builtFor)[0]||""; bv=builtForArr(b.builtFor)[0]||""; }
+    else if (sortCol==="resides") { av=residesOf(a).text||"zzz"; bv=residesOf(b).text||"zzz"; }
     else if (sortCol==="updated") { av=a.lastUpdated??999; bv=b.lastUpdated??999; }
     else if (sortCol==="created") { av=new Date(a.createdAt||0).getTime(); bv=new Date(b.createdAt||0).getTime(); }
     else { av=new Date(a.createdAt||0).getTime(); bv=new Date(b.createdAt||0).getTime(); }
@@ -2414,9 +2432,11 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                 ["Project",   "name",     "3 1 0",    "left"],
                 ["Stage",     "stage",    "0 0 116px","left"],
                 ["Tier",      "tier",     "0 0 96px", "left"],
+                ["Resides",   "resides",  "0 0 150px","left"],
                 ["Builder",   "builder",  "0 0 160px","left"],
                 ["Country",   "country",  "0 0 80px", "left"],
                 ["Built For", "builtFor", "1 1 0",    "left"],
+                ["Created",   "created",  "0 0 86px", "right"],
                 ["Updated",   "updated",  "0 0 72px", "right"],
                 ["",          null,       "0 0 32px", "right"],
               ].map(([label,col,flex,align])=>{
@@ -2442,6 +2462,10 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               const depts = builtForArr(p.builtFor);
               const updatedLabel = p.lastUpdated===0?"Today":p.lastUpdated===1?"Yesterday":`${p.lastUpdated}d ago`;
               const isStale = p.lastUpdated>30;
+              const resides = residesOf(p);
+              const createdLabel = p.createdAt
+                ? new Date(p.createdAt).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"})
+                : "—";
               const hasMore = listSorted.length-1>i||showSeeds;
               return (
                 <div key={p.id} onClick={()=>setSelected(p)}
@@ -2474,6 +2498,18 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                   <div style={{flex:"0 0 96px",minWidth:0,paddingRight:12}}>
                     {p.tier!=null?<TierBadge tier={p.tier}/>:<span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span>}
                   </div>
+                  {/* Resides — where the project actually runs */}
+                  <div style={{flex:"0 0 150px",minWidth:0,paddingRight:12,overflow:"hidden"}}>
+                    {resides.missing
+                      ? <span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span>
+                      : <span
+                          title={resides.inferred
+                            ? `${resides.text} — inferred from the demo link; hosting was never declared`
+                            : `${resides.text} — declared hosting`}
+                          style={{fontFamily:FF,fontSize:11.5,color:resides.inferred?C.mushroom400:C.mushroom700,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {resides.text}{resides.inferred&&<span style={{color:C.mushroom300}}> *</span>}
+                        </span>}
+                  </div>
                   {/* Builder */}
                   <div style={{flex:"0 0 160px",minWidth:0,display:"flex",alignItems:"center",gap:6,paddingRight:12,overflow:"hidden"}}>
                     <div style={{width:22,height:22,borderRadius:"50%",background:cc.bg,color:cc.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FF,fontSize:8,fontWeight:700,flexShrink:0}}>{getInitials(p.builder)}</div>
@@ -2494,6 +2530,10 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                           {depts.length>2&&<span style={{fontFamily:FF,fontSize:10,color:C.mushroom400,flexShrink:0}}>+{depts.length-2}</span>}
                         </>
                     }
+                  </div>
+                  {/* Created */}
+                  <div style={{flex:"0 0 86px",textAlign:"right",paddingRight:12,fontFamily:FF,fontSize:11,color:C.mushroom400,whiteSpace:"nowrap"}}>
+                    {createdLabel}
                   </div>
                   {/* Updated */}
                   <div style={{flex:"0 0 72px",textAlign:"right",fontFamily:FF,fontSize:11,fontWeight:isStale?600:400,color:isStale?C.mango500:C.mushroom400,whiteSpace:"nowrap"}}>
@@ -2536,12 +2576,16 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
                 </div>
                 <div style={{flex:"0 0 116px",minWidth:0,paddingRight:12}}><StageBadge stage="seed"/></div>
                 <div style={{flex:"0 0 96px",minWidth:0,paddingRight:12}}><span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span></div>
+                <div style={{flex:"0 0 150px",minWidth:0,paddingRight:12}}><span style={{fontFamily:FF,fontSize:12,color:C.mushroom300}}>—</span></div>
                 <div style={{flex:"0 0 160px",minWidth:0,paddingRight:12,fontFamily:FF,fontSize:12,color:C.mushroom500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.wisherName}</div>
                 <div style={{flex:"0 0 80px",minWidth:0,paddingRight:12}}>{w.country&&<CountryBadge country={w.country}/>}</div>
                 <div style={{flex:"1 1 0",minWidth:0,display:"flex",gap:4,overflow:"hidden",paddingRight:12}}>
                   {builtForArr(w.builtFor).slice(0,2).map(t=>{const tc=DEPT_COLORS[t]||C.mushroom400;return(
                     <span key={t} style={{fontFamily:FF,fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:DS.radius.full,background:tc+"18",color:tc,whiteSpace:"nowrap"}}>{t}</span>
                   );})}
+                </div>
+                <div style={{flex:"0 0 86px",textAlign:"right",paddingRight:12,fontFamily:FF,fontSize:11,color:C.mushroom400,whiteSpace:"nowrap"}}>
+                  {w.createdAt ? new Date(w.createdAt).toLocaleDateString("en-PH",{day:"numeric",month:"short",year:"numeric"}) : "—"}
                 </div>
                 <div style={{flex:"0 0 72px",textAlign:"right",fontFamily:FF,fontSize:11,color:C.mushroom400,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:3}}>
                   <svg width={10} height={10} viewBox="0 0 12 12" fill="none"><path d="M6 1 L7.5 4.5 L11 5 L8.5 7.5 L9 11 L6 9.5 L3 11 L3.5 7.5 L1 5 L4.5 4.5 Z" stroke={C.mushroom400} strokeWidth="1" fill={C.mushroom200}/></svg>
@@ -2557,6 +2601,12 @@ const GardenHub = ({projects, wishes, selected, setSelected, authUser, onMoveSta
               </div>
             )}
           </div>
+
+          {listSorted.some(p=>residesOf(p).inferred)&&(
+            <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:10,lineHeight:1.6}}>
+              Entries marked <span style={{color:C.mushroom500}}>*</span> under Resides have no declared hosting — the location shown is inferred from the project&rsquo;s demo link and should be confirmed with the builder.
+            </div>
+          )}
         </div>
       )}
 
