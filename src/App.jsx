@@ -9490,6 +9490,221 @@ function AdminDashboard({ projects, wishes, deleteRequests, authUser, onApprove,
 }
 
 // ── Grove Guide / Wiki ────────────────────────────────────────────────────────
+// ── AI Register ───────────────────────────────────────────────────────────────
+// The governance report: every registered project with its tier, where it runs,
+// who registered it and when. Visible to every signed-in employee — it is the same
+// project data the Garden already shows, gathered into one reviewable list.
+function AIRegisterView({ projects, onOpenProject }) {
+  const [regSearch, setRegSearch] = React.useState("");
+  const [regTier,   setRegTier]   = React.useState("all");  // "all" | "1" | "2" | "3" | "none"
+  const [regStage,  setRegStage]  = React.useState("all");
+
+  // Where a project actually runs. Declared hosting is sparse (9 of 113 rows at the
+  // last audit), so fall back to the demo link's domain and mark it inferred — the
+  // report should never present a guess as a declaration.
+  const residesOf = (p) => {
+    const prod = (p.productionHosting || "").trim();
+    if (prod) return { text: prod, inferred: false };
+    const declared = (Array.isArray(p.hosting) ? p.hosting : []).filter(Boolean);
+    if (declared.length) return { text: declared.join(" / "), inferred: false };
+    const link = (p.demoLink || "").trim();
+    if (link) {
+      const host = link.replace(/^https?:\/\//i, "").split("/")[0].split("?")[0];
+      if (host) return { text: host, inferred: true };
+    }
+    return { text: "Not declared", inferred: false, missing: true };
+  };
+
+  const REGISTER_TIERS = [
+    { k: "all",  label: "All" },
+    { k: "1",    label: "Tier 1" },
+    { k: "2",    label: "Tier 2" },
+    { k: "3",    label: "Tier 3" },
+    { k: "none", label: "Unclassified" },
+  ];
+
+  const registerRows = React.useMemo(() => projects
+    .map(p => ({ p, resides: residesOf(p) }))
+    .sort((a, b) => String(b.p.createdAt || "").localeCompare(String(a.p.createdAt || ""))),
+    [projects]);
+
+  const registerFiltered = React.useMemo(() => {
+    const q = regSearch.trim().toLowerCase();
+    return registerRows.filter(({ p, resides }) => {
+      if (regTier === "none" && p.tier != null) return false;
+      if (regTier !== "all" && regTier !== "none" && String(p.tier) !== regTier) return false;
+      if (regStage !== "all" && p.stage !== regStage) return false;
+      if (!q) return true;
+      return [p.name, p.builder, p.builderEmail, resides.text, STAGE_LABELS[p.stage]]
+        .some(v => String(v || "").toLowerCase().includes(q));
+    });
+  }, [registerRows, regSearch, regTier, regStage]);
+
+  const regCount = (k) => k === "all" ? registerRows.length
+                        : k === "none" ? registerRows.filter(r => r.p.tier == null).length
+                        : registerRows.filter(r => String(r.p.tier) === k).length;
+
+  const regDate = (ts) => ts ? new Date(ts).toLocaleDateString("en-PH", { year:"numeric", month:"short", day:"numeric" }) : "—";
+
+  const exportRegisterCSV = () => {
+    const esc = v => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = ["ID","Project","Tier","Stage","Where it resides","Resides source","Requestor","Requestor Email","Created"];
+    const rows = registerFiltered.map(({ p, resides }) => [
+      p.id, p.name,
+      p.tier == null ? "Unclassified" : `Tier ${p.tier}`,
+      STAGE_LABELS[p.stage] || p.stage,
+      resides.missing ? "" : resides.text,
+      resides.missing ? "none" : resides.inferred ? "inferred from demo link" : "declared",
+      p.builder || "", p.builderEmail || "",
+      p.createdAt ? String(p.createdAt).slice(0, 10) : "",
+    ]);
+    const csv = [headers.map(esc).join(","), ...rows.map(r => r.map(esc).join(","))].join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `grove-ai-register-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{flex:1,overflow:"auto",padding:"28px 32px",background:"transparent",position:"relative",zIndex:1}}>
+
+      {/* Header */}
+      <div style={{marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <IcoViewList size={24} color={C.kangkong600}/>
+          <div style={{fontFamily:FF,fontSize:22,fontWeight:800,color:C.mushroom900,lineHeight:1.1}}>AI Register</div>
+        </div>
+        <div style={{fontFamily:FF,fontSize:13,color:C.mushroom500,maxWidth:"70ch",lineHeight:1.6}}>
+          Every AI project registered in Grove, with its risk tier, where it runs, and who registered it.
+          Newest first.
+        </div>
+      </div>
+
+      {/* Summary strip */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
+        {[
+          { label:"Registered",   value:registerRows.length,                                    bg:C.mushroom50,  border:C.mushroom300, color:C.mushroom800 },
+          { label:"Tier 1",       value:regCount("1"),                                          bg:C.mushroom100, border:C.mushroom300, color:C.mushroom700 },
+          { label:"Tier 2",       value:regCount("2"),                                          bg:C.blueberry100,border:C.blueberry400,color:C.blueberry500 },
+          { label:"Tier 3",       value:regCount("3"),                                          bg:C.carrot100,   border:C.carrot500,   color:C.carrot500 },
+          { label:"Unclassified", value:regCount("none"),                                       bg:C.mango50,     border:C.mango300,    color:C.mango700 },
+          { label:"Live apps",    value:registerRows.filter(r=>r.p.stage==="bloom"||r.p.stage==="thriving").length, bg:C.kangkong50, border:C.kangkong200, color:C.kangkong700 },
+          { label:"No location",  value:registerRows.filter(r=>r.resides.missing).length,       bg:C.tomato100,   border:C.tomato500,   color:C.tomato600 },
+        ].map(s => (
+          <div key={s.label} style={{padding:"10px 14px",background:s.bg,border:"1px solid "+s.border,borderRadius:DS.radius.lg,minWidth:96}}>
+            <div style={{fontFamily:FF,fontSize:20,fontWeight:800,color:s.color,lineHeight:1}}>{s.value}</div>
+            <div style={{fontFamily:FF,fontSize:10,fontWeight:700,color:s.color,marginTop:3,lineHeight:1.3}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+        <input
+          type="search" value={regSearch} onChange={e=>setRegSearch(e.target.value)}
+          placeholder="Search project, requestor, or location"
+          aria-label="Search the AI register"
+          style={{fontFamily:FF,fontSize:13,padding:"7px 11px",border:`1px solid ${C.mushroom300}`,borderRadius:DS.radius.md,background:C.white,color:C.mushroom900,minWidth:250}}/>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {REGISTER_TIERS.map(t => (
+            <button key={t.k} onClick={()=>setRegTier(t.k)} style={{
+              fontFamily:FF,fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:DS.radius.full,cursor:"pointer",
+              border:"1px solid "+(regTier===t.k?C.kangkong500:C.mushroom300),
+              background:regTier===t.k?C.kangkong500:"transparent",
+              color:regTier===t.k?C.white:C.mushroom600,
+            }}>{t.label} ({regCount(t.k)})</button>
+          ))}
+        </div>
+        <select value={regStage} onChange={e=>setRegStage(e.target.value)} aria-label="Filter by stage"
+          style={{fontFamily:FF,fontSize:12,padding:"6px 10px",border:`1px solid ${C.mushroom300}`,borderRadius:DS.radius.md,background:C.white,color:C.mushroom700,cursor:"pointer"}}>
+          <option value="all">All stages</option>
+          {["seedling","nursery","sprout","bloom","thriving"].map(s => (
+            <option key={s} value={s}>{STAGE_LABELS[s] || s}</option>
+          ))}
+        </select>
+        <div style={{flex:1}}/>
+        <button onClick={exportRegisterCSV} style={{
+          display:"flex",alignItems:"center",gap:6,padding:"7px 13px",background:C.white,
+          border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.md,cursor:"pointer",
+          fontFamily:FF,fontSize:12,fontWeight:600,color:C.mushroom700,boxShadow:DS.shadow.sm,
+        }}>
+          <svg width={14} height={14} viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke={C.mushroom600} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Export register
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{overflowX:"auto",border:`1px solid ${C.mushroom200}`,borderRadius:DS.radius.lg,background:C.white}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontFamily:FF,fontSize:12}}>
+          <thead>
+            <tr style={{background:C.mushroom100}}>
+              {["Project","Tier","Stage","Where it resides","Requestor","Created"].map(h => (
+                <th key={h} style={{padding:"9px 12px",textAlign:"left",fontWeight:700,color:C.mushroom600,borderBottom:"2px solid "+C.mushroom200,whiteSpace:"nowrap",fontSize:11}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {registerFiltered.length === 0 && (
+              <tr><td colSpan={6} style={{padding:"24px",textAlign:"center",color:C.mushroom400,fontFamily:FF}}>No projects match these filters.</td></tr>
+            )}
+            {registerFiltered.map(({ p, resides }, i) => {
+              const sc = STAGE_COLORS[p.stage] || STAGE_COLORS.seedling;
+              return (
+                <tr key={p.id} style={{background:i%2===0?C.white:C.mushroom50,cursor:"pointer"}}
+                  onClick={()=>onOpenProject(p)}
+                  onMouseEnter={e=>{e.currentTarget.style.background=C.kangkong50;}}
+                  onMouseLeave={e=>{e.currentTarget.style.background=i%2===0?C.white:C.mushroom50;}}>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,fontWeight:600,color:C.mushroom900,maxWidth:280}}>
+                    <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.name}>{p.name}</div>
+                  </td>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
+                    {p.tier == null
+                      ? <span style={{fontFamily:FF,fontSize:10,fontWeight:700,color:C.mango600,background:C.mango100,border:"1px solid "+C.mango300,borderRadius:DS.radius.full,padding:"2px 8px",whiteSpace:"nowrap"}}>Unclassified</span>
+                      : <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,whiteSpace:"nowrap",
+                          background:p.tier===3?C.carrot100:p.tier===2?C.blueberry100:C.mushroom100,
+                          color:p.tier===3?C.carrot500:p.tier===2?C.blueberry500:C.mushroom600,
+                          border:"1px solid "+(p.tier===3?C.carrot500:p.tier===2?C.blueberry400:C.mushroom300)}}>T{p.tier}</span>}
+                  </td>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100}}>
+                    <span style={{fontFamily:FF,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:DS.radius.full,background:sc.bg,color:sc.text,border:"1px solid "+sc.border,whiteSpace:"nowrap"}}>
+                      {STAGE_LABELS[p.stage] || p.stage}
+                    </span>
+                  </td>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,maxWidth:230}}>
+                    {resides.missing
+                      ? <span style={{color:C.mushroom400,fontStyle:"italic"}}>Not declared</span>
+                      : <span title={resides.inferred ? "Inferred from the demo link — hosting was never declared" : "Declared hosting"}
+                          style={{color:resides.inferred?C.mushroom500:C.mushroom800,display:"inline-block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",verticalAlign:"bottom"}}>
+                          {resides.text}{resides.inferred && <span style={{color:C.mushroom400,fontSize:10}}> *</span>}
+                        </span>}
+                  </td>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom600,whiteSpace:"nowrap"}}>
+                    <div style={{fontWeight:600,color:C.mushroom800}}>{p.builder || "—"}</div>
+                    <div style={{fontSize:10.5,color:C.mushroom400,fontFamily:DS.fonts.mono}}>{p.builderEmail || ""}</div>
+                  </td>
+                  <td style={{padding:"10px 12px",borderBottom:"1px solid "+C.mushroom100,color:C.mushroom500,whiteSpace:"nowrap",fontSize:11}}>
+                    {regDate(p.createdAt)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{fontFamily:FF,fontSize:11,color:C.mushroom400,marginTop:10,marginBottom:8,lineHeight:1.6}}>
+        Showing {registerFiltered.length} of {registerRows.length} registered projects, newest first.
+        {" "}Entries marked <span style={{color:C.mushroom500}}>*</span> have no declared hosting — the location shown is inferred from the project&rsquo;s demo link and should be confirmed with the requestor.
+      </div>
+    </div>
+  );
+}
+
 function GuideView() {
   return (
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -9644,6 +9859,7 @@ export default function SproutAIGarden() {
       dashboard:      "Overview",
       garden:         "Garden",
       wishlist:       "Seeds",
+      register:       "AI Register",
       devops:         "Tool Shed",
       guide:          "Guide",
       "project-detail": "Project Detail",
@@ -9725,8 +9941,8 @@ export default function SproutAIGarden() {
   }, [authUser?.email]);
 
   // ── Deep-link: ?project=ID opens project detail directly ─────────────────
-  const MAIN_VIEWS = ["dashboard","garden","wishlist","devops","admin","guide","project-detail"];
-  const NAV_VALID  = ["dashboard","garden","wishlist","devops","admin","guide"];
+  const MAIN_VIEWS = ["dashboard","garden","wishlist","register","devops","admin","guide","project-detail"];
+  const NAV_VALID  = ["dashboard","garden","wishlist","register","devops","admin","guide"];
 
   const applyUrlToState = (params) => {
     const pid       = params.get("project");
@@ -10654,6 +10870,7 @@ export default function SproutAIGarden() {
     {id:"dashboard", label:"Overview",  Icon:IcoOverview},
     {id:"garden",    label:"Garden",    Icon:IcoGarden},
     {id:"wishlist",  label:"Seeds",     Icon:IcoWishlist},
+    {id:"register",  label:"Register",  Icon:IcoViewList},
     {id:"devops", label:"Tool Shed", Icon:IcoDevops},
     {id:"guide",     label:"Guide",     Icon:IcoGuide},
   ];
@@ -10799,6 +11016,7 @@ export default function SproutAIGarden() {
           {view==="wishlist"  && <WishlistView wishes={visibleWishes} projects={visibleProjects} authUser={authUser} onUpvote={handleUpvote} onWishClaim={handleClaimWish} onUnclaimSeed={handleUnclaimSeed} onUpdateWish={handleUpdateWish} onRequestDeletion={(entity,type)=>setDeleteReqModal({entity,entityType:type})} pendingDeleteIds={pendingDeleteIds}/>}
           {view==="devops"    && <DevopsBoard authUser={authUser} rootingReviews={rootingReviews}/>}
           {view==="admin"     && authUser?.isAdmin && <AdminDashboard projects={projects} wishes={wishes} deleteRequests={deleteRequests} authUser={authUser} onApprove={handleApproveDeleteRequest} onDeny={handleDenyDeleteRequest} onOpenProject={p=>{setSelected(p);}}/>}
+          {view==="register"  && <AIRegisterView projects={visibleProjects} onOpenProject={p=>{setSelected(p);}}/>}
           {view==="guide"     && <GuideView/>}
           {view==="project-detail"&&detailProject&&!approvedDeleteIds.has(String(detailProject.id))&&(
             <ProjectDetailPage
